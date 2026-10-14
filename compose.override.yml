@@ -25,11 +25,7 @@ services:
       - --api.insecure=true
   db:
     ports:
-      - "5432:5432"
-
-  adminer:
-    ports:
-      - "8080:8080"
+      - "14330:1433"
 
   backend:
     ports:
