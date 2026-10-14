@@ -3,6 +3,9 @@
 set -e
 set -x
 
+# Let the DB start and create database if needed
+python app/backend_pre_start.py
+
 # Run migrations
 alembic upgrade head
 
