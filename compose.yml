@@ -18,33 +18,40 @@ services:
       - --log
 
   db:
-    image: postgres:18
+    image: mcr.microsoft.com/mssql/server:2022-latest
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -Q 'SELECT 1' -b",
+        ]
       interval: 10s
       retries: 5
       start_period: 30s
       timeout: 10s
     volumes:
-      - app-db-data:/var/lib/postgresql
+      - app-db-data:/var/opt/mssql
     environment:
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Variable not set}
-      - POSTGRES_DB=app
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${DB_PASSWORD:?Variable not set}
 
-  adminer:
-    image: adminer
+  db-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
     depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    entrypoint:
+      - /opt/mssql-tools18/bin/sqlcmd
+      - "-C"
+      - "-S"
       - db
-    environment:
-      - ADMINER_DESIGN=pepa-linha-dark
-    labels:
-      # Enable Traefik for this service
-      - traefik.enable=true
-      # Route HTTP traffic for the Adminer subdomain
-      - traefik.http.routers.adminer-http.rule=Host(`adminer.${DOMAIN:-localhost}`)
-      - traefik.http.routers.adminer-http.entrypoints=http
-      # Define the port inside of the Docker service to use
-      - traefik.http.services.adminer.loadbalancer.server.port=8080
+      - "-U"
+      - sa
+      - "-P"
+      - ${DB_PASSWORD:?Variable not set}
+      - "-Q"
+      - "IF DB_ID('app') IS NULL CREATE DATABASE app"
 
   backend:
     image: backend:latest
@@ -52,6 +59,8 @@ services:
       db:
         condition: service_healthy
         restart: true
+      db-init:
+        condition: service_completed_successfully
     environment:
       PROJECT_NAME: ${PROJECT_NAME:?Variable not set}
       SECRET_KEY: ${SECRET_KEY:?Variable not set}
@@ -61,7 +70,7 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       EMAILS_FROM_EMAIL: ${EMAILS_FROM_EMAIL}
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?Variable not set}@db:5432/app
+      DATABASE_URL: mssql+pymssql://sa:${DB_PASSWORD:?Variable not set}@db:1433/app
       SENTRY_DSN: ${SENTRY_DSN:-}
 
     healthcheck:
