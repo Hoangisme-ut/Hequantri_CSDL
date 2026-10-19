@@ -11,13 +11,24 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as PreviewRouteImport } from './routes/preview'
 import { Route as RecoverPasswordRouteImport } from './routes/recover-password'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
+import { Route as LayoutAccountRouteImport } from './routes/_layout/account'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
+import { Route as LayoutAnalyticsRouteImport } from './routes/_layout/analytics'
+import { Route as LayoutBeaconsRouteImport } from './routes/_layout/beacons'
+import { Route as LayoutFeedbackRouteImport } from './routes/_layout/feedback'
 import { Route as LayoutItemsRouteImport } from './routes/_layout/items'
+import { Route as LayoutNotificationsRouteImport } from './routes/_layout/notifications'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
+import { Route as LayoutSitesRouteImport } from './routes/_layout/sites'
+import { Route as LayoutVisitorsRouteImport } from './routes/_layout/visitors'
+import { Route as PreviewIndexRouteImport } from './routes/preview.index'
+import { Route as PreviewScreenRouteImport } from './routes/preview.$screen'
+import { Route as LayoutSitesSiteIdRouteImport } from './routes/_layout/sites.$siteId'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
@@ -26,6 +37,11 @@ const LayoutRoute = LayoutRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreviewRoute = PreviewRouteImport.update({
+  id: '/preview',
+  path: '/preview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RecoverPasswordRoute = RecoverPasswordRouteImport.update({
@@ -48,9 +64,29 @@ const LayoutIndexRoute = LayoutIndexRouteImport.update({
   path: '/',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutAccountRoute = LayoutAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutAdminRoute = LayoutAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutAnalyticsRoute = LayoutAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutBeaconsRoute = LayoutBeaconsRouteImport.update({
+  id: '/beacons',
+  path: '/beacons',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutFeedbackRoute = LayoutFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutItemsRoute = LayoutItemsRouteImport.update({
@@ -58,81 +94,176 @@ const LayoutItemsRoute = LayoutItemsRouteImport.update({
   path: '/items',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutNotificationsRoute = LayoutNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutSitesRoute = LayoutSitesRouteImport.update({
+  id: '/sites',
+  path: '/sites',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutVisitorsRoute = LayoutVisitorsRouteImport.update({
+  id: '/visitors',
+  path: '/visitors',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const PreviewIndexRoute = PreviewIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PreviewRoute,
+} as any)
+const PreviewScreenRoute = PreviewScreenRouteImport.update({
+  id: '/$screen',
+  path: '/$screen',
+  getParentRoute: () => PreviewRoute,
+} as any)
+const LayoutSitesSiteIdRoute = LayoutSitesSiteIdRouteImport.update({
+  id: '/$siteId',
+  path: '/$siteId',
+  getParentRoute: () => LayoutSitesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
   '/login': typeof LoginRoute
+  '/preview': typeof PreviewRouteWithChildren
   '/recover-password': typeof RecoverPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/account': typeof LayoutAccountRoute
   '/admin': typeof LayoutAdminRoute
+  '/analytics': typeof LayoutAnalyticsRoute
+  '/beacons': typeof LayoutBeaconsRoute
+  '/feedback': typeof LayoutFeedbackRoute
   '/items': typeof LayoutItemsRoute
+  '/notifications': typeof LayoutNotificationsRoute
   '/settings': typeof LayoutSettingsRoute
+  '/sites': typeof LayoutSitesRouteWithChildren
+  '/visitors': typeof LayoutVisitorsRoute
+  '/preview/$screen': typeof PreviewScreenRoute
+  '/preview/': typeof PreviewIndexRoute
+  '/sites/$siteId': typeof LayoutSitesSiteIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/recover-password': typeof RecoverPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/account': typeof LayoutAccountRoute
   '/admin': typeof LayoutAdminRoute
+  '/analytics': typeof LayoutAnalyticsRoute
+  '/beacons': typeof LayoutBeaconsRoute
+  '/feedback': typeof LayoutFeedbackRoute
   '/items': typeof LayoutItemsRoute
+  '/notifications': typeof LayoutNotificationsRoute
   '/settings': typeof LayoutSettingsRoute
+  '/sites': typeof LayoutSitesRouteWithChildren
+  '/visitors': typeof LayoutVisitorsRoute
+  '/preview/$screen': typeof PreviewScreenRoute
   '/': typeof LayoutIndexRoute
+  '/preview': typeof PreviewIndexRoute
+  '/sites/$siteId': typeof LayoutSitesSiteIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_layout': typeof LayoutRouteWithChildren
   '/login': typeof LoginRoute
+  '/preview': typeof PreviewRouteWithChildren
   '/recover-password': typeof RecoverPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/_layout/account': typeof LayoutAccountRoute
   '/_layout/admin': typeof LayoutAdminRoute
+  '/_layout/analytics': typeof LayoutAnalyticsRoute
+  '/_layout/beacons': typeof LayoutBeaconsRoute
+  '/_layout/feedback': typeof LayoutFeedbackRoute
   '/_layout/items': typeof LayoutItemsRoute
+  '/_layout/notifications': typeof LayoutNotificationsRoute
   '/_layout/settings': typeof LayoutSettingsRoute
+  '/_layout/sites': typeof LayoutSitesRouteWithChildren
+  '/_layout/visitors': typeof LayoutVisitorsRoute
+  '/preview/$screen': typeof PreviewScreenRoute
   '/_layout/': typeof LayoutIndexRoute
+  '/preview/': typeof PreviewIndexRoute
+  '/_layout/sites/$siteId': typeof LayoutSitesSiteIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/login'
+    | '/preview'
     | '/recover-password'
     | '/reset-password'
     | '/signup'
+    | '/account'
     | '/admin'
+    | '/analytics'
+    | '/beacons'
+    | '/feedback'
     | '/items'
+    | '/notifications'
     | '/settings'
+    | '/sites'
+    | '/visitors'
+    | '/preview/$screen'
+    | '/preview/'
+    | '/sites/$siteId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
     | '/recover-password'
     | '/reset-password'
     | '/signup'
+    | '/account'
     | '/admin'
+    | '/analytics'
+    | '/beacons'
+    | '/feedback'
     | '/items'
+    | '/notifications'
     | '/settings'
+    | '/sites'
+    | '/visitors'
+    | '/preview/$screen'
     | '/'
+    | '/preview'
+    | '/sites/$siteId'
   id:
     | '__root__'
     | '/_layout'
     | '/login'
+    | '/preview'
     | '/recover-password'
     | '/reset-password'
     | '/signup'
+    | '/_layout/account'
     | '/_layout/admin'
+    | '/_layout/analytics'
+    | '/_layout/beacons'
+    | '/_layout/feedback'
     | '/_layout/items'
+    | '/_layout/notifications'
     | '/_layout/settings'
+    | '/_layout/sites'
+    | '/_layout/visitors'
+    | '/preview/$screen'
     | '/_layout/'
+    | '/preview/'
+    | '/_layout/sites/$siteId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
   LoginRoute: typeof LoginRoute
+  PreviewRoute: typeof PreviewRouteWithChildren
   RecoverPasswordRoute: typeof RecoverPasswordRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
@@ -152,6 +283,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/preview': {
+      id: '/preview'
+      path: '/preview'
+      fullPath: '/preview'
+      preLoaderRoute: typeof PreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/recover-password': {
@@ -182,11 +320,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutIndexRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/account': {
+      id: '/_layout/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof LayoutAccountRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/admin': {
       id: '/_layout/admin'
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof LayoutAdminRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/analytics': {
+      id: '/_layout/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof LayoutAnalyticsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/beacons': {
+      id: '/_layout/beacons'
+      path: '/beacons'
+      fullPath: '/beacons'
+      preLoaderRoute: typeof LayoutBeaconsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/feedback': {
+      id: '/_layout/feedback'
+      path: '/feedback'
+      fullPath: '/feedback'
+      preLoaderRoute: typeof LayoutFeedbackRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/items': {
@@ -196,6 +362,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutItemsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/notifications': {
+      id: '/_layout/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof LayoutNotificationsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/settings': {
       id: '/_layout/settings'
       path: '/settings'
@@ -203,29 +376,104 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSettingsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/sites': {
+      id: '/_layout/sites'
+      path: '/sites'
+      fullPath: '/sites'
+      preLoaderRoute: typeof LayoutSitesRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/visitors': {
+      id: '/_layout/visitors'
+      path: '/visitors'
+      fullPath: '/visitors'
+      preLoaderRoute: typeof LayoutVisitorsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/preview/': {
+      id: '/preview/'
+      path: '/'
+      fullPath: '/preview/'
+      preLoaderRoute: typeof PreviewIndexRouteImport
+      parentRoute: typeof PreviewRoute
+    }
+    '/preview/$screen': {
+      id: '/preview/$screen'
+      path: '/$screen'
+      fullPath: '/preview/$screen'
+      preLoaderRoute: typeof PreviewScreenRouteImport
+      parentRoute: typeof PreviewRoute
+    }
+    '/_layout/sites/$siteId': {
+      id: '/_layout/sites/$siteId'
+      path: '/$siteId'
+      fullPath: '/sites/$siteId'
+      preLoaderRoute: typeof LayoutSitesSiteIdRouteImport
+      parentRoute: typeof LayoutSitesRoute
+    }
   }
 }
 
+interface LayoutSitesRouteChildren {
+  LayoutSitesSiteIdRoute: typeof LayoutSitesSiteIdRoute
+}
+
+const LayoutSitesRouteChildren: LayoutSitesRouteChildren = {
+  LayoutSitesSiteIdRoute: LayoutSitesSiteIdRoute,
+}
+
+const LayoutSitesRouteWithChildren = LayoutSitesRoute._addFileChildren(
+  LayoutSitesRouteChildren,
+)
+
 interface LayoutRouteChildren {
+  LayoutAccountRoute: typeof LayoutAccountRoute
   LayoutAdminRoute: typeof LayoutAdminRoute
+  LayoutAnalyticsRoute: typeof LayoutAnalyticsRoute
+  LayoutBeaconsRoute: typeof LayoutBeaconsRoute
+  LayoutFeedbackRoute: typeof LayoutFeedbackRoute
   LayoutItemsRoute: typeof LayoutItemsRoute
+  LayoutNotificationsRoute: typeof LayoutNotificationsRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
+  LayoutSitesRoute: typeof LayoutSitesRouteWithChildren
+  LayoutVisitorsRoute: typeof LayoutVisitorsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
+  LayoutAccountRoute: LayoutAccountRoute,
   LayoutAdminRoute: LayoutAdminRoute,
+  LayoutAnalyticsRoute: LayoutAnalyticsRoute,
+  LayoutBeaconsRoute: LayoutBeaconsRoute,
+  LayoutFeedbackRoute: LayoutFeedbackRoute,
   LayoutItemsRoute: LayoutItemsRoute,
+  LayoutNotificationsRoute: LayoutNotificationsRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
+  LayoutSitesRoute: LayoutSitesRouteWithChildren,
+  LayoutVisitorsRoute: LayoutVisitorsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
 }
 
 const LayoutRouteWithChildren =
   LayoutRoute._addFileChildren(LayoutRouteChildren)
 
+interface PreviewRouteChildren {
+  PreviewScreenRoute: typeof PreviewScreenRoute
+  PreviewIndexRoute: typeof PreviewIndexRoute
+}
+
+const PreviewRouteChildren: PreviewRouteChildren = {
+  PreviewScreenRoute: PreviewScreenRoute,
+  PreviewIndexRoute: PreviewIndexRoute,
+}
+
+const PreviewRouteWithChildren =
+  PreviewRoute._addFileChildren(PreviewRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
   LoginRoute: LoginRoute,
+  PreviewRoute: PreviewRouteWithChildren,
   RecoverPasswordRoute: RecoverPasswordRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,

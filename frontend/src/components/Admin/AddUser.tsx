@@ -91,7 +91,7 @@ const AddUser = () => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button className="my-4">
+        <Button className="h-9">
           <Plus className="mr-2" />
           Add User
         </Button>

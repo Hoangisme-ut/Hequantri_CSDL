@@ -15,7 +15,7 @@ const isLoggedIn = () => {
   return localStorage.getItem("access_token") !== null
 }
 
-const useAuth = () => {
+const useAuth = ({ enabled = true }: { enabled?: boolean } = {}) => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { showErrorToast } = useCustomToast()
@@ -23,7 +23,7 @@ const useAuth = () => {
   const { data: user } = useQuery<UserPublic | null, Error>({
     queryKey: ["currentUser"],
     queryFn: async () => (await UsersService.readUserMe()).data,
-    enabled: isLoggedIn(),
+    enabled: enabled && isLoggedIn(),
   })
 
   const signUpMutation = useMutation({
