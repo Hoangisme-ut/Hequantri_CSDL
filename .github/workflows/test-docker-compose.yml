@@ -20,7 +20,7 @@ jobs:
           persist-credentials: false
       - name: Copy .env.example to .env
         run: cp .env.example .env
-      - run: docker compose build
+      - run: docker compose build backend
       - run: docker compose down -v --remove-orphans
       - run: docker compose run --rm backend bash scripts/prestart.sh
       - run: docker compose up -d --wait backend

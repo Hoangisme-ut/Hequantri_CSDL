@@ -18,4 +18,3 @@ def test_main() -> None:
     with patch("app.initial_data.init") as mock_init:
         main()
         mock_init.assert_called_once()
-

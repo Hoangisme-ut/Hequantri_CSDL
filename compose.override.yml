@@ -78,8 +78,10 @@ services:
         - NODE_ENV=production
     ipc: host
     depends_on:
-      - backend
-      - mailpit
+      backend:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
     environment:
       - FIRST_SUPERUSER=${FIRST_SUPERUSER:?Variable not set}
       - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD:?Variable not set}

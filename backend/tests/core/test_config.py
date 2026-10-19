@@ -24,6 +24,7 @@ def test_enforce_non_default_secrets_warns_in_dev() -> None:
     with warnings.catch_warnings(record=True) as recorded:
         warnings.simplefilter("always")
         Settings(
+            _env_file=None,
             SECRET_KEY="changethis",
             FIRST_SUPERUSER="admin@example.com",
             FIRST_SUPERUSER_PASSWORD="changethis",
@@ -37,6 +38,7 @@ def test_enforce_non_default_secrets_warns_in_dev() -> None:
 def test_enforce_non_default_secrets_raises_in_prod() -> None:
     with pytest.raises(ValueError, match='The value of SECRET_KEY is "changethis"'):
         Settings(
+            _env_file=None,
             SECRET_KEY="changethis",
             FIRST_SUPERUSER="admin@example.com",
             FIRST_SUPERUSER_PASSWORD="secret",
@@ -47,7 +49,10 @@ def test_enforce_non_default_secrets_raises_in_prod() -> None:
 
 
 def test_emails_enabled() -> None:
+    # `_env_file=None` keeps the test independent from the `.env` file, which
+    # would otherwise provide SMTP settings from the environment.
     s_disabled = Settings(
+        _env_file=None,
         SECRET_KEY="secret",
         FIRST_SUPERUSER="admin@example.com",
         FIRST_SUPERUSER_PASSWORD="secret",
@@ -58,6 +63,7 @@ def test_emails_enabled() -> None:
     assert s_disabled.emails_enabled is False
 
     s_enabled = Settings(
+        _env_file=None,
         SECRET_KEY="secret",
         FIRST_SUPERUSER="admin@example.com",
         FIRST_SUPERUSER_PASSWORD="secret",
