@@ -121,7 +121,7 @@ docker compose watch
 
 ## The `.env` File
 
-The tracked `.env` file contains local development defaults, passwords, and other configuration. Its hostnames use `localhost` for processes running on your machine (for example `DATABASE_URL` points to `localhost:14330`). Docker Compose overrides hostnames such as the database and SMTP server with their Compose service names.
+The `.env` file contains local development defaults, passwords, and other configuration. Its hostnames use `localhost` for processes running on your machine (for example `DATABASE_URL` points to `localhost:14330`). Docker Compose overrides hostnames such as the database and SMTP server with their Compose service names.
 
 Do not store deployment secrets in `.env`. When deploying to Azure, keep secrets (database password, `SECRET_KEY`, superuser password) in Azure Key Vault or in the hosting service's secret settings, and change all the default `changethis` and `Passw0rd!dev` values.
 

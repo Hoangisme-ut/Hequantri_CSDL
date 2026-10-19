@@ -18,10 +18,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Copy .env.example to .env
+        run: cp .env.example .env
       - run: docker compose build
       - run: docker compose down -v --remove-orphans
       - run: docker compose run --rm backend bash scripts/prestart.sh
-      - run: docker compose up -d --wait backend 
+      - run: docker compose up -d --wait backend
       - name: Test backend is up
         run: curl --fail --retry 10 --retry-delay 3 --retry-connrefused http://localhost:8000/api/v1/utils/health-check
       - name: Test frontend is up
