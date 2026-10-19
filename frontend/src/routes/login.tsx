@@ -72,10 +72,11 @@ function Login() {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-6"
+          className="flex flex-col gap-6 p-7 sm:p-9"
         >
-          <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-2xl font-bold">Login to your account</h1>
+          <div className="flex flex-col gap-2 border-b pb-6">
+            <h1 className="text-2xl font-bold">Sign in to your account</h1>
+            <p className="text-sm text-muted-foreground">Administrator access only · Smart Heritage Console</p>
           </div>
 
           <div className="grid gap-4">
@@ -88,7 +89,7 @@ function Login() {
                   <FormControl>
                     <Input
                       data-testid="email-input"
-                      placeholder="user@example.com"
+                      placeholder="Enter your email address"
                       type="email"
                       {...field}
                     />
@@ -115,7 +116,7 @@ function Login() {
                   <FormControl>
                     <PasswordInput
                       data-testid="password-input"
-                      placeholder="Password"
+                      placeholder="Enter your password"
                       {...field}
                     />
                   </FormControl>
@@ -125,15 +126,15 @@ function Login() {
             />
 
             <LoadingButton type="submit" loading={loginMutation.isPending}>
-              Log In
+              Sign In
             </LoadingButton>
           </div>
 
-          <div className="text-center text-sm">
-            Don't have an account yet?{" "}
-            <RouterLink to="/signup" className="underline underline-offset-4">
-              Sign up
-            </RouterLink>
+          <div className="space-y-3 text-center text-sm">
+            <p className="text-muted-foreground">Need access? Contact your system administrator.</p>
+            <p className="text-xs text-muted-foreground">
+              Account registration: <RouterLink to="/signup" className="text-primary underline underline-offset-4">Sign up</RouterLink>
+            </p>
           </div>
         </form>
       </Form>

@@ -1,5 +1,5 @@
 import { Link as RouterLink } from "@tanstack/react-router"
-import { ChevronsUpDown, LogOut, Settings } from "lucide-react"
+import { ChevronsUpDown, LogOut, UserRound } from "lucide-react"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -28,7 +28,7 @@ function UserInfo({ fullName, email }: UserInfoProps) {
   return (
     <div className="flex items-center gap-2.5 w-full min-w-0">
       <Avatar className="size-8">
-        <AvatarFallback className="bg-zinc-600 text-white">
+      <AvatarFallback className="bg-blue-600 text-white">
           {getInitials(fullName || "User")}
         </AvatarFallback>
       </Avatar>
@@ -40,8 +40,8 @@ function UserInfo({ fullName, email }: UserInfoProps) {
   )
 }
 
-export function User({ user }: { user: any }) {
-  const { logout } = useAuth()
+export function User({ user, preview = false }: { user: any; preview?: boolean }) {
+  const { logout } = useAuth({ enabled: !preview })
   const { isMobile, setOpenMobile } = useSidebar()
 
   if (!user) return null
@@ -79,16 +79,13 @@ export function User({ user }: { user: any }) {
               <UserInfo fullName={user?.full_name} email={user?.email} />
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <RouterLink to="/settings" onClick={handleMenuClick}>
+            <RouterLink to={(preview ? "/preview/account" : "/account") as never} onClick={handleMenuClick}>
               <DropdownMenuItem>
-                <Settings />
-                User Settings
+                <UserRound />
+                Account
               </DropdownMenuItem>
             </RouterLink>
-            <DropdownMenuItem onClick={handleLogout}>
-              <LogOut />
-              Log Out
-            </DropdownMenuItem>
+            {preview ? <DropdownMenuItem disabled><LogOut />Preview only</DropdownMenuItem> : <DropdownMenuItem onClick={handleLogout}><LogOut />Log Out</DropdownMenuItem>}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
