@@ -1,14 +1,17 @@
-# FastAPI Project - Development
+# Smart Heritage - Development
 
 ## Local Development
 
-For local development, run PostgreSQL and Mailpit with Docker Compose, and run the FastAPI and Vite development servers locally.
+For local development, run SQL Server and Mailpit with Docker Compose, and run the FastAPI and Vite development servers locally.
 
-Start the supporting services:
+Start the supporting services and create the `app` database:
 
 ```bash
-docker compose up -d db mailpit
+docker compose up -d --wait db mailpit
+docker compose run --rm db-init
 ```
+
+SQL Server is exposed on port **14330** of your machine (port 1433 inside the container), so it does not clash with a SQL Server already installed locally.
 
 Then, from the `backend` directory, install the dependencies and prepare the database:
 
@@ -61,13 +64,13 @@ docker compose run --rm backend bash scripts/prestart.sh
 docker compose watch
 ```
 
+The `db-init` service creates the `app` database automatically before the backend starts.
+
 Now you can open these URLs:
 
 Application, with the frontend and API served by FastAPI: <http://localhost:8000>
 
 Automatic interactive API documentation with Swagger UI: <http://localhost:8000/docs>
-
-Adminer, database web administration: <http://localhost:8080>
 
 Traefik UI, to see how the routes are being handled by the proxy: <http://localhost:8090>
 
@@ -75,7 +78,28 @@ Mailpit: <http://localhost:8025>
 
 Stop a locally running FastAPI server before starting the Compose backend because both use port `8000`.
 
-**Note**: The first time you start the stack, it might take a minute for all the services to be ready. To monitor it, use `docker compose logs`, or `docker compose logs backend` for the backend service.
+**Note**: The first time you start the stack, it might take a minute for all the services to be ready, because SQL Server starts slower than most databases. To monitor it, use `docker compose logs`, or `docker compose logs backend` for the backend service.
+
+## SQL Server
+
+The database is SQL Server 2022 running in the `db` Docker service.
+
+| Setting  | Value                                        |
+| -------- | -------------------------------------------- |
+| Host     | `localhost`                                  |
+| Port     | `14330` (container port 1433)                |
+| User     | `sa`                                         |
+| Password | `DB_PASSWORD` in `.env`                      |
+| Database | `app`                                        |
+
+You can connect with DBeaver or Azure Data Studio using these values.
+
+Notes:
+
+- The `sa` password must satisfy the SQL Server password policy (at least 8 characters, with upper case, lower case, digits and symbols). If it does not, the `db` container exits right after starting.
+- Docker needs at least 2 GB of memory available for SQL Server.
+- Data is stored in the `app-db-data` volume. To reset the database completely, run `docker compose down -v`.
+- Inside Docker the backend connects to `db:1433`; from your machine (local FastAPI, tests, database clients) use `localhost:14330`.
 
 ## Mailpit
 
@@ -85,9 +109,7 @@ Stop a locally running FastAPI server before starting the Compose backend becaus
 
 The main `compose.yml` file contains the configuration shared by the whole stack. Docker Compose loads it automatically.
 
-The `compose.override.yml` file adds local development settings, such as mounting the source code as a volume. Docker Compose also loads it automatically and applies it on top of `compose.yml`.
-
-The `compose.deploy.yml` file contains the deployment-specific settings, including HTTPS and automatic certificate handling. It is explicitly combined with `compose.yml` when deploying the application.
+The `compose.override.yml` file adds local development settings, such as published ports (including `14330:1433` for SQL Server), Mailpit and mounting the source code as a volume. Docker Compose also loads it automatically and applies it on top of `compose.yml`.
 
 The backend reads local settings from the `.env` file. Docker Compose also uses it for variable interpolation and passes the settings each container needs.
 
@@ -99,9 +121,19 @@ docker compose watch
 
 ## The `.env` File
 
-The tracked `.env` file contains local development defaults, passwords, and other configuration. Its hostnames use `localhost` for processes running on your machine. Docker Compose overrides hostnames such as the database and SMTP server with their Compose service names.
+The tracked `.env` file contains local development defaults, passwords, and other configuration. Its hostnames use `localhost` for processes running on your machine (for example `DATABASE_URL` points to `localhost:14330`). Docker Compose overrides hostnames such as the database and SMTP server with their Compose service names.
 
-Do not store deployment secrets in `.env`. Configure them as described in the [FastAPI Cloud deployment guide](./deployment.md) or the [Docker Compose deployment guide](./deployment-docker-compose.md).
+Do not store deployment secrets in `.env`. When deploying to Azure, keep secrets (database password, `SECRET_KEY`, superuser password) in Azure Key Vault or in the hosting service's secret settings, and change all the default `changethis` and `Passw0rd!dev` values.
+
+## Continuous Integration
+
+GitHub Actions runs these workflows on pull requests and on pushes to `main`:
+
+- **Test Backend**: starts SQL Server and Mailpit with Docker Compose, creates the database, runs migrations and the Pytest suite.
+- **Test Docker Compose**: builds the images, runs migrations and checks the backend and the frontend respond.
+- **pre-commit**: runs `prek` for linting and formatting.
+
+All of them must pass before merging a Pull Request.
 
 ## Pre-commit Hooks and Code Linting
 
