@@ -55,7 +55,7 @@ class User(UserBase, table=True):
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc, sa_type=DateTime
     )
-    items: list["Item"] = Relationship(back_populates="owner", cascade_delete=True)
+    items: list[Item] = Relationship(back_populates="owner", cascade_delete=True)
 
 
 # Properties to return via API, id is always required
