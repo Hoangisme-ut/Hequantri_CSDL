@@ -4,7 +4,7 @@ from enum import StrEnum
 from typing import Optional
 
 from pydantic import EmailStr
-from sqlalchemy import Index, UniqueConstraint, text
+from sqlalchemy import Index, Unicode, UniqueConstraint, text
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -17,7 +17,7 @@ class UserBase(SQLModel):
     email: EmailStr = Field(unique=True, index=True, max_length=255)
     is_active: bool = True
     is_superuser: bool = False
-    full_name: str | None = Field(default=None, max_length=255)
+    full_name: str | None = Field(default=None, max_length=255, sa_type=Unicode(255))
 
 
 # Properties to receive via API on creation
@@ -151,7 +151,7 @@ class FeedbackStatus(StrEnum):
 # ---------------------------------- Role -------------------------------------
 class RoleBase(SQLModel):
     name: str = Field(unique=True, index=True, max_length=50)  # admin | visitor
-    description: str | None = Field(default=None, max_length=255)
+    description: str | None = Field(default=None, max_length=255, sa_type=Unicode(255))
 
 
 class RoleCreate(RoleBase):
@@ -170,8 +170,9 @@ class RolePublic(RoleBase):
 # -------------------------------- Language -----------------------------------
 class LanguageBase(SQLModel):
     code: str = Field(unique=True, index=True, max_length=10)  # vi, en, ja ...
-    name: str = Field(max_length=100)
+    name: str = Field(max_length=100, sa_type=Unicode(100))
     is_active: bool = True
+    is_default: bool = False  # ngôn ngữ dự phòng khi hiện vật chưa có bản dịch
 
 
 class LanguageCreate(LanguageBase):
@@ -182,9 +183,20 @@ class LanguageUpdate(SQLModel):
     code: str | None = Field(default=None, max_length=10)
     name: str | None = Field(default=None, max_length=100)
     is_active: bool | None = None
+    is_default: bool | None = None
 
 
 class Language(LanguageBase, table=True):
+    # chỉ 1 ngôn ngữ được is_default = 1 (filtered unique index)
+    __table_args__ = (
+        Index(
+            "uq_language_default",
+            "is_default",
+            unique=True,
+            mssql_where=text("is_default = 1"),
+            sqlite_where=text("is_default = 1"),
+        ),
+    )
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     users: list[User] = Relationship(back_populates="language")
     translations: list[ArtifactTranslation] = Relationship(
@@ -205,9 +217,9 @@ class LanguagesPublic(SQLModel):
 
 # ----------------------------------- Site ------------------------------------
 class SiteBase(SQLModel):
-    name: str = Field(min_length=1, max_length=255)
-    description: str | None = Field(default=None, max_length=2000)
-    address: str | None = Field(default=None, max_length=500)
+    name: str = Field(min_length=1, max_length=255, sa_type=Unicode(255))
+    description: str | None = Field(default=None, max_length=2000, sa_type=Unicode(2000))
+    address: str | None = Field(default=None, max_length=500, sa_type=Unicode(500))
     latitude: float | None = None
     longitude: float | None = None
     cover_image_url: str | None = Field(default=None, max_length=500)
@@ -249,8 +261,8 @@ class SitesPublic(SQLModel):
 
 # --------------------------------- Artifact ----------------------------------
 class ArtifactBase(SQLModel):
-    code: str = Field(unique=True, index=True, max_length=50)  # mã hiện vật
-    era: str | None = Field(default=None, max_length=100)  # niên đại
+    code: str = Field(index=True, max_length=50)  # mã hiện vật (unique theo site)
+    era: str | None = Field(default=None, max_length=100, sa_type=Unicode(100))  # niên đại
     latitude: float | None = None
     longitude: float | None = None
     cover_image_url: str | None = Field(default=None, max_length=500)
@@ -272,9 +284,11 @@ class ArtifactUpdate(SQLModel):
 
 
 class Artifact(ArtifactBase, table=True):
+    __table_args__ = (UniqueConstraint("site_id", "code", name="uq_artifact_site_code"),)
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     site_id: uuid.UUID = Field(foreign_key="site.id", nullable=False, ondelete="CASCADE")
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
+    updated_at: datetime | None = None
     site: Site | None = Relationship(back_populates="artifacts")
     translations: list[ArtifactTranslation] = Relationship(
         back_populates="artifact", cascade_delete=True
@@ -296,6 +310,7 @@ class ArtifactPublic(ArtifactBase):
     id: uuid.UUID
     site_id: uuid.UUID
     created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class ArtifactsPublic(SQLModel):
@@ -305,9 +320,9 @@ class ArtifactsPublic(SQLModel):
 
 # ----------------------------- ArtifactTranslation ---------------------------
 class ArtifactTranslationBase(SQLModel):
-    title: str = Field(min_length=1, max_length=255)
-    description: str | None = Field(default=None, max_length=2000)
-    history_content: str | None = Field(default=None)  # nội dung dài (text)
+    title: str = Field(min_length=1, max_length=255, sa_type=Unicode(255))
+    description: str | None = Field(default=None, max_length=2000, sa_type=Unicode(2000))
+    history_content: str | None = Field(default=None, sa_type=Unicode())  # nội dung dài
 
 
 class ArtifactTranslationCreate(ArtifactTranslationBase):
@@ -333,6 +348,7 @@ class ArtifactTranslation(ArtifactTranslationBase, table=True):
         foreign_key="language.id", nullable=False, ondelete="CASCADE"
     )
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
+    updated_at: datetime | None = None
     artifact: Artifact | None = Relationship(back_populates="translations")
     language: Language | None = Relationship(back_populates="translations")
 
@@ -347,7 +363,7 @@ class ArtifactTranslationPublic(ArtifactTranslationBase):
 class MediaBase(SQLModel):
     media_type: str = Field(default=MediaType.IMAGE, max_length=20)  # MediaType
     url: str = Field(max_length=500)
-    caption: str | None = Field(default=None, max_length=255)
+    caption: str | None = Field(default=None, max_length=255, sa_type=Unicode(255))
     sort_order: int = 0
 
 
@@ -551,7 +567,9 @@ class Feedback(SQLModel, table=True):
         foreign_key="artifact.id", nullable=False, ondelete="CASCADE"
     )
     rating: int = Field(ge=1, le=5)
-    comment: str | None = Field(default=None, max_length=2000)
+    comment: str | None = Field(
+        default=None, max_length=2000, sa_type=Unicode(2000)
+    )
     status: str = Field(default=FeedbackStatus.PENDING, max_length=20)
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
     user: User | None = Relationship(back_populates="feedbacks")
@@ -571,6 +589,46 @@ class FeedbackPublic(SQLModel):
 class FeedbacksPublic(SQLModel):
     data: list[FeedbackPublic]
     count: int
+
+
+# ------------------- Schemas dùng cho API nội dung hiện vật -------------------
+class ArtifactSummary(SQLModel):
+    """Dòng trong danh sách hiện vật: kèm tiêu đề theo ngôn ngữ."""
+
+    id: uuid.UUID
+    site_id: uuid.UUID
+    code: str
+    era: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    cover_image_url: str | None = None
+    is_active: bool = True
+    title: str | None = None
+    language_code: str | None = None  # ngôn ngữ của title
+    is_fallback: bool = False  # True nếu title không đúng ngôn ngữ yêu cầu
+
+
+class ArtifactSummariesPublic(SQLModel):
+    data: list[ArtifactSummary]
+    count: int
+
+
+class ArtifactContentPublic(ArtifactPublic):
+    """Chi tiết hiện vật + nội dung theo ngôn ngữ + media."""
+
+    title: str | None = None
+    description: str | None = None
+    history_content: str | None = None
+    language_code: str | None = None  # ngôn ngữ của nội dung trả về
+    is_fallback: bool = False
+    media: list[MediaPublic] = []
+
+
+class BeaconResolvePublic(SQLModel):
+    """Kết quả khi app quét được beacon."""
+
+    beacon: BeaconPublic
+    artifact: ArtifactContentPublic
 
 
 # Generic message

@@ -1,4 +1,4 @@
-from sqlmodel import Session, create_engine, select
+from sqlmodel import Session, col, create_engine, select
 
 from app import crud
 from app.core.config import settings
@@ -40,6 +40,12 @@ def init_db(session: Session) -> None:
         if not session.exec(select(Language).where(Language.code == code)).first():
             session.add(Language(code=code, name=name))
     session.commit()
+    # --- ngôn ngữ mặc định: nếu chưa có thì đặt tiếng Việt ---
+    if not session.exec(select(Language).where(col(Language.is_default))).first():
+        vi = session.exec(select(Language).where(Language.code == "vi")).one()
+        vi.is_default = True
+        session.add(vi)
+        session.commit()
 
     # --- seed superuser (gắn role admin) ---
     admin_role = session.exec(select(Role).where(Role.name == "admin")).one()
