@@ -1,0 +1,7 @@
+[type.xcode-generated]
+extend-glob = [
+    "project.pbxproj",
+    "MainMenu.xib",
+    "Main.storyboard",
+]
+check-file = false
