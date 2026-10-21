@@ -1,121 +1,274 @@
+import 'dart:async';
+
+import 'package:dchs_flutter_beacon/dchs_flutter_beacon.dart';
 import 'package:flutter/material.dart';
 
+import 'beacon_simulation_page.dart';
+
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
+      title: 'Beacon Test',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const BeaconTestPage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class BeaconTestPage extends StatefulWidget {
+  const BeaconTestPage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<BeaconTestPage> createState() => _BeaconTestPageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _BeaconTestPageState extends State<BeaconTestPage> {
+  StreamSubscription<RangingResult>? _subscription;
+  List<Beacon> _beacons = [];
+  String _status = 'Chưa bắt đầu quét';
+  bool _scanning = false;
+  bool _busy = false;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  void _setStatus(String message) {
+    if (!mounted) return;
+    setState(() => _status = message);
+  }
+
+  Future<void> _startScanning() async {
+    if (_busy || _scanning) return;
+
+    setState(() => _busy = true);
+
+    try {
+      _setStatus('Đang kiểm tra quyền và dịch vụ...');
+
+      final initialized = await flutterBeacon.initializeAndCheckScanning;
+      if (!mounted) return;
+
+      if (!initialized) {
+        _setStatus('Chưa thể quét. Kiểm tra quyền Bluetooth và vị trí.');
+        return;
+      }
+
+      final locationEnabled =
+          await flutterBeacon.checkLocationServicesIfEnabled;
+      if (!mounted) return;
+
+      if (!locationEnabled) {
+        _setStatus('Hãy bật vị trí rồi quay lại bấm Bắt đầu quét.');
+        await flutterBeacon.openLocationSettings;
+        return;
+      }
+
+      // Android: nhận tất cả iBeacon, chưa lọc theo UUID.
+      final regions = [
+        Region(identifier: 'all-beacons'),
+      ];
+
+      await _subscription?.cancel();
+      if (!mounted) return;
+
+      setState(() {
+        _beacons = [];
+        _scanning = true;
+        _status = 'Đang quét — chờ tín hiệu iBeacon';
+      });
+
+      _subscription = flutterBeacon.ranging(regions).listen(
+        (result) {
+          if (!mounted) return;
+
+          setState(() {
+            _beacons = result.beacons;
+            _status = _beacons.isEmpty
+                ? 'Đang quét — chưa phát hiện iBeacon'
+                : 'Phát hiện ${_beacons.length} beacon';
+          });
+
+          for (final beacon in result.beacons) {
+            debugPrint(
+              'UUID: ${beacon.proximityUUID}, '
+              'Major: ${beacon.major}, '
+              'Minor: ${beacon.minor}, '
+              'RSSI: ${beacon.rssi}, '
+              'Estimated distance: ${beacon.accuracy} m',
+            );
+          }
+        },
+        onError: (Object error) {
+          if (!mounted) return;
+
+          setState(() {
+            _scanning = false;
+            _status = 'Lỗi quét: $error';
+          });
+
+          unawaited(_subscription?.cancel());
+        },
+        onDone: () {
+          if (!mounted) return;
+
+          setState(() {
+            _scanning = false;
+            _status = 'Luồng quét đã kết thúc';
+          });
+        },
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _scanning = false;
+        _status = 'Không thể bắt đầu quét: $error';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
+  }
+
+  Future<void> _stopScanning() async {
+    setState(() => _busy = true);
+
+    try {
+      await _subscription?.cancel();
+      _subscription = null;
+
+      if (!mounted) return;
+
+      setState(() {
+        _scanning = false;
+        _status = 'Đã dừng quét';
+      });
+    } catch (error) {
+      _setStatus('Không thể dừng quét: $error');
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
+  }
+
+  String _distanceText(double distance) {
+    if (!distance.isFinite || distance < 0) {
+      return 'Chưa xác định';
+    }
+
+    return '${distance.toStringAsFixed(2)} m';
+  }
+
+  @override
+  void dispose() {
+    unawaited(_subscription?.cancel());
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: const Text('Task 4 — Thử quét iBeacon'),
+        actions: [
+          TextButton(
+            onPressed: _busy
+                ? null
+                : () async {
+                    final navigator = Navigator.of(context);
+
+                    if (_scanning) {
+                      await _stopScanning();
+                    }
+
+                    if (!mounted || !navigator.mounted) return;
+
+                    await navigator.push<void>(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const BeaconSimulationPage(),
+                      ),
+                    );
+                  },
+            child: const Text('Simulation'),
+          ),
+        ],
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
+      body: SafeArea(
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
           children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(_status),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      FilledButton(
+                        onPressed:
+                            _busy || _scanning ? null : _startScanning,
+                        child: const Text('Bắt đầu quét'),
+                      ),
+                      OutlinedButton(
+                        onPressed:
+                            _busy || !_scanning ? null : _stopScanning,
+                        child: const Text('Dừng quét'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Khoảng cách chỉ là ước lượng từ tín hiệu Bluetooth.',
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _beacons.isEmpty
+                  ? const Center(
+                      child: Text('Chưa có dữ liệu beacon'),
+                    )
+                  : ListView.builder(
+                      itemCount: _beacons.length,
+                      itemBuilder: (context, index) {
+                        final beacon = _beacons[index];
+
+                        return Card(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 6,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: SelectableText(
+                              'UUID: ${beacon.proximityUUID}\n'
+                              'Major: ${beacon.major}\n'
+                              'Minor: ${beacon.minor}\n'
+                              'RSSI: ${beacon.rssi} dBm\n'
+                              'Khoảng cách ước lượng: '
+                              '${_distanceText(beacon.accuracy)}',
+                            ),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
       ),
     );
   }
