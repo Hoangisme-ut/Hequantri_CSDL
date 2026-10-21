@@ -26,7 +26,7 @@ services:
           "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -Q 'SELECT 1' -b",
         ]
       interval: 10s
-      retries: 5
+      retries: 10
       start_period: 30s
       timeout: 10s
     volumes:
@@ -44,6 +44,7 @@ services:
     entrypoint:
       - /opt/mssql-tools18/bin/sqlcmd
       - "-C"
+      - "-b"
       - "-S"
       - db
       - "-U"
@@ -66,10 +67,10 @@ services:
       SECRET_KEY: ${SECRET_KEY:?Variable not set}
       FIRST_SUPERUSER: ${FIRST_SUPERUSER:?Variable not set}
       FIRST_SUPERUSER_PASSWORD: ${FIRST_SUPERUSER_PASSWORD:?Variable not set}
-      SMTP_HOST: ${SMTP_HOST}
+      SMTP_HOST: ${SMTP_HOST:-}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      EMAILS_FROM_EMAIL: ${EMAILS_FROM_EMAIL}
+      EMAILS_FROM_EMAIL: ${EMAILS_FROM_EMAIL:-}
       DATABASE_URL: mssql+pymssql://sa:${DB_PASSWORD:?Variable not set}@db:1433/app
       SENTRY_DSN: ${SENTRY_DSN:-}
 

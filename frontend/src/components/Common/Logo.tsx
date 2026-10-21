@@ -1,11 +1,7 @@
 import { Link } from "@tanstack/react-router"
+import { Landmark } from "lucide-react"
 
-import { useTheme } from "@/components/theme-provider"
 import { cn } from "@/lib/utils"
-import icon from "/assets/images/fastapi-icon.svg"
-import iconLight from "/assets/images/fastapi-icon-light.svg"
-import logo from "/assets/images/fastapi-logo.svg"
-import logoLight from "/assets/images/fastapi-logo-light.svg"
 
 interface LogoProps {
   variant?: "full" | "icon" | "responsive"
@@ -18,43 +14,26 @@ export function Logo({
   className,
   asLink = true,
 }: LogoProps) {
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
-
-  const fullLogo = isDark ? logoLight : logo
-  const iconLogo = isDark ? iconLight : icon
-
   const content =
     variant === "responsive" ? (
-      <>
-        <img
-          src={fullLogo}
-          alt="FastAPI"
-          className={cn(
-            "h-6 w-auto group-data-[collapsible=icon]:hidden",
-            className,
-          )}
-        />
-        <img
-          src={iconLogo}
-          alt="FastAPI"
-          className={cn(
-            "size-5 hidden group-data-[collapsible=icon]:block",
-            className,
-          )}
-        />
-      </>
+      <div className={cn("flex min-w-0 items-center gap-2.5", className)}>
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
+          <Landmark className="size-[18px]" />
+        </span>
+        <span className="min-w-0 group-data-[collapsible=icon]:hidden">
+          <span className="block truncate text-[13px] font-bold tracking-wide text-sidebar-foreground">SMART HERITAGE</span>
+          <span className="block text-[10px] leading-4 text-sidebar-foreground/60">Admin Console</span>
+        </span>
+      </div>
     ) : (
-      <img
-        src={variant === "full" ? fullLogo : iconLogo}
-        alt="FastAPI"
-        className={cn(variant === "full" ? "h-6 w-auto" : "size-5", className)}
-      />
+      <div className={cn("flex items-center gap-3", className)}>
+        <span className="flex size-12 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg">
+          <Landmark className="size-6" />
+        </span>
+        <span className="text-xl font-bold tracking-wide text-white">SMART HERITAGE</span>
+      </div>
     )
 
-  if (!asLink) {
-    return content
-  }
-
+  if (!asLink) return content
   return <Link to="/">{content}</Link>
 }
