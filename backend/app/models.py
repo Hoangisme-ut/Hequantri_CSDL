@@ -3,8 +3,8 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Optional
 
-from pydantic import EmailStr
-from sqlalchemy import Index, Unicode, UniqueConstraint, text
+from pydantic import EmailStr, field_validator
+from sqlalchemy import CheckConstraint, Index, Unicode, UniqueConstraint, text
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -366,6 +366,14 @@ class MediaBase(SQLModel):
     caption: str | None = Field(default=None, max_length=255, sa_type=Unicode(255))
     sort_order: int = 0
 
+    @field_validator("media_type")
+    @classmethod
+    def validate_media_type(cls, value: str) -> str:
+        allowed_types = {media_type.value for media_type in MediaType}
+        if value not in allowed_types:
+            raise ValueError(f"media_type must be one of: {', '.join(sorted(allowed_types))}")
+        return value
+
 
 class MediaCreate(MediaBase):
     # audio/video theo ngôn ngữ -> có language_id; ảnh dùng chung -> để None
@@ -379,8 +387,24 @@ class MediaUpdate(SQLModel):
     sort_order: int | None = None
     language_id: uuid.UUID | None = None
 
+    @field_validator("media_type")
+    @classmethod
+    def validate_media_type(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        allowed_types = {media_type.value for media_type in MediaType}
+        if value not in allowed_types:
+            raise ValueError(f"media_type must be one of: {', '.join(sorted(allowed_types))}")
+        return value
+
 
 class Media(MediaBase, table=True):
+    __table_args__ = (
+        CheckConstraint(
+            "media_type IN ('image', 'video', 'audio')",
+            name="ck_media_type",
+        ),
+    )
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     artifact_id: uuid.UUID = Field(
         foreign_key="artifact.id", nullable=False, ondelete="CASCADE"
@@ -389,6 +413,7 @@ class Media(MediaBase, table=True):
         default=None, foreign_key="language.id", ondelete="SET NULL"
     )
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
+    updated_at: datetime | None = None
     artifact: Artifact | None = Relationship(back_populates="media")
     language: Language | None = Relationship(back_populates="media")
 
@@ -397,6 +422,8 @@ class MediaPublic(MediaBase):
     id: uuid.UUID
     artifact_id: uuid.UUID
     language_id: uuid.UUID | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 # ----------------------------------- Beacon ----------------------------------
@@ -404,9 +431,17 @@ class BeaconBase(SQLModel):
     proximity_uuid: str = Field(max_length=36, index=True)  # iBeacon proximity UUID
     major: int = Field(ge=0, le=65535)
     minor: int = Field(ge=0, le=65535)
-    tx_power: int | None = None  # công suất đo ở 1m (dBm)
-    rssi_threshold: int | None = None  # ngưỡng RSSI để kích hoạt (dBm)
+    tx_power: int | None = -59  # công suất đo ở 1m (dBm)
+    rssi_threshold: int | None = -80  # ngưỡng RSSI để kích hoạt (dBm)
     is_active: bool = True
+
+    @field_validator("proximity_uuid")
+    @classmethod
+    def validate_proximity_uuid(cls, value: str) -> str:
+        try:
+            return str(uuid.UUID(value)).upper()
+        except ValueError as exc:
+            raise ValueError("proximity_uuid must be a valid UUID") from exc
 
 
 class BeaconCreate(BeaconBase):
@@ -425,10 +460,22 @@ class BeaconUpdate(SQLModel):
     artifact_id: uuid.UUID | None = None
     battery_level: int | None = Field(default=None, ge=0, le=100)
 
+    @field_validator("proximity_uuid")
+    @classmethod
+    def validate_proximity_uuid(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        try:
+            return str(uuid.UUID(value)).upper()
+        except ValueError as exc:
+            raise ValueError("proximity_uuid must be a valid UUID") from exc
+
 
 class Beacon(BeaconBase, table=True):
     # bộ ba (proximity_uuid, major, minor) định danh duy nhất 1 beacon vật lý
     __table_args__ = (
+        CheckConstraint("major BETWEEN 0 AND 65535", name="ck_beacon_major"),
+        CheckConstraint("minor BETWEEN 0 AND 65535", name="ck_beacon_minor"),
         UniqueConstraint(
             "proximity_uuid", "major", "minor", name="uq_beacon_identity"
         ),
@@ -452,6 +499,7 @@ class Beacon(BeaconBase, table=True):
     battery_level: int | None = None
     last_seen_at: datetime | None = None
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
+    updated_at: datetime | None = None
     site: Site | None = Relationship(back_populates="beacons")
     artifact: Artifact | None = Relationship(back_populates="beacon")
     visit_logs: list[VisitLog] = Relationship(back_populates="beacon")
@@ -463,6 +511,8 @@ class BeaconPublic(BeaconBase):
     artifact_id: uuid.UUID | None = None
     battery_level: int | None = None
     last_seen_at: datetime | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class BeaconsPublic(SQLModel):
