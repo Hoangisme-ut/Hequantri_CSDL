@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/app_theme.dart';
 import 'auth_widgets.dart';
 import 'signup_page.dart';
 
@@ -40,7 +41,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final compactHeight = isCompactAuthViewport(context);
 
     return AuthPageScaffold(
       child: Form(
@@ -49,38 +50,21 @@ class _LoginPageState extends State<LoginPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(
-              Icons.account_balance_outlined,
-              size: 48,
-              color: theme.colorScheme.primary,
+            AuthBrandHeader(
+              title: 'Đăng nhập tài khoản',
+              subtitle: 'Tiếp tục hành trình khám phá các di sản.',
+              icon: Icons.account_balance_outlined,
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Smart Heritage',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+            SizedBox(
+              height: compactHeight ? AppSpacing.medium : AppSpacing.large,
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Đăng nhập tài khoản',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 28),
-            TextFormField(
-              key: const Key('login-email'),
+            AuthEmailField(
+              fieldKey: const Key('login-email'),
               controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              validator: validateEmail,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email_outlined),
-              ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(
+              height: compactHeight ? AppSpacing.small : AppSpacing.medium,
+            ),
             AuthPasswordField(
               key: const Key('login-password'),
               controller: _passwordController,
@@ -89,9 +73,13 @@ class _LoginPageState extends State<LoginPage> {
                   ? 'Vui lòng nhập mật khẩu.'
                   : null,
             ),
-            const SizedBox(height: 24),
-            FilledButton(onPressed: _submit, child: const Text('Đăng nhập')),
-            const SizedBox(height: 12),
+            SizedBox(
+              height: compactHeight ? AppSpacing.medium : AppSpacing.large,
+            ),
+            AuthSubmitButton(label: 'Đăng nhập', onPressed: _submit),
+            SizedBox(
+              height: compactHeight ? AppSpacing.xSmall : AppSpacing.small,
+            ),
             TextButton(
               onPressed: _openSignup,
               child: const Text('Chưa có tài khoản? Đăng ký'),

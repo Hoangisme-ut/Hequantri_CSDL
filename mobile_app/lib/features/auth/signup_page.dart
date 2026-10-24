@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/app_theme.dart';
 import 'auth_widgets.dart';
 
 class SignupPage extends StatefulWidget {
@@ -38,6 +39,7 @@ class _SignupPageState extends State<SignupPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final compactHeight = isCompactAuthViewport(context);
 
     return AuthPageScaffold(
       child: Form(
@@ -48,53 +50,67 @@ class _SignupPageState extends State<SignupPage> {
           children: [
             Align(
               alignment: Alignment.centerLeft,
-              child: IconButton(
+              child: IconButton.filledTonal(
                 tooltip: 'Quay lại đăng nhập',
                 onPressed: () => Navigator.of(context).pop(),
+                style: IconButton.styleFrom(
+                  foregroundColor: HeritagePalette.authGold,
+                  backgroundColor: HeritagePalette.authNavyRaised,
+                  side: BorderSide(
+                    color: HeritagePalette.authGold.withValues(alpha: 0.42),
+                  ),
+                ),
                 icon: const Icon(Icons.arrow_back),
               ),
             ),
-            Icon(
-              Icons.person_add_alt_1,
-              size: 40,
-              color: theme.colorScheme.primary,
+            SizedBox(
+              height: compactHeight ? AppSpacing.xSmall : AppSpacing.small,
             ),
-            const SizedBox(height: 12),
+            AuthBrandHeader(
+              title: 'Tạo tài khoản',
+              subtitle:
+                  'Bắt đầu hành trình khám phá di sản cùng Smart Heritage.',
+              icon: Icons.account_balance_outlined,
+            ),
+            SizedBox(
+              height: compactHeight ? AppSpacing.medium : AppSpacing.large,
+            ),
             Text(
               key: const Key('signup-title'),
-              'Tạo tài khoản',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
+              'Thông tin tài khoản',
+              style: theme.textTheme.titleLarge?.copyWith(
+                color: HeritagePalette.authText,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(
+              height: compactHeight ? AppSpacing.small : AppSpacing.medium,
+            ),
             TextFormField(
               key: const Key('signup-full-name'),
               controller: _fullNameController,
               textInputAction: TextInputAction.next,
+              scrollPadding: const EdgeInsets.only(bottom: AppSpacing.xLarge),
               decoration: const InputDecoration(
                 labelText: 'Họ tên (không bắt buộc)',
                 prefixIcon: Icon(Icons.person_outline),
               ),
             ),
-            const SizedBox(height: 16),
-            TextFormField(
-              key: const Key('signup-email'),
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              validator: validateEmail,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email_outlined),
-              ),
+            SizedBox(
+              height: compactHeight ? AppSpacing.small : AppSpacing.medium,
             ),
-            const SizedBox(height: 16),
+            AuthEmailField(
+              fieldKey: const Key('signup-email'),
+              controller: _emailController,
+            ),
+            SizedBox(
+              height: compactHeight ? AppSpacing.small : AppSpacing.medium,
+            ),
             AuthPasswordField(
               key: const Key('signup-password'),
               controller: _passwordController,
               label: 'Mật khẩu',
+              textInputAction: TextInputAction.next,
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Vui lòng nhập mật khẩu.';
@@ -108,7 +124,9 @@ class _SignupPageState extends State<SignupPage> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            SizedBox(
+              height: compactHeight ? AppSpacing.small : AppSpacing.medium,
+            ),
             AuthPasswordField(
               key: const Key('signup-confirm-password'),
               controller: _confirmPasswordController,
@@ -123,13 +141,15 @@ class _SignupPageState extends State<SignupPage> {
                 return null;
               },
             ),
-            const SizedBox(height: 24),
-            FilledButton(
-              key: const Key('signup-submit'),
-              onPressed: _submit,
-              child: const Text('Tạo tài khoản'),
+            SizedBox(
+              height: compactHeight ? AppSpacing.medium : AppSpacing.large,
             ),
-            const SizedBox(height: 12),
+            AuthSubmitButton(
+              buttonKey: const Key('signup-submit'),
+              label: 'Tạo tài khoản',
+              onPressed: _submit,
+            ),
+            const SizedBox(height: AppSpacing.small),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Đã có tài khoản? Đăng nhập'),
