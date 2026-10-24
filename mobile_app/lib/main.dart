@@ -4,22 +4,12 @@ import 'package:dchs_flutter_beacon/dchs_flutter_beacon.dart';
 import 'package:flutter/material.dart';
 
 import 'beacon_simulation_page.dart';
+import 'features/welcome/welcome_page.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
-}
-
-ThemeData _buildAppTheme(Brightness brightness) {
-  return ThemeData(
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: Colors.blueGrey.shade900,
-      secondary: Colors.amber.shade700,
-      tertiary: Colors.teal,
-      brightness: brightness,
-    ),
-    useMaterial3: true,
-  );
 }
 
 class MyApp extends StatelessWidget {
@@ -32,10 +22,10 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Smart Heritage',
-      theme: _buildAppTheme(Brightness.light),
-      darkTheme: _buildAppTheme(Brightness.dark),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
-      home: appShell ?? const AppShell(),
+      home: appShell ?? const WelcomePage(),
     );
   }
 }
