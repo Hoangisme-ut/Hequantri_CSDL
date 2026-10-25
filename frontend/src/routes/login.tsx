@@ -76,7 +76,9 @@ function Login() {
         >
           <div className="flex flex-col gap-2 border-b pb-6">
             <h1 className="text-2xl font-bold">Sign in to your account</h1>
-            <p className="text-sm text-muted-foreground">Administrator access only · Smart Heritage Console</p>
+            <p className="text-sm text-muted-foreground">
+              Administrator access only · Smart Heritage Console
+            </p>
           </div>
 
           <div className="grid gap-4">
@@ -131,9 +133,17 @@ function Login() {
           </div>
 
           <div className="space-y-3 text-center text-sm">
-            <p className="text-muted-foreground">Need access? Contact your system administrator.</p>
+            <p className="text-muted-foreground">
+              Need access? Contact your system administrator.
+            </p>
             <p className="text-xs text-muted-foreground">
-              Account registration: <RouterLink to="/signup" className="text-primary underline underline-offset-4">Sign up</RouterLink>
+              Account registration:{" "}
+              <RouterLink
+                to="/signup"
+                className="text-primary underline underline-offset-4"
+              >
+                Sign up
+              </RouterLink>
             </p>
           </div>
         </form>
