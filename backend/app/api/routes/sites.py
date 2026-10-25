@@ -12,6 +12,7 @@ from app.models import (
     SitePublic,
     SitesPublic,
     SiteUpdate,
+    get_datetime_utc,
 )
 
 router = APIRouter(prefix="/sites", tags=["sites"])
@@ -57,7 +58,7 @@ def read_site(
 
 
 @router.post("/", response_model=SitePublic)
-def create_site(*, session: SessionDep, admin: AdminUser, site_in: SiteCreate) -> Any:
+def create_site(*, session: SessionDep, _admin: AdminUser, site_in: SiteCreate) -> Any:
     """
     Tạo di tích. **Admin**.
     """
@@ -70,7 +71,7 @@ def create_site(*, session: SessionDep, admin: AdminUser, site_in: SiteCreate) -
 
 @router.put("/{site_id}", response_model=SitePublic)
 def update_site(
-    *, session: SessionDep, admin: AdminUser, site_id: uuid.UUID, site_in: SiteUpdate
+    *, session: SessionDep, _admin: AdminUser, site_id: uuid.UUID, site_in: SiteUpdate
 ) -> Any:
     """
     Sửa di tích (cả bật lại `is_active`). **Admin**.
@@ -79,6 +80,7 @@ def update_site(
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
     site.sqlmodel_update(site_in.model_dump(exclude_unset=True))
+    site.updated_at = get_datetime_utc()
     session.add(site)
     session.commit()
     session.refresh(site)
@@ -86,7 +88,7 @@ def update_site(
 
 
 @router.delete("/{site_id}")
-def delete_site(session: SessionDep, admin: AdminUser, site_id: uuid.UUID) -> Message:
+def delete_site(session: SessionDep, _admin: AdminUser, site_id: uuid.UUID) -> Message:
     """
     Ẩn di tích (xóa mềm: is_active = false). **Admin**.
     """
@@ -94,6 +96,7 @@ def delete_site(session: SessionDep, admin: AdminUser, site_id: uuid.UUID) -> Me
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
     site.is_active = False
+    site.updated_at = get_datetime_utc()
     session.add(site)
     session.commit()
     return Message(message="Site deactivated successfully")

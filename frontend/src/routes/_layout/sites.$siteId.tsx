@@ -1,121 +1,227 @@
-import { createFileRoute, Link as RouterLink } from "@tanstack/react-router"
-import { ArrowLeft, Building2, Image, Save } from "lucide-react"
-import { useState } from "react"
-
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { createFileRoute, Link } from "@tanstack/react-router"
+import { ArrowLeft, MapPin, Save } from "lucide-react"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import { ErrorState } from "@/components/Common/AdminPrimitives"
+import { CoverImageField } from "@/components/Sites/CoverImageField"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
+import { validateSiteInput } from "@/services/site-validation"
+import { type SiteInput, sitesService } from "@/services/sites"
 
 export const Route = createFileRoute("/_layout/sites/$siteId")({
   component: EditSite,
-  head: () => ({ meta: [{ title: "Edit Site - Smart Heritage" }] }),
+  head: () => ({ meta: [{ title: "Site Details - Smart Heritage" }] }),
 })
-
-type SiteDraft = {
-  name: string
-  address: string
-  city: string
-  region: string
-  postcode: string
-  country: string
-  latitude: string
-  longitude: string
-  description: string
-  type: string
-  openingHours: string
-}
-
-const blankDraft: SiteDraft = {
-  name: "",
-  address: "",
-  city: "",
-  region: "",
-  postcode: "",
-  country: "",
-  latitude: "",
-  longitude: "",
-  description: "",
-  type: "",
-  openingHours: "",
-}
-
-function SiteField({
-  label,
-  name,
-  value,
-  onChange,
-  placeholder = "",
-}: {
-  label: string
-  name: keyof SiteDraft
-  value: string
-  onChange: (name: keyof SiteDraft, value: string) => void
-  placeholder?: string
-}) {
-  return (
-    <label className="grid gap-1.5 text-xs font-medium">
-      {label}
-      <Input value={value} placeholder={placeholder} onChange={(event) => onChange(name, event.target.value)} />
-    </label>
-  )
-}
 
 function EditSite() {
   const { siteId } = Route.useParams()
-  const [draft, setDraft] = useState(blankDraft)
-  const update = (key: keyof SiteDraft, value: string) => setDraft((current) => ({ ...current, [key]: value }))
+  const queryClient = useQueryClient()
+  const query = useQuery({
+    queryKey: ["sites", siteId],
+    queryFn: () => sitesService.get(siteId),
+  })
+  const [draft, setDraft] = useState<SiteInput | null>(null)
+  const [errors, setErrors] = useState<string[]>([])
+  useEffect(() => {
+    if (query.data)
+      setDraft({
+        name: query.data.name,
+        address: query.data.address ?? "",
+        description: query.data.description ?? "",
+        latitude: query.data.latitude,
+        longitude: query.data.longitude,
+        cover_image_url: query.data.cover_image_url ?? "",
+        is_active: query.data.is_active,
+      })
+  }, [query.data])
+  const mutation = useMutation({
+    mutationFn: () => {
+      if (!draft) throw new Error("Site details are not ready to save.")
+      return sitesService.update(siteId, {
+        ...draft,
+        name: draft.name.trim(),
+        cover_image_url: draft.cover_image_url?.trim() || null,
+      })
+    },
+    onSuccess: async (site) => {
+      await queryClient.invalidateQueries({ queryKey: ["sites"] })
+      queryClient.setQueryData(["sites", siteId], site)
+      toast.success("Site updated")
+    },
+    onError: (error) =>
+      toast.error(error.message || "Could not save this site"),
+  })
+  if (query.isLoading)
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-12 w-64" />
+        <Skeleton className="h-96 w-full" />
+      </div>
+    )
+  if (query.isError)
+    return (
+      <ErrorState
+        title="Could not load this site"
+        description={query.error.message}
+        onRetry={() => void query.refetch()}
+      />
+    )
+  if (!draft || !query.data) return null
+  const update = (key: keyof SiteInput, value: SiteInput[keyof SiteInput]) =>
+    setDraft((current) => (current ? { ...current, [key]: value } : current))
+  const save = () => {
+    const validationErrors = validateSiteInput(draft)
+    setErrors(validationErrors)
+    if (validationErrors.length === 0) mutation.mutate()
+  }
 
   return (
-    <div className="flex flex-col gap-4 md:gap-5">
+    <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="flex size-10 items-center justify-center rounded-lg bg-primary/15 text-primary"><Building2 className="size-5" /></span>
-          <div><h2 className="font-semibold">Site record</h2><p className="text-xs text-muted-foreground">Reference: {siteId}</p></div>
-        </div>
-        <Badge variant="secondary">API pending</Badge>
-      </div>
-
-      <div className="grid items-start gap-4 xl:grid-cols-[1.35fr_0.85fr]">
-        <div className="flex flex-col gap-4">
-          <Card className="gap-0 border-border/70 bg-card shadow-sm">
-            <CardHeader className="border-b border-border/70 px-5 py-3"><CardTitle className="text-sm">Basic Information</CardTitle></CardHeader>
-            <CardContent className="grid gap-4 p-5">
-              <SiteField label="Site name" name="name" value={draft.name} onChange={update} />
-              <div className="grid gap-4 sm:grid-cols-2"><SiteField label="Address line" name="address" value={draft.address} onChange={update} /><SiteField label="City" name="city" value={draft.city} onChange={update} /></div>
-              <div className="grid gap-4 sm:grid-cols-2"><SiteField label="County / region" name="region" value={draft.region} onChange={update} /><SiteField label="Postcode" name="postcode" value={draft.postcode} onChange={update} /></div>
-              <SiteField label="Country" name="country" value={draft.country} onChange={update} />
-              <div className="grid gap-4 sm:grid-cols-2"><SiteField label="Latitude" name="latitude" value={draft.latitude} onChange={update} placeholder="Optional" /><SiteField label="Longitude" name="longitude" value={draft.longitude} onChange={update} placeholder="Optional" /></div>
-              <label className="grid gap-1.5 text-xs font-medium">Description<textarea value={draft.description} onChange={(event) => update("description", event.target.value)} rows={4} className="resize-y rounded-md border border-input bg-background/30 px-3 py-2 text-sm font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" /></label>
-              <div className="grid gap-4 sm:grid-cols-2"><SiteField label="Site type" name="type" value={draft.type} onChange={update} /><SiteField label="Opening hours" name="openingHours" value={draft.openingHours} onChange={update} /></div>
-            </CardContent>
-          </Card>
-          <Card className="gap-0 border-border/70 bg-card shadow-sm">
-            <CardHeader className="border-b border-border/70 px-5 py-3"><CardTitle className="text-sm">Artifacts at this site</CardTitle></CardHeader>
-            <CardContent className="flex min-h-24 items-center justify-center p-5 text-sm text-muted-foreground">Site-to-artifact relationships are not available from the current API.</CardContent>
-          </Card>
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <Card className="gap-0 border-border/70 bg-card shadow-sm">
-            <CardHeader className="border-b border-border/70 px-5 py-3"><CardTitle className="flex items-center gap-2 text-sm"><Image className="size-4 text-primary" />Site Image</CardTitle></CardHeader>
-            <CardContent className="p-5">
-              <div className="flex min-h-40 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-background/20 text-center text-sm text-muted-foreground"><Image className="size-7" /><span>No site image available</span></div>
-              <p className="mt-2 text-xs text-muted-foreground">Image upload is not connected.</p>
-            </CardContent>
-          </Card>
-          <Card className="gap-0 border-border/70 bg-card shadow-sm">
-            <CardHeader className="border-b border-border/70 px-5 py-3"><CardTitle className="text-sm">Site lifecycle</CardTitle></CardHeader>
-            <CardContent className="p-5 text-sm text-muted-foreground">Lifecycle data is not available until the sites API is confirmed.</CardContent>
-          </Card>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" asChild><RouterLink to="/sites"><ArrowLeft /> Back to sites</RouterLink></Button>
-            <Button disabled title="Waiting for the sites API"><Save /> Save changes</Button>
+          <span className="flex size-10 items-center justify-center rounded-lg bg-primary/15 text-primary">
+            <MapPin className="size-5" />
+          </span>
+          <div>
+            <h2 className="font-semibold">{query.data.name}</h2>
+            <p className="text-xs text-muted-foreground">Site details</p>
           </div>
-          <p className="text-right text-xs text-muted-foreground">Fields are an unsaved UI preview. Changes are not persisted.</p>
-          <Button variant="ghost" className="self-end" onClick={() => setDraft(blankDraft)}>Discard local edits</Button>
         </div>
+        <Badge variant={draft.is_active ? "default" : "secondary"}>
+          {draft.is_active ? "Active" : "Inactive"}
+        </Badge>
       </div>
+      <Card className="gap-0 border-border/70 bg-card shadow-sm">
+        <CardHeader className="border-b border-border/70 px-5 py-3">
+          <CardTitle className="text-sm">Site information</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 p-5">
+          <label
+            htmlFor="site-name"
+            className="grid gap-1.5 text-sm font-medium"
+          >
+            Site name{" "}
+            <Input
+              id="site-name"
+              required
+              maxLength={255}
+              value={draft.name}
+              onChange={(event) => update("name", event.target.value)}
+            />
+          </label>
+          <label
+            htmlFor="site-address"
+            className="grid gap-1.5 text-sm font-medium"
+          >
+            Address{" "}
+            <Input
+              id="site-address"
+              maxLength={500}
+              value={draft.address ?? ""}
+              onChange={(event) => update("address", event.target.value)}
+            />
+          </label>
+          <label
+            htmlFor="site-description"
+            className="grid gap-1.5 text-sm font-medium"
+          >
+            Description{" "}
+            <textarea
+              id="site-description"
+              maxLength={2000}
+              rows={4}
+              value={draft.description ?? ""}
+              onChange={(event) => update("description", event.target.value)}
+              className="resize-y rounded-md border border-input bg-background px-3 py-2 text-sm font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label
+              htmlFor="site-latitude"
+              className="grid gap-1.5 text-sm font-medium"
+            >
+              Latitude{" "}
+              <Input
+                id="site-latitude"
+                type="number"
+                min="-90"
+                max="90"
+                step="any"
+                value={draft.latitude ?? ""}
+                onChange={(event) =>
+                  update(
+                    "latitude",
+                    event.target.value === ""
+                      ? null
+                      : Number(event.target.value),
+                  )
+                }
+              />
+            </label>
+            <label
+              htmlFor="site-longitude"
+              className="grid gap-1.5 text-sm font-medium"
+            >
+              Longitude{" "}
+              <Input
+                id="site-longitude"
+                type="number"
+                min="-180"
+                max="180"
+                step="any"
+                value={draft.longitude ?? ""}
+                onChange={(event) =>
+                  update(
+                    "longitude",
+                    event.target.value === ""
+                      ? null
+                      : Number(event.target.value),
+                  )
+                }
+              />
+            </label>
+          </div>
+          <CoverImageField
+            value={draft.cover_image_url ?? ""}
+            onChange={(value) => update("cover_image_url", value || null)}
+          />
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={draft.is_active}
+              onChange={(event) => update("is_active", event.target.checked)}
+            />{" "}
+            Active site
+          </label>
+          {mutation.isError && (
+            <p role="alert" className="text-sm text-destructive">
+              {mutation.error.message}
+            </p>
+          )}
+          {errors.length > 0 && (
+            <ul className="list-inside list-disc text-sm text-destructive">
+              {errors.map((error) => (
+                <li key={error}>{error}</li>
+              ))}
+            </ul>
+          )}
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" asChild>
+              <Link to="/sites">
+                <ArrowLeft /> Back to sites
+              </Link>
+            </Button>
+            <Button disabled={mutation.isPending} onClick={save}>
+              <Save /> {mutation.isPending ? "Saving…" : "Save changes"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

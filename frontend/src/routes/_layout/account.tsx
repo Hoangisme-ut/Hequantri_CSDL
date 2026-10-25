@@ -2,13 +2,13 @@ import { createFileRoute } from "@tanstack/react-router"
 import { LockKeyhole, ShieldCheck, UserRound } from "lucide-react"
 import { useState } from "react"
 
+import { useTheme } from "@/components/theme-provider"
 import ChangePassword from "@/components/UserSettings/ChangePassword"
 import DeleteAccount from "@/components/UserSettings/DeleteAccount"
 import UserInformation from "@/components/UserSettings/UserInformation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useTheme } from "@/components/theme-provider"
 import useAuth from "@/hooks/useAuth"
 import { getInitials } from "@/utils"
 
@@ -33,7 +33,7 @@ function Account() {
         <Card className="gap-0 border-border/70 bg-card shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between border-b border-border/70 px-5 py-3"><CardTitle className="text-sm">Profile</CardTitle><Badge variant="secondary">Account</Badge></CardHeader>
           <CardContent className="grid gap-4 p-5 sm:grid-cols-[auto_1fr]">
-            <div className="flex size-14 items-center justify-center rounded-full bg-blue-600 text-lg font-bold text-white">{initials}</div>
+            <div className="flex size-14 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">{initials}</div>
             <div className="min-w-0">
               <div className="mb-3"><p className="truncate text-lg font-semibold">{user?.full_name || "Name not provided"}</p><Badge variant={user?.is_superuser ? "default" : "secondary"}>{user?.is_superuser ? "Administrator" : "User"}</Badge></div>
               <dl className="grid gap-2 text-sm sm:grid-cols-[120px_1fr]">

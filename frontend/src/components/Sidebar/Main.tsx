@@ -50,7 +50,7 @@ export function Main({ items }: MainProps) {
                   tooltip={item.title}
                   isActive={isActive}
                   disabled={item.disabled}
-                  className="h-9 rounded-lg px-3 text-[13px] text-sidebar-foreground/80 data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  className="h-9 rounded-lg px-3 text-[13px] text-sidebar-foreground/80 data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground data-[active=true]:shadow-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   asChild={!item.disabled}
                 >
                   {item.disabled ? (

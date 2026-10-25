@@ -1,4 +1,3 @@
-import { useState } from "react"
 import {
   Archive,
   Bell,
@@ -7,11 +6,13 @@ import {
   CircleAlert,
   FileText,
   Filter,
+  Link2Off,
   MessageSquare,
   Radio,
   Search,
   UsersRound,
 } from "lucide-react"
+import { useState } from "react"
 
 import { ApiPendingCard, EmptyState, MetricCard } from "@/components/Common/AdminPrimitives"
 import { Badge } from "@/components/ui/badge"
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { demoBeacons } from "@/services/beacons.mock"
 
 function ScreenCard({
   title,
@@ -47,30 +49,37 @@ function DisabledFilter({ label }: { label: string }) {
 }
 
 export function BeaconManagementScreen() {
+  const [search, setSearch] = useState("")
+  const [filter, setFilter] = useState("All")
+  const beacons = demoBeacons.filter((beacon) => {
+    const matchesFilter = filter === "All" || (filter === "Active" ? beacon.active : filter === "Inactive" ? !beacon.active : !beacon.artifact)
+    const term = search.trim().toLocaleLowerCase()
+    return matchesFilter && (!term || `${beacon.proximityUuid} ${beacon.major} ${beacon.minor} ${beacon.site} ${beacon.artifact ?? ""}`.toLocaleLowerCase().includes(term))
+  })
   return (
     <div className="flex flex-col gap-4 md:gap-5">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[210px] flex-1 sm:max-w-xs"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" placeholder="Search beacons..." aria-label="Search beacons" disabled /></div>
-        <Button disabled title="Beacon registration is waiting for an API">Register Beacon</Button>
+        <div className="relative min-w-[210px] flex-1 sm:max-w-xs"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" placeholder="Search UUID, site or artifact…" aria-label="Search beacons" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
+        <Badge variant="outline">Demo data</Badge>
       </div>
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Total beacons" value="—" detail="Waiting for beacon API" icon={Radio} />
-        <MetricCard label="Online" value="—" detail="Connectivity unavailable" icon={Radio} />
-        <MetricCard label="Offline" value="—" detail="Connectivity unavailable" icon={CircleAlert} />
-        <MetricCard label="Unassigned" value="—" detail="Assignment data unavailable" icon={Radio} />
+        <MetricCard label="Total beacons" value={demoBeacons.length} detail="Sample inventory" icon={Radio} />
+        <MetricCard label="Active" value={demoBeacons.filter((item) => item.active).length} detail="Configured as active" icon={Radio} />
+        <MetricCard label="Inactive" value={demoBeacons.filter((item) => !item.active).length} detail="Configured as inactive" icon={CircleAlert} />
+        <MetricCard label="Unassigned" value={demoBeacons.filter((item) => !item.artifact).length} detail="No artifact linked" icon={Link2Off} />
       </section>
-      <div className="grid items-start gap-4 2xl:grid-cols-[1.45fr_0.85fr]">
-        <ScreenCard title="Beacon Inventory" icon={Radio} badge="API pending">
-          <div className="flex flex-wrap gap-2 border-b border-border/70 p-3">{["All", "Online", "Offline", "Unknown", "Unassigned"].map((filter) => <Button key={filter} variant="outline" size="sm" disabled>{filter}</Button>)}</div>
+      <div>
+        <ScreenCard title="Beacon Inventory" icon={Radio} badge="Sample data">
+          <div className="flex flex-wrap gap-2 border-b border-border/70 p-3">{["All", "Active", "Inactive", "Unassigned"].map((option) => <Button key={option} variant={filter === option ? "default" : "outline"} size="sm" onClick={() => setFilter(option)}>{option}</Button>)}</div>
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader><TableRow><TableHead>Beacon ID</TableHead><TableHead>Site</TableHead><TableHead>Artifact</TableHead><TableHead>Assignment</TableHead><TableHead>Connectivity</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
-              <TableBody />
+              <TableHeader><TableRow><TableHead>Proximity UUID</TableHead><TableHead>Major / Minor</TableHead><TableHead>Site</TableHead><TableHead>Artifact</TableHead><TableHead>Battery</TableHead><TableHead>Last seen</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+              <TableBody>{beacons.map((beacon) => <tr key={beacon.id} className="border-b border-border/60 last:border-0"><td className="max-w-[230px] truncate px-4 py-3 font-mono text-xs">{beacon.proximityUuid}</td><td className="px-4 py-3 text-sm">{beacon.major} / {beacon.minor}</td><td className="px-4 py-3 text-sm">{beacon.site}</td><td className="px-4 py-3 text-sm">{beacon.artifact ?? <span className="text-muted-foreground">Unassigned</span>}</td><td className="px-4 py-3 text-sm">{beacon.battery == null ? "Unknown" : `${beacon.battery}%`}</td><td className="px-4 py-3 text-sm text-muted-foreground">{beacon.lastSeen ?? "Never"}</td><td className="px-4 py-3"><Badge variant={beacon.active ? "default" : "secondary"}>{beacon.active ? "Active" : "Inactive"}</Badge></td></tr>)}</TableBody>
             </Table>
           </div>
-          <EmptyState title="No beacon records available" description="Beacon inventory and connectivity are not exposed by the current backend." icon={Radio} />
+          {beacons.length === 0 && <EmptyState title="No matching beacons" description="Adjust your search or status filter." icon={Radio} />}
         </ScreenCard>
-        <ApiPendingCard title="Assign Beacon" description="Site and artifact options, assignment conflicts and save actions need a confirmed Beacon API." />
+        <p className="mt-3 text-xs text-muted-foreground">This inventory uses sample data for interface review. Beacon changes are not sent to the API.</p>
       </div>
     </div>
   )

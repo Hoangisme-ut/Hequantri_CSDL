@@ -1,7 +1,8 @@
-import { Link as RouterLink, useRouterState } from "@tanstack/react-router"
 import { useQueryClient } from "@tanstack/react-query"
+import { Link as RouterLink, useRouterState } from "@tanstack/react-router"
 import { Bell, Moon, RefreshCw, Sun } from "lucide-react"
 
+import { useTheme } from "@/components/theme-provider"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -11,9 +12,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import useAuth from "@/hooks/useAuth"
-import { useTheme } from "@/components/theme-provider"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import useAuth from "@/hooks/useAuth"
 import { getInitials } from "@/utils"
 
 const pageDetails: Record<string, { title: string; subtitle: string }> = {
@@ -38,7 +38,7 @@ export function Topbar({ preview = false }: { preview?: boolean }) {
   const { resolvedTheme, setTheme } = useTheme()
   const normalisedPath = preview ? pathname.replace(/^\/preview/, "") || "/" : pathname
   const previewAliases: Record<string, string> = { "/artifacts": "/items", "/team": "/admin" }
-  const page = pageDetails[previewAliases[normalisedPath] ?? normalisedPath] ?? (normalisedPath.startsWith("/sites/") || normalisedPath === "/edit-site" ? { title: "Edit Site", subtitle: "Site Management / Yorkshire Museum · DEMO" } : pageDetails["/"])
+  const page = pageDetails[previewAliases[normalisedPath] ?? normalisedPath] ?? (normalisedPath.startsWith("/sites/") || normalisedPath === "/edit-site" ? { title: "Site Details", subtitle: "Manage heritage site information" } : pageDetails["/"])
   const initials = getInitials(user?.full_name || user?.email || "Admin")
 
   return (
@@ -76,8 +76,8 @@ export function Topbar({ preview = false }: { preview?: boolean }) {
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="size-9 rounded-full bg-blue-600 p-0 text-sm font-semibold text-white hover:bg-blue-500 hover:text-white" aria-label="Open account menu">
-              <Avatar className="size-9"><AvatarFallback className="bg-blue-600 text-white">{initials}</AvatarFallback></Avatar>
+          <Button variant="ghost" className="size-9 rounded-full bg-primary p-0 text-sm font-semibold text-primary-foreground hover:bg-primary/90" aria-label="Open account menu">
+              <Avatar className="size-9"><AvatarFallback className="bg-primary text-primary-foreground">{initials}</AvatarFallback></Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
