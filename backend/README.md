@@ -25,6 +25,18 @@ $ uv run fastapi dev
 
 The API is available at `http://localhost:8000`, with automatic interactive docs at `http://localhost:8000/docs`.
 
+### Sample Smart Heritage data
+
+After running the migrations, create the development sample data from `./backend/`:
+
+```console
+$ uv run python app/seed_sample_data.py
+```
+
+The script creates two sites, five artifacts with Vietnamese and English
+translations, and three beacons. It uses stable IDs and can be run repeatedly
+without creating duplicate records.
+
 ## General Workflow
 
 Run backend commands from `./backend/` with `uv run`. Make sure your editor uses the Python interpreter at `.venv/bin/python` in the project root.
