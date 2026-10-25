@@ -1,7 +1,7 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, status
 from sqlmodel import col, func, select
 
 from app import crud
@@ -20,6 +20,8 @@ from app.models import (
 )
 
 router = APIRouter(prefix="/beacons", tags=["beacons"])
+
+REQUIRED_UPDATE_FIELDS = {"proximity_uuid", "major", "minor", "site_id"}
 
 
 def _validate_links(
@@ -72,7 +74,7 @@ def _check_identity_unique(
 def resolve_beacon(
     session: SessionDep,
     current_user: VisitorUser,
-    proximity_uuid: str = Query(description="iBeacon UUID"),
+    proximity_uuid: uuid.UUID = Query(description="iBeacon UUID"),
     major: int = Query(ge=0, le=65535),
     minor: int = Query(ge=0, le=65535),
     lang: str | None = Query(default=None, description="Mã ngôn ngữ: vi, en..."),
@@ -84,7 +86,7 @@ def resolve_beacon(
     """
     beacon = session.exec(
         select(Beacon).where(
-            Beacon.proximity_uuid == proximity_uuid.upper(),
+            Beacon.proximity_uuid == str(proximity_uuid).upper(),
             Beacon.major == major,
             Beacon.minor == minor,
             col(Beacon.is_active),
@@ -117,11 +119,23 @@ def resolve_beacon(
 
 
 # ------------------------------ Admin: quản lý ------------------------------
+@router.get("/{beacon_id}", response_model=BeaconPublic)
+def read_beacon(
+    session: SessionDep, _admin: AdminUser, beacon_id: uuid.UUID
+) -> Any:
+    """Lấy chi tiết một beacon. **Admin**."""
+    beacon = session.get(Beacon, beacon_id)
+    if not beacon:
+        raise HTTPException(status_code=404, detail="Beacon not found")
+    return beacon
+
+
 @router.get("/", response_model=BeaconsPublic)
 def read_beacons(
     session: SessionDep,
-    admin: AdminUser,
+    _admin: AdminUser,
     site_id: uuid.UUID | None = None,
+    artifact_id: uuid.UUID | None = None,
     skip: int = 0,
     limit: int = Query(default=100, le=200),
 ) -> Any:
@@ -131,6 +145,8 @@ def read_beacons(
     conditions = []
     if site_id:
         conditions.append(Beacon.site_id == site_id)
+    if artifact_id:
+        conditions.append(Beacon.artifact_id == artifact_id)
     count = session.exec(select(func.count()).select_from(Beacon).where(*conditions)).one()
     beacons = session.exec(
         select(Beacon)
@@ -144,9 +160,9 @@ def read_beacons(
     )
 
 
-@router.post("/", response_model=BeaconPublic)
+@router.post("/", response_model=BeaconPublic, status_code=status.HTTP_201_CREATED)
 def create_beacon(
-    *, session: SessionDep, admin: AdminUser, beacon_in: BeaconCreate
+    *, session: SessionDep, _admin: AdminUser, beacon_in: BeaconCreate
 ) -> Any:
     """
     Đăng ký beacon (và có thể gán hiện vật luôn). **Admin**.
@@ -165,7 +181,7 @@ def create_beacon(
 def update_beacon(
     *,
     session: SessionDep,
-    admin: AdminUser,
+    _admin: AdminUser,
     beacon_id: uuid.UUID,
     beacon_in: BeaconUpdate,
 ) -> Any:
@@ -176,8 +192,15 @@ def update_beacon(
     if not beacon:
         raise HTTPException(status_code=404, detail="Beacon not found")
     data = beacon_in.model_dump(exclude_unset=True)
-    if "proximity_uuid" in data and data["proximity_uuid"]:
-        data["proximity_uuid"] = data["proximity_uuid"].upper()
+    null_required_fields = REQUIRED_UPDATE_FIELDS.intersection(
+        key for key, value in data.items() if value is None
+    )
+    if null_required_fields:
+        field_names = ", ".join(sorted(null_required_fields))
+        raise HTTPException(
+            status_code=422,
+            detail=f"Fields cannot be null: {field_names}",
+        )
     new_site = data.get("site_id", beacon.site_id)
     new_artifact = data["artifact_id"] if "artifact_id" in data else beacon.artifact_id
     _validate_links(session, new_site, new_artifact, beacon_id=beacon.id)
@@ -189,6 +212,7 @@ def update_beacon(
         exclude_id=beacon.id,
     )
     beacon.sqlmodel_update(data)
+    beacon.updated_at = get_datetime_utc()
     session.add(beacon)
     session.commit()
     session.refresh(beacon)
@@ -197,7 +221,7 @@ def update_beacon(
 
 @router.delete("/{beacon_id}")
 def delete_beacon(
-    session: SessionDep, admin: AdminUser, beacon_id: uuid.UUID
+    session: SessionDep, _admin: AdminUser, beacon_id: uuid.UUID
 ) -> Message:
     """
     Tắt beacon (xóa mềm) và gỡ khỏi hiện vật. **Admin**.
@@ -207,6 +231,7 @@ def delete_beacon(
         raise HTTPException(status_code=404, detail="Beacon not found")
     beacon.is_active = False
     beacon.artifact_id = None
+    beacon.updated_at = get_datetime_utc()
     session.add(beacon)
     session.commit()
     return Message(message="Beacon deactivated successfully")
