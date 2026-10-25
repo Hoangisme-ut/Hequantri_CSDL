@@ -1,0 +1,4 @@
+[default.extend-words]
+# Correct Vietnamese words in repository content and place names.
+Ba = "Ba"
+ba = "ba"

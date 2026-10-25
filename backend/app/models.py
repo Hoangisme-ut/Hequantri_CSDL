@@ -220,10 +220,18 @@ class SiteBase(SQLModel):
     name: str = Field(min_length=1, max_length=255, sa_type=Unicode(255))
     description: str | None = Field(default=None, max_length=2000, sa_type=Unicode(2000))
     address: str | None = Field(default=None, max_length=500, sa_type=Unicode(500))
-    latitude: float | None = None
-    longitude: float | None = None
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
     cover_image_url: str | None = Field(default=None, max_length=500)
     is_active: bool = True
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Site name must not be blank")
+        return value
 
 
 class SiteCreate(SiteBase):
@@ -234,15 +242,26 @@ class SiteUpdate(SQLModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=2000)
     address: str | None = Field(default=None, max_length=500)
-    latitude: float | None = None
-    longitude: float | None = None
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
     cover_image_url: str | None = Field(default=None, max_length=500)
     is_active: bool | None = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        value = value.strip()
+        if not value:
+            raise ValueError("Site name must not be blank")
+        return value
 
 
 class Site(SiteBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
+    updated_at: datetime | None = None
     artifacts: list[Artifact] = Relationship(
         back_populates="site", cascade_delete=True
     )
@@ -252,6 +271,7 @@ class Site(SiteBase, table=True):
 class SitePublic(SiteBase):
     id: uuid.UUID
     created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class SitesPublic(SQLModel):
