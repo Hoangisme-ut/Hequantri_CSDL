@@ -24,12 +24,10 @@ class BeaconSimulationPage extends StatefulWidget {
   const BeaconSimulationPage({super.key});
 
   @override
-  State<BeaconSimulationPage> createState() =>
-      _BeaconSimulationPageState();
+  State<BeaconSimulationPage> createState() => _BeaconSimulationPageState();
 }
 
-class _BeaconSimulationPageState
-    extends State<BeaconSimulationPage> {
+class _BeaconSimulationPageState extends State<BeaconSimulationPage> {
   static const _beaconA = SimulatedBeacon(
     name: 'Beacon A',
     uuid: '11111111-2222-3333-4444-555555555555',
@@ -62,12 +60,14 @@ class _BeaconSimulationPageState
 
       if (isDuplicate) {
         _duplicateCount++;
-        _status = '${beacon.name} detected again. '
+        _status =
+            '${beacon.name} detected again. '
             'Duplicate notification suppressed.';
       } else {
         _lastNotifiedKey = beacon.key;
         _notificationCount++;
-        _status = 'Changed to ${beacon.name}. '
+        _status =
+            'Changed to ${beacon.name}. '
             'Content displayed and notification triggered.';
       }
     });
@@ -109,20 +109,19 @@ class _BeaconSimulationPageState
   @override
   Widget build(BuildContext context) {
     final beacon = _currentBeacon;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Task 4 — iBeacon Simulation'),
-      ),
+      appBar: AppBar(title: const Text('Task 4 — iBeacon Simulation')),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const Text(
+            Text(
               'SIMULATION MODE',
-              style: TextStyle(
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.tertiary,
                 fontWeight: FontWeight.bold,
-                color: Colors.deepOrange,
               ),
             ),
             const SizedBox(height: 8),
@@ -177,10 +176,7 @@ class _BeaconSimulationPageState
                         '${beacon.distance.toStringAsFixed(2)} m',
                       ),
                       const Divider(height: 28),
-                      const Text(
-                        'Content',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                      Text('Content', style: theme.textTheme.titleSmall),
                       const SizedBox(height: 8),
                       Text(beacon.content),
                     ],

@@ -4,6 +4,8 @@ import 'package:dchs_flutter_beacon/dchs_flutter_beacon.dart';
 import 'package:flutter/material.dart';
 
 import 'beacon_simulation_page.dart';
+import 'features/welcome/welcome_page.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,18 +13,76 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, @visibleForTesting this.appShell});
+
+  final AppShell? appShell;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Beacon Test',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
+      title: 'Smart Heritage',
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: ThemeMode.system,
+      home: appShell ?? const WelcomePage(),
+    );
+  }
+}
+
+class AppShell extends StatefulWidget {
+  const AppShell({super.key, @visibleForTesting this.stopScanning});
+
+  final Future<bool> Function()? stopScanning;
+
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  final _beaconScanPageKey = GlobalKey<BeaconTestPageState>();
+  int _selectedIndex = 0;
+
+  Future<void> _selectDestination(int index) async {
+    if (index == _selectedIndex) return;
+
+    if (index == 1) {
+      final scanPageState = _beaconScanPageKey.currentState;
+      if (scanPageState == null || scanPageState.isBusy) return;
+
+      final stopped = widget.stopScanning == null
+          ? await scanPageState.stopScanningIfNeeded()
+          : await widget.stopScanning!();
+      if (!stopped || !mounted) return;
+    }
+
+    setState(() => _selectedIndex = index);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: [
+          BeaconTestPage(key: _beaconScanPageKey),
+          const BeaconSimulationPage(),
+        ],
       ),
-      home: const BeaconTestPage(),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: _selectDestination,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.bluetooth_searching),
+            label: 'Quét iBeacon',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.science_outlined),
+            label: 'Mô phỏng',
+          ),
+        ],
+      ),
     );
   }
 }
@@ -31,10 +91,10 @@ class BeaconTestPage extends StatefulWidget {
   const BeaconTestPage({super.key});
 
   @override
-  State<BeaconTestPage> createState() => _BeaconTestPageState();
+  State<BeaconTestPage> createState() => BeaconTestPageState();
 }
 
-class _BeaconTestPageState extends State<BeaconTestPage> {
+class BeaconTestPageState extends State<BeaconTestPage> {
   StreamSubscription<RangingResult>? _subscription;
 
   List<Beacon> _beacons = [];
@@ -183,6 +243,15 @@ class _BeaconTestPageState extends State<BeaconTestPage> {
     );
   }
 
+  bool get isBusy => _busy;
+
+  Future<bool> stopScanningIfNeeded() async {
+    if (_scanning || _subscription != null) {
+      return _stopScanning();
+    }
+    return true;
+  }
+
   void _setStatus(String message) {
     if (!mounted) return;
 
@@ -292,8 +361,9 @@ class _BeaconTestPageState extends State<BeaconTestPage> {
     }
   }
 
-  Future<void> _stopScanning() async {
-    if (_busy || !_scanning) return;
+  Future<bool> _stopScanning() async {
+    if (_busy) return false;
+    if (!_scanning && _subscription == null) return true;
 
     setState(() => _busy = true);
 
@@ -301,11 +371,11 @@ class _BeaconTestPageState extends State<BeaconTestPage> {
       await _subscription?.cancel();
       _subscription = null;
 
-      if (!mounted) return;
+      if (!mounted) return false;
       await flutterBeacon.setScanPeriod(1000);
       await flutterBeacon.setBetweenScanPeriod(500);
 
-      if (!mounted) return;
+      if (!mounted) return false;
 
       setState(() {
         _scanning = false;
@@ -313,8 +383,10 @@ class _BeaconTestPageState extends State<BeaconTestPage> {
             ? 'Đã dừng quét'
             : 'Đã dừng quét — hiển thị dữ liệu lần nhận cuối';
       });
+      return true;
     } catch (error) {
       _setStatus('Không thể dừng quét: $error');
+      return false;
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -339,101 +411,80 @@ class _BeaconTestPageState extends State<BeaconTestPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Task 4 — Thử quét iBeacon'),
-        actions: [
-          TextButton(
-            onPressed: _busy
-                ? null
-                : () async {
-                    final navigator = Navigator.of(context);
-
-                    if (_scanning) {
-                      await _stopScanning();
-                    }
-
-                    if (!mounted || !navigator.mounted) return;
-                    if (_scanning) return;
-
-                    await navigator.push<void>(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const BeaconSimulationPage(),
-                      ),
-                    );
-                  },
-            child: const Text('Simulation'),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Quét iBeacon')),
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(_status),
-                  const SizedBox(height: 8),
-                  Text(_notificationStatus),
-                  const SizedBox(height: 8),
-                  Text('Số lần báo mới: $_notificationCount'),
-                  Text('Số lần quét lặp đã chặn: $_suppressedCount'),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 8,
-                    children: [
-                      FilledButton(
-                        onPressed: _busy || _scanning ? null : _startScanning,
-                        child: const Text('Bắt đầu quét'),
-                      ),
-                      OutlinedButton(
-                        onPressed: _busy || !_scanning ? null : _stopScanning,
-                        child: const Text('Dừng quét'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Khoảng cách chỉ là ước lượng từ tín hiệu Bluetooth.',
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Khi tạm mất tín hiệu, dữ liệu lần nhận cuối '
-                    'được giữ khoảng 10 giây.',
-                  ),
-                ],
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(_status),
+                    const SizedBox(height: 8),
+                    Text(_notificationStatus),
+                    const SizedBox(height: 8),
+                    Text('Số lần báo mới: $_notificationCount'),
+                    Text('Số lần quét lặp đã chặn: $_suppressedCount'),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
+                      children: [
+                        FilledButton(
+                          onPressed: _busy || _scanning ? null : _startScanning,
+                          child: const Text('Bắt đầu quét'),
+                        ),
+                        OutlinedButton(
+                          onPressed: _busy || !_scanning ? null : _stopScanning,
+                          child: const Text('Dừng quét'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Khoảng cách chỉ là ước lượng từ tín hiệu Bluetooth.',
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Khi tạm mất tín hiệu, dữ liệu lần nhận cuối '
+                      'được giữ khoảng 10 giây.',
+                    ),
+                  ],
+                ),
               ),
             ),
-            Expanded(
-              child: _beacons.isEmpty
-                  ? const Center(child: Text('Chưa có dữ liệu beacon'))
-                  : ListView.builder(
-                      itemCount: _beacons.length,
-                      itemBuilder: (context, index) {
-                        final beacon = _beacons[index];
+            if (_beacons.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(child: Text('Chưa có dữ liệu beacon')),
+              )
+            else
+              SliverList.builder(
+                itemCount: _beacons.length,
+                itemBuilder: (context, index) {
+                  final beacon = _beacons[index];
 
-                        return Card(
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 6,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: SelectableText(
-                              'UUID: ${beacon.proximityUUID}\n'
-                              'Major: ${beacon.major}\n'
-                              'Minor: ${beacon.minor}\n'
-                              'RSSI: ${beacon.rssi} dBm\n'
-                              'Khoảng cách ước lượng: '
-                              '${_distanceText(beacon.accuracy)}',
-                            ),
-                          ),
-                        );
-                      },
+                  return Card(
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
                     ),
-            ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: SelectableText(
+                        'UUID: ${beacon.proximityUUID}\n'
+                        'Major: ${beacon.major}\n'
+                        'Minor: ${beacon.minor}\n'
+                        'RSSI: ${beacon.rssi} dBm\n'
+                        'Khoảng cách ước lượng: '
+                        '${_distanceText(beacon.accuracy)}',
+                      ),
+                    ),
+                  );
+                },
+              ),
           ],
         ),
       ),
