@@ -21,8 +21,12 @@ export function Logo({
           <Landmark className="size-[18px]" />
         </span>
         <span className="min-w-0 group-data-[collapsible=icon]:hidden">
-          <span className="block truncate text-[13px] font-bold tracking-wide text-sidebar-foreground">Smart Heritage</span>
-          <span className="block text-[10px] leading-4 text-sidebar-foreground/60">Admin Console</span>
+          <span className="block truncate text-[13px] font-bold tracking-wide text-sidebar-foreground">
+            Smart Heritage
+          </span>
+          <span className="block text-[10px] leading-4 text-sidebar-foreground/60">
+            Admin Console
+          </span>
         </span>
       </div>
     ) : (
@@ -30,7 +34,9 @@ export function Logo({
         <span className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg">
           <Landmark className="size-6" />
         </span>
-        <span className="text-xl font-bold tracking-wide text-white">Smart Heritage</span>
+        <span className="text-xl font-bold tracking-wide text-white">
+          Smart Heritage
+        </span>
       </div>
     )
 

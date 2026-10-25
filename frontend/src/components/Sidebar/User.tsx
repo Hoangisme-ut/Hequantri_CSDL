@@ -28,7 +28,7 @@ function UserInfo({ fullName, email }: UserInfoProps) {
   return (
     <div className="flex items-center gap-2.5 w-full min-w-0">
       <Avatar className="size-8">
-      <AvatarFallback className="bg-primary text-primary-foreground">
+        <AvatarFallback className="bg-primary text-primary-foreground">
           {getInitials(fullName || "User")}
         </AvatarFallback>
       </Avatar>
@@ -40,7 +40,13 @@ function UserInfo({ fullName, email }: UserInfoProps) {
   )
 }
 
-export function User({ user, preview = false }: { user: any; preview?: boolean }) {
+export function User({
+  user,
+  preview = false,
+}: {
+  user: any
+  preview?: boolean
+}) {
   const { logout } = useAuth({ enabled: !preview })
   const { isMobile, setOpenMobile } = useSidebar()
 
@@ -79,13 +85,26 @@ export function User({ user, preview = false }: { user: any; preview?: boolean }
               <UserInfo fullName={user?.full_name} email={user?.email} />
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <RouterLink to={(preview ? "/preview/account" : "/account") as never} onClick={handleMenuClick}>
+            <RouterLink
+              to={(preview ? "/preview/account" : "/account") as never}
+              onClick={handleMenuClick}
+            >
               <DropdownMenuItem>
                 <UserRound />
                 Account
               </DropdownMenuItem>
             </RouterLink>
-            {preview ? <DropdownMenuItem disabled><LogOut />Preview only</DropdownMenuItem> : <DropdownMenuItem onClick={handleLogout}><LogOut />Log Out</DropdownMenuItem>}
+            {preview ? (
+              <DropdownMenuItem disabled>
+                <LogOut />
+                Preview only
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut />
+                Log Out
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
