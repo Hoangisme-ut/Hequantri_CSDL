@@ -31,14 +31,20 @@ def read_sites(
     Danh sách di tích. **Public**.
     Chỉ admin mới xem được di tích đã ẩn (`include_inactive=true`).
     """
-    conditions = []
+    conditions: list[Any] = []
     if not (include_inactive and is_admin(current_user)):
         conditions.append(col(Site.is_active))
     if q:
         conditions.append(col(Site.name).contains(q))
-    count = session.exec(select(func.count()).select_from(Site).where(*conditions)).one()
+    count = session.exec(
+        select(func.count()).select_from(Site).where(*conditions)
+    ).one()
     statement = (
-        select(Site).where(*conditions).order_by(col(Site.name)).offset(skip).limit(limit)
+        select(Site)
+        .where(*conditions)
+        .order_by(col(Site.name))
+        .offset(skip)
+        .limit(limit)
     )
     sites = session.exec(statement).all()
     return SitesPublic(data=[SitePublic.model_validate(s) for s in sites], count=count)

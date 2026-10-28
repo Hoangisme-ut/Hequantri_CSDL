@@ -659,6 +659,32 @@ export type LanguagesPublic = {
 };
 
 /**
+ * MediaCreate
+ */
+export type MediaCreate = {
+    /**
+     * Media Type
+     */
+    media_type?: string;
+    /**
+     * Url
+     */
+    url: string;
+    /**
+     * Caption
+     */
+    caption?: string | null;
+    /**
+     * Sort Order
+     */
+    sort_order?: number;
+    /**
+     * Language Id
+     */
+    language_id?: string | null;
+};
+
+/**
  * MediaPublic
  */
 export type MediaPublic = {
@@ -698,6 +724,32 @@ export type MediaPublic = {
      * Updated At
      */
     updated_at?: string | null;
+};
+
+/**
+ * MediaUpdate
+ */
+export type MediaUpdate = {
+    /**
+     * Media Type
+     */
+    media_type?: string | null;
+    /**
+     * Url
+     */
+    url?: string | null;
+    /**
+     * Caption
+     */
+    caption?: string | null;
+    /**
+     * Sort Order
+     */
+    sort_order?: number | null;
+    /**
+     * Language Id
+     */
+    language_id?: string | null;
 };
 
 /**
@@ -2187,6 +2239,170 @@ export type artifactsUpsertTranslationResponses = {
 
 export type artifactsUpsertTranslationResponse = artifactsUpsertTranslationResponses[keyof artifactsUpsertTranslationResponses];
 
+export type mediaReadMediaListData = {
+    body?: never;
+    path: {
+        /**
+         * Artifact Id
+         */
+        artifact_id: string;
+    };
+    query?: never;
+    url: '/api/v1/artifacts/{artifact_id}/media';
+};
+
+export type mediaReadMediaListErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type mediaReadMediaListError = mediaReadMediaListErrors[keyof mediaReadMediaListErrors];
+
+export type mediaReadMediaListResponses = {
+    /**
+     * Response Media-Read Media List
+     *
+     * Successful Response
+     */
+    200: Array<MediaPublic>;
+};
+
+export type mediaReadMediaListResponse = mediaReadMediaListResponses[keyof mediaReadMediaListResponses];
+
+export type mediaCreateMediaData = {
+    body: MediaCreate;
+    path: {
+        /**
+         * Artifact Id
+         */
+        artifact_id: string;
+    };
+    query?: never;
+    url: '/api/v1/artifacts/{artifact_id}/media';
+};
+
+export type mediaCreateMediaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type mediaCreateMediaError = mediaCreateMediaErrors[keyof mediaCreateMediaErrors];
+
+export type mediaCreateMediaResponses = {
+    /**
+     * Successful Response
+     */
+    201: MediaPublic;
+};
+
+export type mediaCreateMediaResponse = mediaCreateMediaResponses[keyof mediaCreateMediaResponses];
+
+export type mediaDeleteMediaData = {
+    body?: never;
+    path: {
+        /**
+         * Artifact Id
+         */
+        artifact_id: string;
+        /**
+         * Media Id
+         */
+        media_id: string;
+    };
+    query?: never;
+    url: '/api/v1/artifacts/{artifact_id}/media/{media_id}';
+};
+
+export type mediaDeleteMediaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type mediaDeleteMediaError = mediaDeleteMediaErrors[keyof mediaDeleteMediaErrors];
+
+export type mediaDeleteMediaResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type mediaDeleteMediaResponse = mediaDeleteMediaResponses[keyof mediaDeleteMediaResponses];
+
+export type mediaReadMediaData = {
+    body?: never;
+    path: {
+        /**
+         * Artifact Id
+         */
+        artifact_id: string;
+        /**
+         * Media Id
+         */
+        media_id: string;
+    };
+    query?: never;
+    url: '/api/v1/artifacts/{artifact_id}/media/{media_id}';
+};
+
+export type mediaReadMediaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type mediaReadMediaError = mediaReadMediaErrors[keyof mediaReadMediaErrors];
+
+export type mediaReadMediaResponses = {
+    /**
+     * Successful Response
+     */
+    200: MediaPublic;
+};
+
+export type mediaReadMediaResponse = mediaReadMediaResponses[keyof mediaReadMediaResponses];
+
+export type mediaUpdateMediaData = {
+    body: MediaUpdate;
+    path: {
+        /**
+         * Artifact Id
+         */
+        artifact_id: string;
+        /**
+         * Media Id
+         */
+        media_id: string;
+    };
+    query?: never;
+    url: '/api/v1/artifacts/{artifact_id}/media/{media_id}';
+};
+
+export type mediaUpdateMediaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type mediaUpdateMediaError = mediaUpdateMediaErrors[keyof mediaUpdateMediaErrors];
+
+export type mediaUpdateMediaResponses = {
+    /**
+     * Successful Response
+     */
+    200: MediaPublic;
+};
+
+export type mediaUpdateMediaResponse = mediaUpdateMediaResponses[keyof mediaUpdateMediaResponses];
+
 export type beaconsResolveBeaconData = {
     body?: never;
     path?: never;
@@ -2233,6 +2449,96 @@ export type beaconsResolveBeaconResponses = {
 
 export type beaconsResolveBeaconResponse = beaconsResolveBeaconResponses[keyof beaconsResolveBeaconResponses];
 
+export type beaconsDeleteBeaconData = {
+    body?: never;
+    path: {
+        /**
+         * Beacon Id
+         */
+        beacon_id: string;
+    };
+    query?: never;
+    url: '/api/v1/beacons/{beacon_id}';
+};
+
+export type beaconsDeleteBeaconErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type beaconsDeleteBeaconError = beaconsDeleteBeaconErrors[keyof beaconsDeleteBeaconErrors];
+
+export type beaconsDeleteBeaconResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type beaconsDeleteBeaconResponse = beaconsDeleteBeaconResponses[keyof beaconsDeleteBeaconResponses];
+
+export type beaconsReadBeaconData = {
+    body?: never;
+    path: {
+        /**
+         * Beacon Id
+         */
+        beacon_id: string;
+    };
+    query?: never;
+    url: '/api/v1/beacons/{beacon_id}';
+};
+
+export type beaconsReadBeaconErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type beaconsReadBeaconError = beaconsReadBeaconErrors[keyof beaconsReadBeaconErrors];
+
+export type beaconsReadBeaconResponses = {
+    /**
+     * Successful Response
+     */
+    200: BeaconPublic;
+};
+
+export type beaconsReadBeaconResponse = beaconsReadBeaconResponses[keyof beaconsReadBeaconResponses];
+
+export type beaconsUpdateBeaconData = {
+    body: BeaconUpdate;
+    path: {
+        /**
+         * Beacon Id
+         */
+        beacon_id: string;
+    };
+    query?: never;
+    url: '/api/v1/beacons/{beacon_id}';
+};
+
+export type beaconsUpdateBeaconErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type beaconsUpdateBeaconError = beaconsUpdateBeaconErrors[keyof beaconsUpdateBeaconErrors];
+
+export type beaconsUpdateBeaconResponses = {
+    /**
+     * Successful Response
+     */
+    200: BeaconPublic;
+};
+
+export type beaconsUpdateBeaconResponse = beaconsUpdateBeaconResponses[keyof beaconsUpdateBeaconResponses];
+
 export type beaconsReadBeaconsData = {
     body?: never;
     path?: never;
@@ -2241,6 +2547,10 @@ export type beaconsReadBeaconsData = {
          * Site Id
          */
         site_id?: string | null;
+        /**
+         * Artifact Id
+         */
+        artifact_id?: string | null;
         /**
          * Skip
          */
@@ -2291,70 +2601,10 @@ export type beaconsCreateBeaconResponses = {
     /**
      * Successful Response
      */
-    200: BeaconPublic;
+    201: BeaconPublic;
 };
 
 export type beaconsCreateBeaconResponse = beaconsCreateBeaconResponses[keyof beaconsCreateBeaconResponses];
-
-export type beaconsDeleteBeaconData = {
-    body?: never;
-    path: {
-        /**
-         * Beacon Id
-         */
-        beacon_id: string;
-    };
-    query?: never;
-    url: '/api/v1/beacons/{beacon_id}';
-};
-
-export type beaconsDeleteBeaconErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type beaconsDeleteBeaconError = beaconsDeleteBeaconErrors[keyof beaconsDeleteBeaconErrors];
-
-export type beaconsDeleteBeaconResponses = {
-    /**
-     * Successful Response
-     */
-    200: Message;
-};
-
-export type beaconsDeleteBeaconResponse = beaconsDeleteBeaconResponses[keyof beaconsDeleteBeaconResponses];
-
-export type beaconsUpdateBeaconData = {
-    body: BeaconUpdate;
-    path: {
-        /**
-         * Beacon Id
-         */
-        beacon_id: string;
-    };
-    query?: never;
-    url: '/api/v1/beacons/{beacon_id}';
-};
-
-export type beaconsUpdateBeaconErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type beaconsUpdateBeaconError = beaconsUpdateBeaconErrors[keyof beaconsUpdateBeaconErrors];
-
-export type beaconsUpdateBeaconResponses = {
-    /**
-     * Successful Response
-     */
-    200: BeaconPublic;
-};
-
-export type beaconsUpdateBeaconResponse = beaconsUpdateBeaconResponses[keyof beaconsUpdateBeaconResponses];
 
 export type privateCreateUserData = {
     body: PrivateUserCreate;
