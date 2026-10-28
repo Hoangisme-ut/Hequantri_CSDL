@@ -66,14 +66,14 @@ class User(UserBase, table=True):
     )
     role: Optional["Role"] = Relationship(back_populates="users")
     language: Optional["Language"] = Relationship(back_populates="users")
-    items: list[Item] = Relationship(back_populates="owner", cascade_delete=True)
-    visit_logs: list[VisitLog] = Relationship(
+    items: list["Item"] = Relationship(back_populates="owner", cascade_delete=True)
+    visit_logs: list["VisitLog"] = Relationship(
         back_populates="user", cascade_delete=True
     )
-    favorites: list[Favorite] = Relationship(
+    favorites: list["Favorite"] = Relationship(
         back_populates="user", cascade_delete=True
     )
-    feedbacks: list[Feedback] = Relationship(
+    feedbacks: list["Feedback"] = Relationship(
         back_populates="user", cascade_delete=True
     )
 
@@ -198,12 +198,12 @@ class Language(LanguageBase, table=True):
         ),
     )
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    users: list[User] = Relationship(back_populates="language")
-    translations: list[ArtifactTranslation] = Relationship(
+    users: list["User"] = Relationship(back_populates="language")
+    translations: list["ArtifactTranslation"] = Relationship(
         back_populates="language", cascade_delete=True
     )
-    media: list[Media] = Relationship(back_populates="language")
-    visit_logs: list[VisitLog] = Relationship(back_populates="language")
+    media: list["Media"] = Relationship(back_populates="language")
+    visit_logs: list["VisitLog"] = Relationship(back_populates="language")
 
 
 class LanguagePublic(LanguageBase):
@@ -262,10 +262,10 @@ class Site(SiteBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
     updated_at: datetime | None = None
-    artifacts: list[Artifact] = Relationship(
+    artifacts: list["Artifact"] = Relationship(
         back_populates="site", cascade_delete=True
     )
-    beacons: list[Beacon] = Relationship(back_populates="site", cascade_delete=True)
+    beacons: list["Beacon"] = Relationship(back_populates="site", cascade_delete=True)
 
 
 class SitePublic(SiteBase):
@@ -310,18 +310,18 @@ class Artifact(ArtifactBase, table=True):
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
     updated_at: datetime | None = None
     site: Site | None = Relationship(back_populates="artifacts")
-    translations: list[ArtifactTranslation] = Relationship(
+    translations: list["ArtifactTranslation"] = Relationship(
         back_populates="artifact", cascade_delete=True
     )
-    media: list[Media] = Relationship(back_populates="artifact", cascade_delete=True)
+    media: list["Media"] = Relationship(back_populates="artifact", cascade_delete=True)
     beacon: Optional["Beacon"] = Relationship(back_populates="artifact")
-    visit_logs: list[VisitLog] = Relationship(
+    visit_logs: list["VisitLog"] = Relationship(
         back_populates="artifact", cascade_delete=True
     )
-    favorites: list[Favorite] = Relationship(
+    favorites: list["Favorite"] = Relationship(
         back_populates="artifact", cascade_delete=True
     )
-    feedbacks: list[Feedback] = Relationship(
+    feedbacks: list["Feedback"] = Relationship(
         back_populates="artifact", cascade_delete=True
     )
 
@@ -522,7 +522,7 @@ class Beacon(BeaconBase, table=True):
     updated_at: datetime | None = None
     site: Site | None = Relationship(back_populates="beacons")
     artifact: Artifact | None = Relationship(back_populates="beacon")
-    visit_logs: list[VisitLog] = Relationship(back_populates="beacon")
+    visit_logs: list["VisitLog"] = Relationship(back_populates="beacon")
 
 
 class BeaconPublic(BeaconBase):

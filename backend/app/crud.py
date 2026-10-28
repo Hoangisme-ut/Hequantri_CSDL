@@ -8,12 +8,14 @@ from app.models import (
     Artifact,
     ArtifactContentPublic,
     ArtifactTranslation,
+    Beacon,
     Item,
     ItemCreate,
     Language,
     Media,
     MediaPublic,
     Role,
+    Site,
     User,
     UserCreate,
     UserUpdate,
@@ -193,3 +195,38 @@ def get_artifact_content(
 
 def touch_updated_at(obj: Artifact | ArtifactTranslation) -> None:
     obj.updated_at = get_datetime_utc()
+
+
+# =============================================================================
+# [Smart Heritage] Nhất quán Site – Artifact – Beacon
+# =============================================================================
+def visible_site_ids() -> Any:
+    """Subquery id các Site đang hiển thị (is_active). Dùng với `.in_()`."""
+    return select(Site.id).where(col(Site.is_active))
+
+
+def is_site_active(*, session: Session, site_id: uuid.UUID) -> bool:
+    site = session.get(Site, site_id)
+    return bool(site and site.is_active)
+
+
+def is_artifact_visible(*, session: Session, artifact: Artifact) -> bool:
+    """Du khách chỉ thấy hiện vật khi chính nó VÀ Site của nó đều đang active."""
+    return artifact.is_active and is_site_active(
+        session=session, site_id=artifact.site_id
+    )
+
+
+def get_beacon_of_artifact(
+    *, session: Session, artifact_id: uuid.UUID
+) -> Beacon | None:
+    return session.exec(select(Beacon).where(Beacon.artifact_id == artifact_id)).first()
+
+
+def detach_beacon_from_artifact(*, session: Session, artifact_id: uuid.UUID) -> None:
+    """Gỡ beacon khỏi hiện vật (artifact_id = NULL). Không commit - caller commit."""
+    beacon = get_beacon_of_artifact(session=session, artifact_id=artifact_id)
+    if beacon:
+        beacon.artifact_id = None
+        beacon.updated_at = get_datetime_utc()
+        session.add(beacon)
