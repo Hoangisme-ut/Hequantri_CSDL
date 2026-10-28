@@ -63,7 +63,7 @@ def read_artifacts(
     """
     Danh sách hiện vật kèm tiêu đề theo ngôn ngữ. **Public**.
     """
-    conditions = []
+    conditions: list[Any] = []
     if not (include_inactive and is_admin(current_user)):
         conditions.append(col(Artifact.is_active))
     if site_id:
@@ -125,7 +125,7 @@ def read_artifact(
 # --------------------------------- Admin ----------------------------------
 @router.post("/", response_model=ArtifactPublic)
 def create_artifact(
-    *, session: SessionDep, admin: AdminUser, artifact_in: ArtifactCreate
+    *, session: SessionDep, _admin: AdminUser, artifact_in: ArtifactCreate
 ) -> Any:
     """
     Tạo hiện vật. **Admin**. Mã `code` không được trùng trong cùng di tích.
@@ -144,7 +144,7 @@ def create_artifact(
 def update_artifact(
     *,
     session: SessionDep,
-    admin: AdminUser,
+    _admin: AdminUser,
     artifact_id: uuid.UUID,
     artifact_in: ArtifactUpdate,
 ) -> Any:
@@ -171,7 +171,7 @@ def update_artifact(
 
 @router.delete("/{artifact_id}")
 def delete_artifact(
-    session: SessionDep, admin: AdminUser, artifact_id: uuid.UUID
+    session: SessionDep, _admin: AdminUser, artifact_id: uuid.UUID
 ) -> Message:
     """
     Ẩn hiện vật (xóa mềm: is_active = false). **Admin**.
@@ -191,7 +191,7 @@ def delete_artifact(
     "/{artifact_id}/translations", response_model=list[ArtifactTranslationPublic]
 )
 def read_translations(
-    session: SessionDep, admin: AdminUser, artifact_id: uuid.UUID
+    session: SessionDep, _admin: AdminUser, artifact_id: uuid.UUID
 ) -> Any:
     """
     Tất cả bản dịch của hiện vật. **Admin**.
@@ -199,7 +199,9 @@ def read_translations(
     if not session.get(Artifact, artifact_id):
         raise HTTPException(status_code=404, detail="Artifact not found")
     return session.exec(
-        select(ArtifactTranslation).where(ArtifactTranslation.artifact_id == artifact_id)
+        select(ArtifactTranslation).where(
+            ArtifactTranslation.artifact_id == artifact_id
+        )
     ).all()
 
 
@@ -210,7 +212,7 @@ def read_translations(
 def upsert_translation(
     *,
     session: SessionDep,
-    admin: AdminUser,
+    _admin: AdminUser,
     artifact_id: uuid.UUID,
     language_id: uuid.UUID,
     translation_in: ArtifactTranslationBase,
@@ -245,7 +247,7 @@ def upsert_translation(
 @router.delete("/{artifact_id}/translations/{language_id}")
 def delete_translation(
     session: SessionDep,
-    admin: AdminUser,
+    _admin: AdminUser,
     artifact_id: uuid.UUID,
     language_id: uuid.UUID,
 ) -> Message:

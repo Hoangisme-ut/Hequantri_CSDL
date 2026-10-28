@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Optional
 
-from pydantic import EmailStr, field_validator
+from pydantic import EmailStr, HttpUrl, field_validator
 from sqlalchemy import CheckConstraint, Index, Unicode, UniqueConstraint, text
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -64,18 +64,15 @@ class User(UserBase, table=True):
     language_id: uuid.UUID | None = Field(
         default=None, foreign_key="language.id", ondelete="SET NULL"
     )
-    role: Optional["Role"] = Relationship(back_populates="users")
-    language: Optional["Language"] = Relationship(back_populates="users")
+    # SQLModel needs Optional forward references for relationships on Python 3.14.
+    role: Optional["Role"] = Relationship(back_populates="users")  # noqa: UP037, UP045
+    language: Optional["Language"] = Relationship(back_populates="users")  # noqa: UP037, UP045
     items: list[Item] = Relationship(back_populates="owner", cascade_delete=True)
     visit_logs: list[VisitLog] = Relationship(
         back_populates="user", cascade_delete=True
     )
-    favorites: list[Favorite] = Relationship(
-        back_populates="user", cascade_delete=True
-    )
-    feedbacks: list[Feedback] = Relationship(
-        back_populates="user", cascade_delete=True
-    )
+    favorites: list[Favorite] = Relationship(back_populates="user", cascade_delete=True)
+    feedbacks: list[Feedback] = Relationship(back_populates="user", cascade_delete=True)
 
 
 # Properties to return via API, id is always required
@@ -218,7 +215,9 @@ class LanguagesPublic(SQLModel):
 # ----------------------------------- Site ------------------------------------
 class SiteBase(SQLModel):
     name: str = Field(min_length=1, max_length=255, sa_type=Unicode(255))
-    description: str | None = Field(default=None, max_length=2000, sa_type=Unicode(2000))
+    description: str | None = Field(
+        default=None, max_length=2000, sa_type=Unicode(2000)
+    )
     address: str | None = Field(default=None, max_length=500, sa_type=Unicode(500))
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
@@ -262,9 +261,7 @@ class Site(SiteBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
     updated_at: datetime | None = None
-    artifacts: list[Artifact] = Relationship(
-        back_populates="site", cascade_delete=True
-    )
+    artifacts: list[Artifact] = Relationship(back_populates="site", cascade_delete=True)
     beacons: list[Beacon] = Relationship(back_populates="site", cascade_delete=True)
 
 
@@ -282,7 +279,9 @@ class SitesPublic(SQLModel):
 # --------------------------------- Artifact ----------------------------------
 class ArtifactBase(SQLModel):
     code: str = Field(index=True, max_length=50)  # mã hiện vật (unique theo site)
-    era: str | None = Field(default=None, max_length=100, sa_type=Unicode(100))  # niên đại
+    era: str | None = Field(
+        default=None, max_length=100, sa_type=Unicode(100)
+    )  # niên đại
     latitude: float | None = None
     longitude: float | None = None
     cover_image_url: str | None = Field(default=None, max_length=500)
@@ -304,9 +303,13 @@ class ArtifactUpdate(SQLModel):
 
 
 class Artifact(ArtifactBase, table=True):
-    __table_args__ = (UniqueConstraint("site_id", "code", name="uq_artifact_site_code"),)
+    __table_args__ = (
+        UniqueConstraint("site_id", "code", name="uq_artifact_site_code"),
+    )
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    site_id: uuid.UUID = Field(foreign_key="site.id", nullable=False, ondelete="CASCADE")
+    site_id: uuid.UUID = Field(
+        foreign_key="site.id", nullable=False, ondelete="CASCADE"
+    )
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
     updated_at: datetime | None = None
     site: Site | None = Relationship(back_populates="artifacts")
@@ -314,7 +317,7 @@ class Artifact(ArtifactBase, table=True):
         back_populates="artifact", cascade_delete=True
     )
     media: list[Media] = Relationship(back_populates="artifact", cascade_delete=True)
-    beacon: Optional["Beacon"] = Relationship(back_populates="artifact")
+    beacon: Optional["Beacon"] = Relationship(back_populates="artifact")  # noqa: UP037, UP045
     visit_logs: list[VisitLog] = Relationship(
         back_populates="artifact", cascade_delete=True
     )
@@ -341,7 +344,9 @@ class ArtifactsPublic(SQLModel):
 # ----------------------------- ArtifactTranslation ---------------------------
 class ArtifactTranslationBase(SQLModel):
     title: str = Field(min_length=1, max_length=255, sa_type=Unicode(255))
-    description: str | None = Field(default=None, max_length=2000, sa_type=Unicode(2000))
+    description: str | None = Field(
+        default=None, max_length=2000, sa_type=Unicode(2000)
+    )
     history_content: str | None = Field(default=None, sa_type=Unicode())  # nội dung dài
 
 
@@ -391,13 +396,21 @@ class MediaBase(SQLModel):
     def validate_media_type(cls, value: str) -> str:
         allowed_types = {media_type.value for media_type in MediaType}
         if value not in allowed_types:
-            raise ValueError(f"media_type must be one of: {', '.join(sorted(allowed_types))}")
+            raise ValueError(
+                f"media_type must be one of: {', '.join(sorted(allowed_types))}"
+            )
         return value
 
 
 class MediaCreate(MediaBase):
     # audio/video theo ngôn ngữ -> có language_id; ảnh dùng chung -> để None
     language_id: uuid.UUID | None = None
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value: str) -> str:
+        HttpUrl(value)
+        return value
 
 
 class MediaUpdate(SQLModel):
@@ -407,6 +420,13 @@ class MediaUpdate(SQLModel):
     sort_order: int | None = None
     language_id: uuid.UUID | None = None
 
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value: str | None) -> str | None:
+        if value is not None:
+            HttpUrl(value)
+        return value
+
     @field_validator("media_type")
     @classmethod
     def validate_media_type(cls, value: str | None) -> str | None:
@@ -414,7 +434,9 @@ class MediaUpdate(SQLModel):
             return value
         allowed_types = {media_type.value for media_type in MediaType}
         if value not in allowed_types:
-            raise ValueError(f"media_type must be one of: {', '.join(sorted(allowed_types))}")
+            raise ValueError(
+                f"media_type must be one of: {', '.join(sorted(allowed_types))}"
+            )
         return value
 
 
@@ -496,9 +518,7 @@ class Beacon(BeaconBase, table=True):
     __table_args__ = (
         CheckConstraint("major BETWEEN 0 AND 65535", name="ck_beacon_major"),
         CheckConstraint("minor BETWEEN 0 AND 65535", name="ck_beacon_minor"),
-        UniqueConstraint(
-            "proximity_uuid", "major", "minor", name="uq_beacon_identity"
-        ),
+        UniqueConstraint("proximity_uuid", "major", "minor", name="uq_beacon_identity"),
         # unique chỉ áp dụng cho beacon đã gán hiện vật (cho phép nhiều NULL)
         Index(
             "uq_beacon_artifact_id",
@@ -509,13 +529,13 @@ class Beacon(BeaconBase, table=True):
         ),
     )
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    site_id: uuid.UUID = Field(foreign_key="site.id", nullable=False, ondelete="CASCADE")
+    site_id: uuid.UUID = Field(
+        foreign_key="site.id", nullable=False, ondelete="CASCADE"
+    )
     # mỗi hiện vật gắn tối đa 1 beacon (index unique ở __table_args__).
     # NO ACTION: SQL Server cấm nhiều đường cascade; khi xóa Artifact lẻ,
     # code CRUD phải gỡ beacon (artifact_id = None) trước.
-    artifact_id: uuid.UUID | None = Field(
-        default=None, foreign_key="artifact.id", ondelete="NO ACTION"
-    )
+    artifact_id: uuid.UUID | None = Field(default=None, foreign_key="artifact.id")
     battery_level: int | None = None
     last_seen_at: datetime | None = None
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
@@ -551,17 +571,15 @@ class VisitLogCreate(SQLModel):
 
 class VisitLog(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    user_id: uuid.UUID = Field(foreign_key="user.id", nullable=False, ondelete="CASCADE")
+    user_id: uuid.UUID = Field(
+        foreign_key="user.id", nullable=False, ondelete="CASCADE"
+    )
     artifact_id: uuid.UUID = Field(
         foreign_key="artifact.id", nullable=False, ondelete="CASCADE", index=True
     )
     # NO ACTION (không cascade/set null) để tránh "multiple cascade paths" ở SQL Server
-    beacon_id: uuid.UUID | None = Field(
-        default=None, foreign_key="beacon.id", ondelete="NO ACTION"
-    )
-    language_id: uuid.UUID | None = Field(
-        default=None, foreign_key="language.id", ondelete="NO ACTION"
-    )
+    beacon_id: uuid.UUID | None = Field(default=None, foreign_key="beacon.id")
+    language_id: uuid.UUID | None = Field(default=None, foreign_key="language.id")
     visited_at: datetime | None = Field(default_factory=get_datetime_utc, index=True)
     duration_seconds: int | None = None
     rssi: int | None = None
@@ -598,7 +616,9 @@ class Favorite(SQLModel, table=True):
         UniqueConstraint("user_id", "artifact_id", name="uq_favorite_user_artifact"),
     )
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    user_id: uuid.UUID = Field(foreign_key="user.id", nullable=False, ondelete="CASCADE")
+    user_id: uuid.UUID = Field(
+        foreign_key="user.id", nullable=False, ondelete="CASCADE"
+    )
     artifact_id: uuid.UUID = Field(
         foreign_key="artifact.id", nullable=False, ondelete="CASCADE"
     )
@@ -632,14 +652,14 @@ class FeedbackStatusUpdate(SQLModel):
 
 class Feedback(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    user_id: uuid.UUID = Field(foreign_key="user.id", nullable=False, ondelete="CASCADE")
+    user_id: uuid.UUID = Field(
+        foreign_key="user.id", nullable=False, ondelete="CASCADE"
+    )
     artifact_id: uuid.UUID = Field(
         foreign_key="artifact.id", nullable=False, ondelete="CASCADE"
     )
     rating: int = Field(ge=1, le=5)
-    comment: str | None = Field(
-        default=None, max_length=2000, sa_type=Unicode(2000)
-    )
+    comment: str | None = Field(default=None, max_length=2000, sa_type=Unicode(2000))
     status: str = Field(default=FeedbackStatus.PENDING, max_length=20)
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
     user: User | None = Relationship(back_populates="feedbacks")

@@ -49,10 +49,11 @@ def test_enforce_non_default_secrets_raises_in_prod() -> None:
 
 
 def test_emails_enabled() -> None:
-    # `_env_file=None` keeps the test independent from the `.env` file, which
-    # would otherwise provide SMTP settings from the environment.
+    # Disable both dotenv and inherited Docker/CI SMTP settings explicitly.
     s_disabled = Settings(
         _env_file=None,
+        SMTP_HOST=None,
+        EMAILS_FROM_EMAIL=None,
         SECRET_KEY="secret",
         FIRST_SUPERUSER="admin@example.com",
         FIRST_SUPERUSER_PASSWORD="secret",
