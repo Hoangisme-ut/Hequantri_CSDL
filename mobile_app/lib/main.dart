@@ -2,9 +2,17 @@ import 'dart:async';
 
 import 'package:dchs_flutter_beacon/dchs_flutter_beacon.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
+// Dùng import tương đối để test luôn tìm thấy Widget
 import 'beacon_simulation_page.dart';
+import 'features/artifacts/artifact.dart';
+import 'features/auth/auth_config.dart';
+import 'features/auth/auth_service.dart';
+import 'features/auth/login_page.dart';
+import 'features/home/main_navigation_scaffold.dart';
 import 'features/welcome/welcome_page.dart';
+import 'l10n/app_strings.dart';
 import 'theme/app_theme.dart';
 
 void main() {
@@ -12,51 +20,108 @@ void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key, @visibleForTesting this.appShell});
 
   final AppShell? appShell;
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+  Locale _locale = const Locale('vi');
+
+  void _changeLocale(Locale locale) => setState(() => _locale = locale);
+
+  void _enterMainApp() {
+    _navigatorKey.currentState!.pushAndRemoveUntil(
+      MaterialPageRoute<void>(
+        builder: (_) => MainNavigationScaffold(
+          onLocaleChanged: _changeLocale,
+          onLogout: () {
+            _navigatorKey.currentState!.pushAndRemoveUntil(
+              MaterialPageRoute<void>(
+                builder: (_) => LoginPage(
+                  onDemoContinue: _enterMainApp,
+                  onLoginSuccess: _enterMainApp,
+                  authService: AuthService(
+                    baseUrl: AuthConfig.apiBaseUrl,
+                    client: IoAuthHttpClient(),
+                  ),
+                ),
+              ),
+              (_) => false,
+            );
+          },
+        ),
+      ),
+      (_) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Smart Heritage',
+      navigatorKey: _navigatorKey,
+      locale: _locale,
+      supportedLocales: const [Locale('vi'), Locale('en')],
+      localizationsDelegates: const [
+        AppStrings.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
-      home: appShell ?? const WelcomePage(),
+      home:
+          widget.appShell ??
+          WelcomePage(
+            onLocaleChanged: _changeLocale,
+            onDemoContinue: _enterMainApp,
+          ),
     );
   }
 }
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key, @visibleForTesting this.stopScanning});
+  const AppShell({
+    super.key,
+    this.catalog,
+    this.onLocaleChanged,
+    this.isDemoSession = false,
+    this.stopScanning,
+  });
 
+  final ArtifactCatalog? catalog;
+  final ValueChanged<Locale>? onLocaleChanged;
   final Future<bool> Function()? stopScanning;
+  final bool isDemoSession;
 
   @override
   State<AppShell> createState() => _AppShellState();
 }
 
 class _AppShellState extends State<AppShell> {
-  final _beaconScanPageKey = GlobalKey<BeaconTestPageState>();
   int _selectedIndex = 0;
 
-  Future<void> _selectDestination(int index) async {
+  Future<void> _onDestinationSelected(int index) async {
     if (index == _selectedIndex) return;
 
-    if (index == 1) {
-      final scanPageState = _beaconScanPageKey.currentState;
-      if (scanPageState == null || scanPageState.isBusy) return;
-
-      final stopped = widget.stopScanning == null
-          ? await scanPageState.stopScanningIfNeeded()
-          : await widget.stopScanning!();
-      if (!stopped || !mounted) return;
+    if (widget.stopScanning != null) {
+      final canSwitch = await widget.stopScanning!();
+      if (!canSwitch) return;
     }
 
-    setState(() => _selectedIndex = index);
+    if (mounted) {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
   }
 
   @override
@@ -64,14 +129,11 @@ class _AppShellState extends State<AppShell> {
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
-        children: [
-          BeaconTestPage(key: _beaconScanPageKey),
-          const BeaconSimulationPage(),
-        ],
+        children: const [BeaconTestPage(), BeaconSimulationPage()],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: _selectDestination,
+        onDestinationSelected: _onDestinationSelected,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.bluetooth_searching),
@@ -79,7 +141,7 @@ class _AppShellState extends State<AppShell> {
           ),
           NavigationDestination(
             icon: Icon(Icons.science_outlined),
-            label: 'Mô phỏng',
+            label: 'Giả lập',
           ),
         ],
       ),
@@ -151,7 +213,6 @@ class BeaconTestPageState extends State<BeaconTestPage> {
   void _handleBeaconDetection(List<Beacon> detectedBeacons) {
     if (!mounted || !_scanning) return;
 
-    // Chỉ xử lý dữ liệu quét thực tế, không dùng dữ liệu đang giữ trên UI.
     final candidates = detectedBeacons
         .where((beacon) => beacon.rssi < 0)
         .toList();
@@ -159,19 +220,12 @@ class BeaconTestPageState extends State<BeaconTestPage> {
     if (candidates.isEmpty) {
       _candidateBeaconKey = null;
       _candidateHits = 0;
-
-      // Giữ khóa beacon đã báo để tránh báo lại khi tín hiệu xuất hiện lại.
       return;
     }
 
-    // Chọn beacon có tín hiệu mạnh nhất.
     candidates.sort((a, b) {
       final signalOrder = b.rssi.compareTo(a.rssi);
-
-      if (signalOrder != 0) {
-        return signalOrder;
-      }
-
+      if (signalOrder != 0) return signalOrder;
       return _beaconKey(a).compareTo(_beaconKey(b));
     });
 
@@ -192,8 +246,6 @@ class BeaconTestPageState extends State<BeaconTestPage> {
       return;
     }
 
-    // Beacon đầu tiên được báo ngay.
-    // Khi đổi beacon, cần 3 kết quả liên tiếp để xác nhận.
     if (_lastNotifiedBeaconKey != null) {
       if (_candidateBeaconKey == selectedKey) {
         _candidateHits++;
@@ -224,7 +276,6 @@ class BeaconTestPageState extends State<BeaconTestPage> {
     });
 
     final messenger = ScaffoldMessenger.of(context);
-
     messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
@@ -254,7 +305,6 @@ class BeaconTestPageState extends State<BeaconTestPage> {
 
   void _setStatus(String message) {
     if (!mounted) return;
-
     setState(() => _status = message);
   }
 
@@ -284,7 +334,6 @@ class BeaconTestPageState extends State<BeaconTestPage> {
         return;
       }
 
-      // Android: nhận tất cả iBeacon, chưa lọc theo UUID.
       final regions = [Region(identifier: 'all-beacons')];
 
       await _subscription?.cancel();
@@ -317,16 +366,6 @@ class BeaconTestPageState extends State<BeaconTestPage> {
 
               _updateBeaconDisplay(result.beacons);
               _handleBeaconDetection(result.beacons);
-
-              for (final beacon in result.beacons) {
-                debugPrint(
-                  'UUID: ${beacon.proximityUUID}, '
-                  'Major: ${beacon.major}, '
-                  'Minor: ${beacon.minor}, '
-                  'RSSI: ${beacon.rssi}, '
-                  'Estimated distance: ${beacon.accuracy} m',
-                );
-              }
             },
             onError: (Object error) {
               if (!mounted) return;
@@ -398,7 +437,6 @@ class BeaconTestPageState extends State<BeaconTestPage> {
     if (!distance.isFinite || distance < 0) {
       return 'Chưa xác định';
     }
-
     return '${distance.toStringAsFixed(2)} m';
   }
 
