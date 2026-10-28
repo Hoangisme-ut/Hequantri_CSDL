@@ -195,12 +195,12 @@ class Language(LanguageBase, table=True):
         ),
     )
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    users: list[User] = Relationship(back_populates="language")
-    translations: list[ArtifactTranslation] = Relationship(
+    users: list["User"] = Relationship(back_populates="language")
+    translations: list["ArtifactTranslation"] = Relationship(
         back_populates="language", cascade_delete=True
     )
-    media: list[Media] = Relationship(back_populates="language")
-    visit_logs: list[VisitLog] = Relationship(back_populates="language")
+    media: list["Media"] = Relationship(back_populates="language")
+    visit_logs: list["VisitLog"] = Relationship(back_populates="language")
 
 
 class LanguagePublic(LanguageBase):
@@ -313,7 +313,7 @@ class Artifact(ArtifactBase, table=True):
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
     updated_at: datetime | None = None
     site: Site | None = Relationship(back_populates="artifacts")
-    translations: list[ArtifactTranslation] = Relationship(
+    translations: list["ArtifactTranslation"] = Relationship(
         back_populates="artifact", cascade_delete=True
     )
     media: list[Media] = Relationship(back_populates="artifact", cascade_delete=True)
@@ -321,10 +321,12 @@ class Artifact(ArtifactBase, table=True):
     visit_logs: list[VisitLog] = Relationship(
         back_populates="artifact", cascade_delete=True
     )
-    favorites: list[Favorite] = Relationship(
         back_populates="artifact", cascade_delete=True
     )
-    feedbacks: list[Feedback] = Relationship(
+    favorites: list["Favorite"] = Relationship(
+        back_populates="artifact", cascade_delete=True
+    )
+    feedbacks: list["Feedback"] = Relationship(
         back_populates="artifact", cascade_delete=True
     )
 
@@ -542,7 +544,7 @@ class Beacon(BeaconBase, table=True):
     updated_at: datetime | None = None
     site: Site | None = Relationship(back_populates="beacons")
     artifact: Artifact | None = Relationship(back_populates="beacon")
-    visit_logs: list[VisitLog] = Relationship(back_populates="beacon")
+    visit_logs: list["VisitLog"] = Relationship(back_populates="beacon")
 
 
 class BeaconPublic(BeaconBase):
