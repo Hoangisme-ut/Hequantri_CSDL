@@ -6,6 +6,7 @@ from app.api.routes import (
     items,
     languages,
     login,
+    media,
     private,
     sites,
     users,
@@ -21,6 +22,7 @@ api_router.include_router(items.router)
 api_router.include_router(languages.router)
 api_router.include_router(sites.router)
 api_router.include_router(artifacts.router)
+api_router.include_router(media.router)
 api_router.include_router(beacons.router)
 
 

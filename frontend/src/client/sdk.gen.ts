@@ -2,7 +2,7 @@
 
 import { type Client, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { artifactsCreateArtifactData, artifactsCreateArtifactErrors, artifactsCreateArtifactResponses, artifactsDeleteArtifactData, artifactsDeleteArtifactErrors, artifactsDeleteArtifactResponses, artifactsDeleteTranslationData, artifactsDeleteTranslationErrors, artifactsDeleteTranslationResponses, artifactsReadArtifactData, artifactsReadArtifactErrors, artifactsReadArtifactResponses, artifactsReadArtifactsData, artifactsReadArtifactsErrors, artifactsReadArtifactsResponses, artifactsReadTranslationsData, artifactsReadTranslationsErrors, artifactsReadTranslationsResponses, artifactsUpdateArtifactData, artifactsUpdateArtifactErrors, artifactsUpdateArtifactResponses, artifactsUpsertTranslationData, artifactsUpsertTranslationErrors, artifactsUpsertTranslationResponses, beaconsCreateBeaconData, beaconsCreateBeaconErrors, beaconsCreateBeaconResponses, beaconsDeleteBeaconData, beaconsDeleteBeaconErrors, beaconsDeleteBeaconResponses, beaconsReadBeaconsData, beaconsReadBeaconsErrors, beaconsReadBeaconsResponses, beaconsResolveBeaconData, beaconsResolveBeaconErrors, beaconsResolveBeaconResponses, beaconsUpdateBeaconData, beaconsUpdateBeaconErrors, beaconsUpdateBeaconResponses, itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, languagesCreateLanguageData, languagesCreateLanguageErrors, languagesCreateLanguageResponses, languagesDeleteLanguageData, languagesDeleteLanguageErrors, languagesDeleteLanguageResponses, languagesReadLanguagesData, languagesReadLanguagesResponses, languagesUpdateLanguageData, languagesUpdateLanguageErrors, languagesUpdateLanguageResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, sitesCreateSiteData, sitesCreateSiteErrors, sitesCreateSiteResponses, sitesDeleteSiteData, sitesDeleteSiteErrors, sitesDeleteSiteResponses, sitesReadSiteData, sitesReadSiteErrors, sitesReadSiteResponses, sitesReadSitesData, sitesReadSitesErrors, sitesReadSitesResponses, sitesUpdateSiteData, sitesUpdateSiteErrors, sitesUpdateSiteResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
+import type { artifactsCreateArtifactData, artifactsCreateArtifactErrors, artifactsCreateArtifactResponses, artifactsDeleteArtifactData, artifactsDeleteArtifactErrors, artifactsDeleteArtifactResponses, artifactsDeleteTranslationData, artifactsDeleteTranslationErrors, artifactsDeleteTranslationResponses, artifactsReadArtifactData, artifactsReadArtifactErrors, artifactsReadArtifactResponses, artifactsReadArtifactsData, artifactsReadArtifactsErrors, artifactsReadArtifactsResponses, artifactsReadTranslationsData, artifactsReadTranslationsErrors, artifactsReadTranslationsResponses, artifactsUpdateArtifactData, artifactsUpdateArtifactErrors, artifactsUpdateArtifactResponses, artifactsUpsertTranslationData, artifactsUpsertTranslationErrors, artifactsUpsertTranslationResponses, beaconsCreateBeaconData, beaconsCreateBeaconErrors, beaconsCreateBeaconResponses, beaconsDeleteBeaconData, beaconsDeleteBeaconErrors, beaconsDeleteBeaconResponses, beaconsReadBeaconData, beaconsReadBeaconErrors, beaconsReadBeaconResponses, beaconsReadBeaconsData, beaconsReadBeaconsErrors, beaconsReadBeaconsResponses, beaconsResolveBeaconData, beaconsResolveBeaconErrors, beaconsResolveBeaconResponses, beaconsUpdateBeaconData, beaconsUpdateBeaconErrors, beaconsUpdateBeaconResponses, itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, languagesCreateLanguageData, languagesCreateLanguageErrors, languagesCreateLanguageResponses, languagesDeleteLanguageData, languagesDeleteLanguageErrors, languagesDeleteLanguageResponses, languagesReadLanguagesData, languagesReadLanguagesResponses, languagesUpdateLanguageData, languagesUpdateLanguageErrors, languagesUpdateLanguageResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, mediaCreateMediaData, mediaCreateMediaErrors, mediaCreateMediaResponses, mediaDeleteMediaData, mediaDeleteMediaErrors, mediaDeleteMediaResponses, mediaReadMediaData, mediaReadMediaErrors, mediaReadMediaListData, mediaReadMediaListErrors, mediaReadMediaListResponses, mediaReadMediaResponses, mediaUpdateMediaData, mediaUpdateMediaErrors, mediaUpdateMediaResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, sitesCreateSiteData, sitesCreateSiteErrors, sitesCreateSiteResponses, sitesDeleteSiteData, sitesDeleteSiteErrors, sitesDeleteSiteResponses, sitesReadSiteData, sitesReadSiteErrors, sitesReadSiteResponses, sitesReadSitesData, sitesReadSitesErrors, sitesReadSitesResponses, sitesUpdateSiteData, sitesUpdateSiteErrors, sitesUpdateSiteResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -637,6 +637,84 @@ export class ArtifactsService {
     }
 }
 
+export class MediaService {
+    /**
+     * Read Media List
+     *
+     * List all media metadata for an artifact. Admin only.
+     */
+    public static readMediaList<ThrowOnError extends boolean = true>(options: Options<mediaReadMediaListData, ThrowOnError>) {
+        return (options.client ?? client).get<mediaReadMediaListResponses, mediaReadMediaListErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}/media',
+            ...options
+        });
+    }
+    
+    /**
+     * Create Media
+     *
+     * Save an HTTP(S) media URL and metadata; no file upload or download.
+     */
+    public static createMedia<ThrowOnError extends boolean = true>(options: Options<mediaCreateMediaData, ThrowOnError>) {
+        return (options.client ?? client).post<mediaCreateMediaResponses, mediaCreateMediaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}/media',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Delete Media
+     *
+     * Delete metadata only; the remote file is not modified.
+     */
+    public static deleteMedia<ThrowOnError extends boolean = true>(options: Options<mediaDeleteMediaData, ThrowOnError>) {
+        return (options.client ?? client).delete<mediaDeleteMediaResponses, mediaDeleteMediaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}/media/{media_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Read Media
+     */
+    public static readMedia<ThrowOnError extends boolean = true>(options: Options<mediaReadMediaData, ThrowOnError>) {
+        return (options.client ?? client).get<mediaReadMediaResponses, mediaReadMediaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}/media/{media_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Update Media
+     *
+     * Update supplied fields; null clears caption or language_id.
+     */
+    public static updateMedia<ThrowOnError extends boolean = true>(options: Options<mediaUpdateMediaData, ThrowOnError>) {
+        return (options.client ?? client).put<mediaUpdateMediaResponses, mediaUpdateMediaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}/media/{media_id}',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+}
+
 export class BeaconsService {
     /**
      * Resolve Beacon
@@ -651,6 +729,52 @@ export class BeaconsService {
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/beacons/resolve',
             ...options
+        });
+    }
+    
+    /**
+     * Delete Beacon
+     *
+     * Tắt beacon (xóa mềm) và gỡ khỏi hiện vật. **Admin**.
+     */
+    public static deleteBeacon<ThrowOnError extends boolean = true>(options: Options<beaconsDeleteBeaconData, ThrowOnError>) {
+        return (options.client ?? client).delete<beaconsDeleteBeaconResponses, beaconsDeleteBeaconErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/beacons/{beacon_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Read Beacon
+     *
+     * Lấy chi tiết một beacon. **Admin**.
+     */
+    public static readBeacon<ThrowOnError extends boolean = true>(options: Options<beaconsReadBeaconData, ThrowOnError>) {
+        return (options.client ?? client).get<beaconsReadBeaconResponses, beaconsReadBeaconErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/beacons/{beacon_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Update Beacon
+     *
+     * Cấu hình beacon / gán hoặc gỡ hiện vật (`artifact_id: null` để gỡ). **Admin**.
+     */
+    public static updateBeacon<ThrowOnError extends boolean = true>(options: Options<beaconsUpdateBeaconData, ThrowOnError>) {
+        return (options.client ?? client).put<beaconsUpdateBeaconResponses, beaconsUpdateBeaconErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/beacons/{beacon_id}',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
         });
     }
     
@@ -678,38 +802,6 @@ export class BeaconsService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/beacons/',
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        });
-    }
-    
-    /**
-     * Delete Beacon
-     *
-     * Tắt beacon (xóa mềm) và gỡ khỏi hiện vật. **Admin**.
-     */
-    public static deleteBeacon<ThrowOnError extends boolean = true>(options: Options<beaconsDeleteBeaconData, ThrowOnError>) {
-        return (options.client ?? client).delete<beaconsDeleteBeaconResponses, beaconsDeleteBeaconErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/beacons/{beacon_id}',
-            ...options
-        });
-    }
-    
-    /**
-     * Update Beacon
-     *
-     * Cấu hình beacon / gán hoặc gỡ hiện vật (`artifact_id: null` để gỡ). **Admin**.
-     */
-    public static updateBeacon<ThrowOnError extends boolean = true>(options: Options<beaconsUpdateBeaconData, ThrowOnError>) {
-        return (options.client ?? client).put<beaconsUpdateBeaconResponses, beaconsUpdateBeaconErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/beacons/{beacon_id}',
             ...options,
             headers: {
                 'Content-Type': 'application/json',

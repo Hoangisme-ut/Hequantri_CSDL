@@ -50,7 +50,7 @@ def create_user(*, session: Session, user_create: UserCreate) -> User:
 
 def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any:
     user_data = user_in.model_dump(exclude_unset=True)
-    extra_data = {}
+    extra_data: dict[str, Any] = {}
     if "password" in user_data:
         password = user_data["password"]
         hashed_password = get_password_hash(password)
@@ -146,7 +146,9 @@ def pick_translation(
 ) -> tuple[ArtifactTranslation | None, Language | None]:
     """Bản dịch theo ngôn ngữ yêu cầu; không có thì dự phòng: mặc định -> bất kỳ."""
     translations = session.exec(
-        select(ArtifactTranslation).where(ArtifactTranslation.artifact_id == artifact_id)
+        select(ArtifactTranslation).where(
+            ArtifactTranslation.artifact_id == artifact_id
+        )
     ).all()
     if not translations:
         return None, None
@@ -184,7 +186,9 @@ def get_artifact_content(
             "history_content": translation.history_content if translation else None,
             "language_code": used_lang.code if used_lang else None,
             "is_fallback": bool(
-                translation and language is not None and translation.language_id != language.id
+                translation
+                and language is not None
+                and translation.language_id != language.id
             ),
             "media": [MediaPublic.model_validate(m) for m in media_list],
         },
