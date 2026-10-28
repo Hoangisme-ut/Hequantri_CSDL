@@ -31,6 +31,10 @@ dependencies:
   flutter:
     sdk: flutter
 
+  flutter_localizations:
+    sdk: flutter
+  http: ^1.5.0
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -56,6 +60,9 @@ flutter:
     - assets/images/van_mieu_welcome.jpg
     - assets/images/hoi_an_welcome.jpg
     - assets/images/hue_welcome.jpg
+    - assets/images/onboarding/welcome_temple_of_literature.jpg
+    - assets/images/onboarding/welcome_hoi_an.jpg
+    - assets/images/onboarding/welcome_thien_mu_pagoda.jpg
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
