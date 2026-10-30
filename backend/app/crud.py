@@ -8,7 +8,6 @@ from app.models import (
     Artifact,
     ArtifactContentPublic,
     ArtifactTranslation,
-    Beacon,
     Item,
     ItemCreate,
     Language,
@@ -26,7 +25,6 @@ ROLE_ADMIN = "admin"
 ROLE_VISITOR = "visitor"
 
 
-# ------------------------------ Role ------------------------------
 def get_role_by_name(*, session: Session, name: str) -> Role | None:
     return session.exec(select(Role).where(Role.name == name)).first()
 
@@ -57,7 +55,7 @@ def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any:
         password = user_data["password"]
         hashed_password = get_password_hash(password)
         extra_data["hashed_password"] = hashed_password
-    # [Smart Heritage] đổi is_superuser mà không chỉ định role_id -> đổi role theo
+   
     if "is_superuser" in user_data and "role_id" not in user_data:
         role = get_role_by_name(
             session=session,
@@ -78,8 +76,6 @@ def get_user_by_email(*, session: Session, email: str) -> User | None:
     return session_user
 
 
-# Dummy hash to use for timing attack prevention when user is not found
-# This is an Argon2 hash of a random password, used to ensure constant-time comparison
 DUMMY_HASH = "$argon2id$v=19$m=65536,t=3,p=4$MjQyZWE1MzBjYjJlZTI0Yw$YTU4NGM5ZTZmYjE2NzZlZjY0ZWY3ZGRkY2U2OWFjNjk"
 
 
@@ -201,36 +197,18 @@ def touch_updated_at(obj: Artifact | ArtifactTranslation) -> None:
     obj.updated_at = get_datetime_utc()
 
 
-# =============================================================================
-# [Smart Heritage] Nhất quán Site – Artifact – Beacon
-# =============================================================================
-def visible_site_ids() -> Any:
-    """Subquery id các Site đang hiển thị (is_active). Dùng với `.in_()`."""
-    return select(Site.id).where(col(Site.is_active))
-
-
 def is_site_active(*, session: Session, site_id: uuid.UUID) -> bool:
     site = session.get(Site, site_id)
-    return bool(site and site.is_active)
+    return site is not None and site.is_active
 
 
-def is_artifact_visible(*, session: Session, artifact: Artifact) -> bool:
-    """Du khách chỉ thấy hiện vật khi chính nó VÀ Site của nó đều đang active."""
-    return artifact.is_active and is_site_active(
-        session=session, site_id=artifact.site_id
-    )
-
-
-def get_beacon_of_artifact(
+def get_visible_artifact(
     *, session: Session, artifact_id: uuid.UUID
-) -> Beacon | None:
-    return session.exec(select(Beacon).where(Beacon.artifact_id == artifact_id)).first()
-
-
-def detach_beacon_from_artifact(*, session: Session, artifact_id: uuid.UUID) -> None:
-    """Gỡ beacon khỏi hiện vật (artifact_id = NULL). Không commit - caller commit."""
-    beacon = get_beacon_of_artifact(session=session, artifact_id=artifact_id)
-    if beacon:
-        beacon.artifact_id = None
-        beacon.updated_at = get_datetime_utc()
-        session.add(beacon)
+) -> Artifact | None:
+    """Hiện vật được phép trả cho khách: đang bật VÀ thuộc Site đang bật."""
+    artifact = session.get(Artifact, artifact_id)
+    if artifact is None or not artifact.is_active:
+        return None
+    if not is_site_active(session=session, site_id=artifact.site_id):
+        return None
+    return artifact

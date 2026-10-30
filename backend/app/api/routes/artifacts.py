@@ -2,6 +2,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
+from sqlalchemy import ColumnElement
 from sqlmodel import col, func, select
 
 from app import crud
@@ -17,6 +18,7 @@ from app.models import (
     ArtifactTranslationBase,
     ArtifactTranslationPublic,
     ArtifactUpdate,
+    Beacon,
     Language,
     Message,
     Site,
@@ -28,25 +30,25 @@ router = APIRouter(prefix="/artifacts", tags=["artifacts"])
 def _get_artifact_or_404(
     session: SessionDep, artifact_id: uuid.UUID, current_user: OptionalUser = None
 ) -> Artifact:
-    artifact = session.get(Artifact, artifact_id)
+    if is_admin(current_user):
+        artifact = session.get(Artifact, artifact_id)
+    else:
+        # khách chỉ thấy hiện vật đang bật VÀ thuộc Site đang bật
+        artifact = crud.get_visible_artifact(session=session, artifact_id=artifact_id)
     if not artifact:
-        raise HTTPException(status_code=404, detail="Artifact not found")
-    # R2: du khách không thấy hiện vật đã ẩn hoặc thuộc Site đã ẩn
-    if not is_admin(current_user) and not crud.is_artifact_visible(
-        session=session, artifact=artifact
-    ):
         raise HTTPException(status_code=404, detail="Artifact not found")
     return artifact
 
 
 def _require_active_site(session: SessionDep, site_id: uuid.UUID) -> None:
-    """R3: Site phải tồn tại và đang hiển thị."""
+    """Site phải tồn tại (404) và đang bật (409) khi thêm/chuyển hiện vật vào."""
     site = session.get(Site, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
     if not site.is_active:
         raise HTTPException(
-            status_code=409, detail="Site đang bị ẩn, không thể thêm/chuyển hiện vật vào"
+            status_code=409,
+            detail="Site đang bị ẩn, không thể thêm hiện vật vào Site này",
         )
 
 
@@ -79,20 +81,25 @@ def read_artifacts(
     """
     Danh sách hiện vật kèm tiêu đề theo ngôn ngữ. **Public**.
     """
-    conditions: list[Any] = []
+    conditions: list[ColumnElement[bool]] = []
     if not (include_inactive and is_admin(current_user)):
-        conditions.append(col(Artifact.is_active))
-        # R2: ẩn Site -> ẩn luôn hiện vật con (kiểm tra lúc đọc, không sửa dữ liệu)
-        conditions.append(col(Artifact.site_id).in_(crud.visible_site_ids()))
+        # chỉ hiện vật đang bật VÀ thuộc Site đang bật
+        conditions.append(col(Artifact.is_active).is_(True))
+        conditions.append(col(Site.is_active).is_(True))
     if site_id:
-        conditions.append(Artifact.site_id == site_id)
+        conditions.append(col(Artifact.site_id) == site_id)
     if q:
         conditions.append(col(Artifact.code).contains(q))
+    site_join = col(Site.id) == col(Artifact.site_id)
     count = session.exec(
-        select(func.count()).select_from(Artifact).where(*conditions)
+        select(func.count())
+        .select_from(Artifact)
+        .join(Site, site_join)
+        .where(*conditions)
     ).one()
     artifacts = session.exec(
         select(Artifact)
+        .join(Site, site_join)
         .where(*conditions)
         .order_by(col(Artifact.code))
         .offset(skip)
@@ -147,6 +154,7 @@ def create_artifact(
 ) -> Any:
     """
     Tạo hiện vật. **Admin**. Mã `code` không được trùng trong cùng di tích.
+    Không tạo được hiện vật dưới Site đang bị ẩn (409).
     """
     _require_active_site(session, artifact_in.site_id)
     _check_code_unique(session, artifact_in.site_id, artifact_in.code)
@@ -165,39 +173,25 @@ def update_artifact(
     artifact_id: uuid.UUID,
     artifact_in: ArtifactUpdate,
 ) -> Any:
-    """
-    Sửa hiện vật (cả bật lại `is_active`). **Admin**.
-    """
+
     artifact = session.get(Artifact, artifact_id)
     if not artifact:
         raise HTTPException(status_code=404, detail="Artifact not found")
     data = artifact_in.model_dump(exclude_unset=True)
-    # Các trường bắt buộc không được null -> 422 (thay vì lỗi DB/500)
-    null_fields = {"site_id", "code", "is_active"}.intersection(
-        k for k, v in data.items() if v is None
-    )
-    if null_fields:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Fields cannot be null: {', '.join(sorted(null_fields))}",
-        )
     new_site_id = data.get("site_id", artifact.site_id)
     new_code = data.get("code", artifact.code)
-    site_changed = "site_id" in data and new_site_id != artifact.site_id
-    if site_changed:
-        # R1: không đổi Site khi hiện vật đang gắn beacon
-        if crud.get_beacon_of_artifact(session=session, artifact_id=artifact.id):
+    if "site_id" in data and new_site_id != artifact.site_id:
+        _require_active_site(session, new_site_id)
+        attached = session.exec(
+            select(Beacon).where(col(Beacon.artifact_id) == artifact.id)
+        ).first()
+        if attached:
             raise HTTPException(
                 status_code=409,
-                detail="Hiện vật đang gắn beacon: gỡ beacon trước khi đổi Site",
+                detail="Hiện vật đang gắn Beacon, hãy gỡ Beacon trước khi đổi Site",
             )
-        # R3: không chuyển hiện vật vào Site đang ẩn
-        _require_active_site(session, new_site_id)
     if "site_id" in data or "code" in data:
         _check_code_unique(session, new_site_id, new_code, exclude_id=artifact.id)
-    # R4: ẩn hiện vật -> gỡ beacon khỏi hiện vật này
-    if data.get("is_active") is False:
-        crud.detach_beacon_from_artifact(session=session, artifact_id=artifact.id)
     artifact.sqlmodel_update(data)
     crud.touch_updated_at(artifact)
     session.add(artifact)
@@ -218,8 +212,6 @@ def delete_artifact(
         raise HTTPException(status_code=404, detail="Artifact not found")
     artifact.is_active = False
     crud.touch_updated_at(artifact)
-    # R4: gỡ beacon khỏi hiện vật vừa ẩn (thiết bị vẫn còn để gán lại)
-    crud.detach_beacon_from_artifact(session=session, artifact_id=artifact.id)
     session.add(artifact)
     session.commit()
     return Message(message="Artifact deactivated successfully")
@@ -256,9 +248,7 @@ def upsert_translation(
     language_id: uuid.UUID,
     translation_in: ArtifactTranslationBase,
 ) -> Any:
-    """
-    Thêm hoặc sửa nội dung hiện vật cho 1 ngôn ngữ (upsert). **Admin**.
-    """
+  
     if not session.get(Artifact, artifact_id):
         raise HTTPException(status_code=404, detail="Artifact not found")
     if not session.get(Language, language_id):
@@ -290,9 +280,7 @@ def delete_translation(
     artifact_id: uuid.UUID,
     language_id: uuid.UUID,
 ) -> Message:
-    """
-    Xóa bản dịch của 1 ngôn ngữ. **Admin**.
-    """
+  
     translation = session.exec(
         select(ArtifactTranslation).where(
             ArtifactTranslation.artifact_id == artifact_id,
