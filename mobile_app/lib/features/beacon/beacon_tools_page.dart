@@ -4,9 +4,12 @@ import 'package:dchs_flutter_beacon/dchs_flutter_beacon.dart';
 import 'package:flutter/material.dart';
 
 import '../../beacon_simulation_page.dart';
+import '../../shared/config/api_config.dart';
 import '../artifacts/artifact.dart';
 import '../auth/auth_service.dart';
 import '../auth/auth_session.dart';
+import 'beacon_content_controller.dart';
+import 'beacon_content_service.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({
@@ -64,15 +67,20 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final session = AuthSessionScope.maybeOf(context);
     final readToken = widget.readToken ?? session?.readToken;
+    final languageCode = Localizations.localeOf(context).languageCode;
 
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          BeaconTestPage(key: _scanPageKey),
+          BeaconTestPage(
+            key: _scanPageKey,
+            readToken: readToken,
+            languageCode: languageCode,
+          ),
           BeaconSimulationPage(
             readToken: readToken,
-            languageCode: Localizations.localeOf(context).languageCode,
+            languageCode: languageCode,
           ),
         ],
       ),
@@ -95,14 +103,33 @@ class _AppShellState extends State<AppShell> {
 }
 
 class BeaconTestPage extends StatefulWidget {
-  const BeaconTestPage({super.key});
+  const BeaconTestPage({
+    super.key,
+    this.readToken,
+    this.languageCode = 'vi',
+    @visibleForTesting this.contentService,
+    @visibleForTesting this.beaconStream,
+  });
+
+  final AuthToken? Function()? readToken;
+  final String languageCode;
+
+  final BeaconContentService? contentService;
+  final Stream<List<Beacon>>? beaconStream;
 
   @override
   State<BeaconTestPage> createState() => BeaconTestPageState();
 }
 
 class BeaconTestPageState extends State<BeaconTestPage> {
-  StreamSubscription<RangingResult>? _subscription;
+  StreamSubscription<List<Beacon>>? _subscription;
+
+  BeaconContentService? _service;
+  BeaconContentController? _contentController;
+
+  bool _ownsService = false;
+  String? _configurationError;
+  Beacon? _selectedBeacon;
 
   List<Beacon> _beacons = [];
   DateTime? _lastBeaconSeenAt;
@@ -122,6 +149,47 @@ class BeaconTestPageState extends State<BeaconTestPage> {
 
   static const int _requiredCandidateHits = 3;
   static const int _keepBeaconMilliseconds = 10000;
+
+  @override
+  void initState() {
+    super.initState();
+
+    try {
+      final service =
+          widget.contentService ??
+          BeaconContentService(baseUrl: ApiConfig.baseUrl);
+
+      _service = service;
+      _ownsService = widget.contentService == null;
+
+      _contentController = BeaconContentController(
+        service: service,
+        readToken: () => widget.readToken?.call(),
+      );
+    } on StateError catch (error) {
+      _configurationError = error.message.toString();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant BeaconTestPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final selected = _selectedBeacon;
+
+    if (oldWidget.languageCode != widget.languageCode && selected != null) {
+      _requestContent(selected);
+    }
+  }
+
+  void _requestContent(Beacon beacon) {
+    _contentController?.receiveBeacon(
+      proximityUuid: beacon.proximityUUID,
+      major: beacon.major,
+      minor: beacon.minor,
+      languageCode: widget.languageCode,
+    );
+  }
 
   String _beaconKey(Beacon beacon) {
     return '${beacon.proximityUUID.toLowerCase()}:'
@@ -170,7 +238,9 @@ class BeaconTestPageState extends State<BeaconTestPage> {
 
     candidates.sort((a, b) {
       final signalOrder = b.rssi.compareTo(a.rssi);
+
       if (signalOrder != 0) return signalOrder;
+
       return _beaconKey(a).compareTo(_beaconKey(b));
     });
 
@@ -220,6 +290,9 @@ class BeaconTestPageState extends State<BeaconTestPage> {
           'Beacon mới: Major ${selected.major}, Minor ${selected.minor}';
     });
 
+    _selectedBeacon = selected;
+    _requestContent(selected);
+
     final messenger = ScaffoldMessenger.of(context);
     messenger.clearSnackBars();
     messenger.showSnackBar(
@@ -245,6 +318,7 @@ class BeaconTestPageState extends State<BeaconTestPage> {
     if (_scanning || _subscription != null) {
       return _stopScanning();
     }
+
     return true;
   }
 
@@ -259,32 +333,46 @@ class BeaconTestPageState extends State<BeaconTestPage> {
     setState(() => _busy = true);
 
     try {
-      _setStatus('Đang kiểm tra quyền và dịch vụ...');
+      final Stream<List<Beacon>> detections;
+      final testStream = widget.beaconStream;
 
-      final initialized = await flutterBeacon.initializeAndCheckScanning;
-      if (!mounted) return;
+      if (testStream != null) {
+        detections = testStream;
+      } else {
+        _setStatus('Đang kiểm tra quyền và dịch vụ...');
 
-      if (!initialized) {
-        _setStatus('Chưa thể quét. Kiểm tra quyền Bluetooth và vị trí.');
-        return;
+        final initialized = await flutterBeacon.initializeAndCheckScanning;
+        if (!mounted) return;
+
+        if (!initialized) {
+          _setStatus('Chưa thể quét. Kiểm tra quyền Bluetooth và vị trí.');
+          return;
+        }
+
+        final locationEnabled =
+            await flutterBeacon.checkLocationServicesIfEnabled;
+        if (!mounted) return;
+
+        if (!locationEnabled) {
+          _setStatus('Hãy bật vị trí rồi quay lại bấm Bắt đầu quét.');
+          await flutterBeacon.openLocationSettings;
+          return;
+        }
+
+        final regions = [Region(identifier: 'all-beacons')];
+
+        detections = flutterBeacon
+            .ranging(regions)
+            .map((result) => result.beacons);
       }
-
-      final locationEnabled =
-          await flutterBeacon.checkLocationServicesIfEnabled;
-      if (!mounted) return;
-
-      if (!locationEnabled) {
-        _setStatus('Hãy bật vị trí rồi quay lại bấm Bắt đầu quét.');
-        await flutterBeacon.openLocationSettings;
-        return;
-      }
-
-      final regions = [Region(identifier: 'all-beacons')];
 
       await _subscription?.cancel();
       _subscription = null;
 
       if (!mounted) return;
+
+      _contentController?.reset();
+      _selectedBeacon = null;
 
       setState(() {
         _beacons = [];
@@ -302,37 +390,45 @@ class BeaconTestPageState extends State<BeaconTestPage> {
         _status = 'Đang quét — chờ tín hiệu iBeacon';
       });
 
-      _subscription = flutterBeacon
-          .ranging(regions)
-          .listen(
-            (result) {
-              if (!mounted || !_scanning) return;
-              debugPrint('RANGING: ${result.beacons.length} beacon');
+      _subscription = detections.listen(
+        (beacons) {
+          if (!mounted || !_scanning) return;
 
-              _updateBeaconDisplay(result.beacons);
-              _handleBeaconDetection(result.beacons);
-            },
-            onError: (Object error) {
-              if (!mounted) return;
+          debugPrint('RANGING: ${beacons.length} beacon');
 
-              setState(() {
-                _scanning = false;
-                _status = 'Lỗi quét: $error';
-              });
+          _updateBeaconDisplay(beacons);
+          _handleBeaconDetection(beacons);
+        },
+        onError: (Object error) {
+          if (!mounted) return;
 
-              unawaited(_subscription?.cancel());
-            },
-            onDone: () {
-              if (!mounted) return;
+          _contentController?.reset();
+          _selectedBeacon = null;
 
-              setState(() {
-                _scanning = false;
-                _status = 'Luồng quét đã kết thúc';
-              });
-            },
-          );
+          setState(() {
+            _scanning = false;
+            _status = 'Lỗi quét: $error';
+          });
+
+          unawaited(_subscription?.cancel());
+        },
+        onDone: () {
+          if (!mounted) return;
+
+          _contentController?.reset();
+          _selectedBeacon = null;
+
+          setState(() {
+            _scanning = false;
+            _status = 'Luồng quét đã kết thúc';
+          });
+        },
+      );
     } catch (error) {
       if (!mounted) return;
+
+      _contentController?.reset();
+      _selectedBeacon = null;
 
       setState(() {
         _scanning = false;
@@ -349,20 +445,21 @@ class BeaconTestPageState extends State<BeaconTestPage> {
     if (_busy) return false;
     if (!_scanning && _subscription == null) return true;
 
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _scanning = false;
+    });
+
+    _contentController?.reset();
+    _selectedBeacon = null;
 
     try {
       await _subscription?.cancel();
       _subscription = null;
 
       if (!mounted) return false;
-      await flutterBeacon.setScanPeriod(1000);
-      await flutterBeacon.setBetweenScanPeriod(500);
-
-      if (!mounted) return false;
 
       setState(() {
-        _scanning = false;
         _status = _beacons.isEmpty
             ? 'Đã dừng quét'
             : 'Đã dừng quét — hiển thị dữ liệu lần nhận cuối';
@@ -383,12 +480,84 @@ class BeaconTestPageState extends State<BeaconTestPage> {
     if (!distance.isFinite || distance < 0) {
       return 'Chưa xác định';
     }
+
     return '${distance.toStringAsFixed(2)} m';
+  }
+
+  Widget _buildBackendContent() {
+    final controller = _contentController;
+
+    if (controller == null) {
+      return Text(
+        _configurationError ?? 'Chưa thể kết nối dịch vụ nội dung.',
+        style: TextStyle(color: Theme.of(context).colorScheme.error),
+      );
+    }
+
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, child) {
+        final content = controller.content;
+        final error = controller.errorMessage;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Số lần gọi API trong phiên: ${controller.requestCount}'),
+            const SizedBox(height: 12),
+            if (controller.isLoading) ...[
+              const LinearProgressIndicator(),
+              const SizedBox(height: 8),
+              const Text('Đang chờ tải nội dung...'),
+            ] else if (error != null) ...[
+              Text(
+                error,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton(
+                  onPressed: controller.retry,
+                  child: const Text('Thử lại'),
+                ),
+              ),
+            ] else if (content != null) ...[
+              Text(
+                content.title ?? content.code,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              Text('Mã hiện vật: ${content.code}'),
+              if (content.languageCode != null)
+                Text('Ngôn ngữ: ${content.languageCode}'),
+              if (content.isFallback)
+                const Text('Đang hiển thị ngôn ngữ dự phòng.'),
+              if (content.description?.trim().isNotEmpty ?? false) ...[
+                const SizedBox(height: 12),
+                SelectableText(content.description!),
+              ],
+              if (content.historyContent?.trim().isNotEmpty ?? false) ...[
+                const SizedBox(height: 12),
+                SelectableText(content.historyContent!),
+              ],
+            ] else
+              const Text('Chưa có nội dung từ backend.'),
+          ],
+        );
+      },
+    );
   }
 
   @override
   void dispose() {
     unawaited(_subscription?.cancel());
+    _contentController?.dispose();
+
+    if (_ownsService) {
+      _service?.close();
+    }
+
     super.dispose();
   }
 
@@ -439,6 +608,25 @@ class BeaconTestPageState extends State<BeaconTestPage> {
                       'được giữ khoảng 10 giây.',
                     ),
                   ],
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Card(
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Nội dung từ backend',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildBackendContent(),
+                    ],
+                  ),
                 ),
               ),
             ),
