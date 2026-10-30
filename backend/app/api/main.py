@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.routes import (
     artifacts,
     beacons,
+    favorites,
     items,
     languages,
     login,
@@ -22,6 +23,7 @@ api_router.include_router(languages.router)
 api_router.include_router(sites.router)
 api_router.include_router(artifacts.router)
 api_router.include_router(beacons.router)
+api_router.include_router(favorites.router)
 
 
 if settings.FASTAPI_ENV == "development":

@@ -12,6 +12,7 @@ from app.models import (
     SitePublic,
     SitesPublic,
     SiteUpdate,
+    get_datetime_utc,
 )
 
 router = APIRouter(prefix="/sites", tags=["sites"])
@@ -30,14 +31,20 @@ def read_sites(
     Danh sách di tích. **Public**.
     Chỉ admin mới xem được di tích đã ẩn (`include_inactive=true`).
     """
-    conditions = []
+    conditions: list[Any] = []
     if not (include_inactive and is_admin(current_user)):
         conditions.append(col(Site.is_active))
     if q:
         conditions.append(col(Site.name).contains(q))
-    count = session.exec(select(func.count()).select_from(Site).where(*conditions)).one()
+    count = session.exec(
+        select(func.count()).select_from(Site).where(*conditions)
+    ).one()
     statement = (
-        select(Site).where(*conditions).order_by(col(Site.name)).offset(skip).limit(limit)
+        select(Site)
+        .where(*conditions)
+        .order_by(col(Site.name))
+        .offset(skip)
+        .limit(limit)
     )
     sites = session.exec(statement).all()
     return SitesPublic(data=[SitePublic.model_validate(s) for s in sites], count=count)
@@ -57,7 +64,7 @@ def read_site(
 
 
 @router.post("/", response_model=SitePublic)
-def create_site(*, session: SessionDep, admin: AdminUser, site_in: SiteCreate) -> Any:
+def create_site(*, session: SessionDep, _admin: AdminUser, site_in: SiteCreate) -> Any:
     """
     Tạo di tích. **Admin**.
     """
@@ -70,7 +77,7 @@ def create_site(*, session: SessionDep, admin: AdminUser, site_in: SiteCreate) -
 
 @router.put("/{site_id}", response_model=SitePublic)
 def update_site(
-    *, session: SessionDep, admin: AdminUser, site_id: uuid.UUID, site_in: SiteUpdate
+    *, session: SessionDep, _admin: AdminUser, site_id: uuid.UUID, site_in: SiteUpdate
 ) -> Any:
     """
     Sửa di tích (cả bật lại `is_active`). **Admin**.
@@ -79,6 +86,7 @@ def update_site(
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
     site.sqlmodel_update(site_in.model_dump(exclude_unset=True))
+    site.updated_at = get_datetime_utc()
     session.add(site)
     session.commit()
     session.refresh(site)
@@ -86,14 +94,18 @@ def update_site(
 
 
 @router.delete("/{site_id}")
-def delete_site(session: SessionDep, admin: AdminUser, site_id: uuid.UUID) -> Message:
+def delete_site(session: SessionDep, _admin: AdminUser, site_id: uuid.UUID) -> Message:
     """
     Ẩn di tích (xóa mềm: is_active = false). **Admin**.
+
+    Không sửa dữ liệu con: hiện vật + beacon của Site ẩn tự không trả cho du khách
+    (kiểm tra lúc đọc). Bật lại Site (`PUT is_active=true`) -> hiển thị lại như cũ.
     """
     site = session.get(Site, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
     site.is_active = False
+    site.updated_at = get_datetime_utc()
     session.add(site)
     session.commit()
     return Message(message="Site deactivated successfully")

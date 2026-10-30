@@ -29,10 +29,23 @@ def _validate_links(
     site_id: uuid.UUID,
     artifact_id: uuid.UUID | None,
     beacon_id: uuid.UUID | None = None,
+    *,
+    check_site_active: bool = True,
+    check_artifact_active: bool = True,
 ) -> None:
-    """Site phải tồn tại; hiện vật gán phải cùng site và chưa gắn với beacon khác."""
-    if not session.get(Site, site_id):
+    """Site phải tồn tại; hiện vật gán phải cùng site, chưa gắn beacon khác.
+
+    R3: không đặt beacon vào Site đang ẩn, không gán hiện vật đã ẩn / thuộc Site ẩn.
+    Hai cờ `check_*` = False khi admin chỉ chỉnh thông số beacon (không đổi Site /
+    Artifact) nên vẫn chỉnh được beacon ở Site đang ẩn.
+    """
+    site = session.get(Site, site_id)
+    if not site:
         raise HTTPException(status_code=404, detail="Site not found")
+    if check_site_active and not site.is_active:
+        raise HTTPException(
+            status_code=409, detail="Site đang bị ẩn, không thể thêm/chuyển beacon vào"
+        )
     if artifact_id is None:
         return
     artifact = session.get(Artifact, artifact_id)
@@ -41,6 +54,13 @@ def _validate_links(
     if artifact.site_id != site_id:
         raise HTTPException(
             status_code=400, detail="Beacon và Artifact phải thuộc cùng một Site"
+        )
+    if check_artifact_active and not crud.is_artifact_visible(
+        session=session, artifact=artifact
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="Hiện vật đang bị ẩn (hoặc thuộc Site bị ẩn), không thể gán beacon",
         )
     other = session.exec(select(Beacon).where(Beacon.artifact_id == artifact_id)).first()
     if other and other.id != beacon_id:
@@ -96,9 +116,13 @@ def resolve_beacon(
         raise HTTPException(status_code=404, detail="Beacon not found")
     if beacon.artifact_id is None:
         raise HTTPException(status_code=404, detail="Beacon chưa được gán hiện vật")
+    # R2: Site của beacon bị ẩn -> du khách không nhận được nội dung
+    if not crud.is_site_active(session=session, site_id=beacon.site_id):
+        raise HTTPException(status_code=404, detail="Beacon not found")
     artifact = session.get(Artifact, beacon.artifact_id)
     if not artifact or not artifact.is_active:
         raise HTTPException(status_code=404, detail="Artifact not found")
+    # R5: dữ liệu cũ bị lệch Site -> không trả nội dung sai quan hệ
     if artifact.site_id != beacon.site_id:
         raise HTTPException(
             status_code=409, detail="Cấu hình sai: Beacon và Artifact khác Site"
@@ -203,7 +227,15 @@ def update_beacon(
         )
     new_site = data.get("site_id", beacon.site_id)
     new_artifact = data["artifact_id"] if "artifact_id" in data else beacon.artifact_id
-    _validate_links(session, new_site, new_artifact, beacon_id=beacon.id)
+    _validate_links(
+        session,
+        new_site,
+        new_artifact,
+        beacon_id=beacon.id,
+        # chỉ kiểm tra "ẩn" khi thực sự đổi Site / đổi Artifact
+        check_site_active=new_site != beacon.site_id,
+        check_artifact_active=new_artifact != beacon.artifact_id,
+    )
     _check_identity_unique(
         session,
         data.get("proximity_uuid", beacon.proximity_uuid),

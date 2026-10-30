@@ -5,6 +5,468 @@ export type ClientOptions = {
 };
 
 /**
+ * ArtifactContentPublic
+ *
+ * Chi tiết hiện vật + nội dung theo ngôn ngữ + media.
+ */
+export type ArtifactContentPublic = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Era
+     */
+    era?: string | null;
+    /**
+     * Latitude
+     */
+    latitude?: number | null;
+    /**
+     * Longitude
+     */
+    longitude?: number | null;
+    /**
+     * Cover Image Url
+     */
+    cover_image_url?: string | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Site Id
+     */
+    site_id: string;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * History Content
+     */
+    history_content?: string | null;
+    /**
+     * Language Code
+     */
+    language_code?: string | null;
+    /**
+     * Is Fallback
+     */
+    is_fallback?: boolean;
+    /**
+     * Media
+     */
+    media?: Array<MediaPublic>;
+};
+
+/**
+ * ArtifactCreate
+ */
+export type ArtifactCreate = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Era
+     */
+    era?: string | null;
+    /**
+     * Latitude
+     */
+    latitude?: number | null;
+    /**
+     * Longitude
+     */
+    longitude?: number | null;
+    /**
+     * Cover Image Url
+     */
+    cover_image_url?: string | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean;
+    /**
+     * Site Id
+     */
+    site_id: string;
+};
+
+/**
+ * ArtifactPublic
+ */
+export type ArtifactPublic = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Era
+     */
+    era?: string | null;
+    /**
+     * Latitude
+     */
+    latitude?: number | null;
+    /**
+     * Longitude
+     */
+    longitude?: number | null;
+    /**
+     * Cover Image Url
+     */
+    cover_image_url?: string | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Site Id
+     */
+    site_id: string;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
+};
+
+/**
+ * ArtifactSummariesPublic
+ */
+export type ArtifactSummariesPublic = {
+    /**
+     * Data
+     */
+    data: Array<ArtifactSummary>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * ArtifactSummary
+ *
+ * Dòng trong danh sách hiện vật: kèm tiêu đề theo ngôn ngữ.
+ */
+export type ArtifactSummary = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Site Id
+     */
+    site_id: string;
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Era
+     */
+    era?: string | null;
+    /**
+     * Latitude
+     */
+    latitude?: number | null;
+    /**
+     * Longitude
+     */
+    longitude?: number | null;
+    /**
+     * Cover Image Url
+     */
+    cover_image_url?: string | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean;
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Language Code
+     */
+    language_code?: string | null;
+    /**
+     * Is Fallback
+     */
+    is_fallback?: boolean;
+};
+
+/**
+ * ArtifactTranslationBase
+ */
+export type ArtifactTranslationBase = {
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * History Content
+     */
+    history_content?: string | null;
+};
+
+/**
+ * ArtifactTranslationPublic
+ */
+export type ArtifactTranslationPublic = {
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * History Content
+     */
+    history_content?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Artifact Id
+     */
+    artifact_id: string;
+    /**
+     * Language Id
+     */
+    language_id: string;
+};
+
+/**
+ * ArtifactUpdate
+ */
+export type ArtifactUpdate = {
+    /**
+     * Site Id
+     */
+    site_id?: string | null;
+    /**
+     * Code
+     */
+    code?: string | null;
+    /**
+     * Era
+     */
+    era?: string | null;
+    /**
+     * Latitude
+     */
+    latitude?: number | null;
+    /**
+     * Longitude
+     */
+    longitude?: number | null;
+    /**
+     * Cover Image Url
+     */
+    cover_image_url?: string | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean | null;
+};
+
+/**
+ * BeaconCreate
+ */
+export type BeaconCreate = {
+    /**
+     * Proximity Uuid
+     */
+    proximity_uuid: string;
+    /**
+     * Major
+     */
+    major: number;
+    /**
+     * Minor
+     */
+    minor: number;
+    /**
+     * Tx Power
+     */
+    tx_power?: number | null;
+    /**
+     * Rssi Threshold
+     */
+    rssi_threshold?: number | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean;
+    /**
+     * Site Id
+     */
+    site_id: string;
+    /**
+     * Artifact Id
+     */
+    artifact_id?: string | null;
+};
+
+/**
+ * BeaconPublic
+ */
+export type BeaconPublic = {
+    /**
+     * Proximity Uuid
+     */
+    proximity_uuid: string;
+    /**
+     * Major
+     */
+    major: number;
+    /**
+     * Minor
+     */
+    minor: number;
+    /**
+     * Tx Power
+     */
+    tx_power?: number | null;
+    /**
+     * Rssi Threshold
+     */
+    rssi_threshold?: number | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Site Id
+     */
+    site_id: string;
+    /**
+     * Artifact Id
+     */
+    artifact_id?: string | null;
+    /**
+     * Battery Level
+     */
+    battery_level?: number | null;
+    /**
+     * Last Seen At
+     */
+    last_seen_at?: string | null;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
+};
+
+/**
+ * BeaconResolvePublic
+ *
+ * Kết quả khi app quét được beacon.
+ */
+export type BeaconResolvePublic = {
+    beacon: BeaconPublic;
+    artifact: ArtifactContentPublic;
+};
+
+/**
+ * BeaconUpdate
+ */
+export type BeaconUpdate = {
+    /**
+     * Proximity Uuid
+     */
+    proximity_uuid?: string | null;
+    /**
+     * Major
+     */
+    major?: number | null;
+    /**
+     * Minor
+     */
+    minor?: number | null;
+    /**
+     * Tx Power
+     */
+    tx_power?: number | null;
+    /**
+     * Rssi Threshold
+     */
+    rssi_threshold?: number | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean | null;
+    /**
+     * Site Id
+     */
+    site_id?: string | null;
+    /**
+     * Artifact Id
+     */
+    artifact_id?: string | null;
+    /**
+     * Battery Level
+     */
+    battery_level?: number | null;
+};
+
+/**
+ * BeaconsPublic
+ */
+export type BeaconsPublic = {
+    /**
+     * Data
+     */
+    data: Array<BeaconPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * Body_login-login_access_token
  */
 export type Body_login_login_access_token = {
@@ -113,6 +575,184 @@ export type ItemsPublic = {
 };
 
 /**
+ * LanguageCreate
+ */
+export type LanguageCreate = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Is Active
+     */
+    is_active?: boolean;
+    /**
+     * Is Default
+     */
+    is_default?: boolean;
+};
+
+/**
+ * LanguagePublic
+ */
+export type LanguagePublic = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Is Active
+     */
+    is_active?: boolean;
+    /**
+     * Is Default
+     */
+    is_default?: boolean;
+    /**
+     * Id
+     */
+    id: string;
+};
+
+/**
+ * LanguageUpdate
+ */
+export type LanguageUpdate = {
+    /**
+     * Code
+     */
+    code?: string | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean | null;
+    /**
+     * Is Default
+     */
+    is_default?: boolean | null;
+};
+
+/**
+ * LanguagesPublic
+ */
+export type LanguagesPublic = {
+    /**
+     * Data
+     */
+    data: Array<LanguagePublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * MediaCreate
+ */
+export type MediaCreate = {
+    /**
+     * Media Type
+     */
+    media_type?: string;
+    /**
+     * Url
+     */
+    url: string;
+    /**
+     * Caption
+     */
+    caption?: string | null;
+    /**
+     * Sort Order
+     */
+    sort_order?: number;
+    /**
+     * Language Id
+     */
+    language_id?: string | null;
+};
+
+/**
+ * MediaPublic
+ */
+export type MediaPublic = {
+    /**
+     * Media Type
+     */
+    media_type?: string;
+    /**
+     * Url
+     */
+    url: string;
+    /**
+     * Caption
+     */
+    caption?: string | null;
+    /**
+     * Sort Order
+     */
+    sort_order?: number;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Artifact Id
+     */
+    artifact_id: string;
+    /**
+     * Language Id
+     */
+    language_id?: string | null;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
+};
+
+/**
+ * MediaUpdate
+ */
+export type MediaUpdate = {
+    /**
+     * Media Type
+     */
+    media_type?: string | null;
+    /**
+     * Url
+     */
+    url?: string | null;
+    /**
+     * Caption
+     */
+    caption?: string | null;
+    /**
+     * Sort Order
+     */
+    sort_order?: number | null;
+    /**
+     * Language Id
+     */
+    language_id?: string | null;
+};
+
+/**
  * Message
  */
 export type Message = {
@@ -156,6 +796,134 @@ export type PrivateUserCreate = {
      * Is Verified
      */
     is_verified?: boolean;
+};
+
+/**
+ * SiteCreate
+ */
+export type SiteCreate = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Address
+     */
+    address?: string | null;
+    /**
+     * Latitude
+     */
+    latitude?: number | null;
+    /**
+     * Longitude
+     */
+    longitude?: number | null;
+    /**
+     * Cover Image Url
+     */
+    cover_image_url?: string | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean;
+};
+
+/**
+ * SitePublic
+ */
+export type SitePublic = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Address
+     */
+    address?: string | null;
+    /**
+     * Latitude
+     */
+    latitude?: number | null;
+    /**
+     * Longitude
+     */
+    longitude?: number | null;
+    /**
+     * Cover Image Url
+     */
+    cover_image_url?: string | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
+};
+
+/**
+ * SiteUpdate
+ */
+export type SiteUpdate = {
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Address
+     */
+    address?: string | null;
+    /**
+     * Latitude
+     */
+    latitude?: number | null;
+    /**
+     * Longitude
+     */
+    longitude?: number | null;
+    /**
+     * Cover Image Url
+     */
+    cover_image_url?: string | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean | null;
+};
+
+/**
+ * SitesPublic
+ */
+export type SitesPublic = {
+    /**
+     * Data
+     */
+    data: Array<SitePublic>;
+    /**
+     * Count
+     */
+    count: number;
 };
 
 /**
@@ -240,6 +1008,14 @@ export type UserPublic = {
      * Created At
      */
     created_at?: string | null;
+    /**
+     * Role Id
+     */
+    role_id?: string | null;
+    /**
+     * Language Id
+     */
+    language_id?: string | null;
 };
 
 /**
@@ -284,6 +1060,10 @@ export type UserUpdate = {
      * Password
      */
     password?: string | null;
+    /**
+     * Role Id
+     */
+    role_id?: string | null;
 };
 
 /**
@@ -298,6 +1078,10 @@ export type UserUpdateMe = {
      * Email
      */
     email?: string | null;
+    /**
+     * Language Id
+     */
+    language_id?: string | null;
 };
 
 /**
@@ -920,6 +1704,907 @@ export type itemsUpdateItemResponses = {
 };
 
 export type itemsUpdateItemResponse = itemsUpdateItemResponses[keyof itemsUpdateItemResponses];
+
+export type languagesReadLanguagesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/languages/';
+};
+
+export type languagesReadLanguagesResponses = {
+    /**
+     * Successful Response
+     */
+    200: LanguagesPublic;
+};
+
+export type languagesReadLanguagesResponse = languagesReadLanguagesResponses[keyof languagesReadLanguagesResponses];
+
+export type languagesCreateLanguageData = {
+    body: LanguageCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/languages/';
+};
+
+export type languagesCreateLanguageErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type languagesCreateLanguageError = languagesCreateLanguageErrors[keyof languagesCreateLanguageErrors];
+
+export type languagesCreateLanguageResponses = {
+    /**
+     * Successful Response
+     */
+    200: LanguagePublic;
+};
+
+export type languagesCreateLanguageResponse = languagesCreateLanguageResponses[keyof languagesCreateLanguageResponses];
+
+export type languagesDeleteLanguageData = {
+    body?: never;
+    path: {
+        /**
+         * Language Id
+         */
+        language_id: string;
+    };
+    query?: never;
+    url: '/api/v1/languages/{language_id}';
+};
+
+export type languagesDeleteLanguageErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type languagesDeleteLanguageError = languagesDeleteLanguageErrors[keyof languagesDeleteLanguageErrors];
+
+export type languagesDeleteLanguageResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type languagesDeleteLanguageResponse = languagesDeleteLanguageResponses[keyof languagesDeleteLanguageResponses];
+
+export type languagesUpdateLanguageData = {
+    body: LanguageUpdate;
+    path: {
+        /**
+         * Language Id
+         */
+        language_id: string;
+    };
+    query?: never;
+    url: '/api/v1/languages/{language_id}';
+};
+
+export type languagesUpdateLanguageErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type languagesUpdateLanguageError = languagesUpdateLanguageErrors[keyof languagesUpdateLanguageErrors];
+
+export type languagesUpdateLanguageResponses = {
+    /**
+     * Successful Response
+     */
+    200: LanguagePublic;
+};
+
+export type languagesUpdateLanguageResponse = languagesUpdateLanguageResponses[keyof languagesUpdateLanguageResponses];
+
+export type sitesReadSitesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Q
+         */
+        q?: string | null;
+        /**
+         * Include Inactive
+         */
+        include_inactive?: boolean;
+    };
+    url: '/api/v1/sites/';
+};
+
+export type sitesReadSitesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type sitesReadSitesError = sitesReadSitesErrors[keyof sitesReadSitesErrors];
+
+export type sitesReadSitesResponses = {
+    /**
+     * Successful Response
+     */
+    200: SitesPublic;
+};
+
+export type sitesReadSitesResponse = sitesReadSitesResponses[keyof sitesReadSitesResponses];
+
+export type sitesCreateSiteData = {
+    body: SiteCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/sites/';
+};
+
+export type sitesCreateSiteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type sitesCreateSiteError = sitesCreateSiteErrors[keyof sitesCreateSiteErrors];
+
+export type sitesCreateSiteResponses = {
+    /**
+     * Successful Response
+     */
+    200: SitePublic;
+};
+
+export type sitesCreateSiteResponse = sitesCreateSiteResponses[keyof sitesCreateSiteResponses];
+
+export type sitesDeleteSiteData = {
+    body?: never;
+    path: {
+        /**
+         * Site Id
+         */
+        site_id: string;
+    };
+    query?: never;
+    url: '/api/v1/sites/{site_id}';
+};
+
+export type sitesDeleteSiteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type sitesDeleteSiteError = sitesDeleteSiteErrors[keyof sitesDeleteSiteErrors];
+
+export type sitesDeleteSiteResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type sitesDeleteSiteResponse = sitesDeleteSiteResponses[keyof sitesDeleteSiteResponses];
+
+export type sitesReadSiteData = {
+    body?: never;
+    path: {
+        /**
+         * Site Id
+         */
+        site_id: string;
+    };
+    query?: never;
+    url: '/api/v1/sites/{site_id}';
+};
+
+export type sitesReadSiteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type sitesReadSiteError = sitesReadSiteErrors[keyof sitesReadSiteErrors];
+
+export type sitesReadSiteResponses = {
+    /**
+     * Successful Response
+     */
+    200: SitePublic;
+};
+
+export type sitesReadSiteResponse = sitesReadSiteResponses[keyof sitesReadSiteResponses];
+
+export type sitesUpdateSiteData = {
+    body: SiteUpdate;
+    path: {
+        /**
+         * Site Id
+         */
+        site_id: string;
+    };
+    query?: never;
+    url: '/api/v1/sites/{site_id}';
+};
+
+export type sitesUpdateSiteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type sitesUpdateSiteError = sitesUpdateSiteErrors[keyof sitesUpdateSiteErrors];
+
+export type sitesUpdateSiteResponses = {
+    /**
+     * Successful Response
+     */
+    200: SitePublic;
+};
+
+export type sitesUpdateSiteResponse = sitesUpdateSiteResponses[keyof sitesUpdateSiteResponses];
+
+export type artifactsReadArtifactsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Site Id
+         */
+        site_id?: string | null;
+        /**
+         * Lang
+         *
+         * Mã ngôn ngữ: vi, en...
+         */
+        lang?: string | null;
+        /**
+         * Q
+         *
+         * Tìm theo mã hiện vật
+         */
+        q?: string | null;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Include Inactive
+         */
+        include_inactive?: boolean;
+    };
+    url: '/api/v1/artifacts/';
+};
+
+export type artifactsReadArtifactsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type artifactsReadArtifactsError = artifactsReadArtifactsErrors[keyof artifactsReadArtifactsErrors];
+
+export type artifactsReadArtifactsResponses = {
+    /**
+     * Successful Response
+     */
+    200: ArtifactSummariesPublic;
+};
+
+export type artifactsReadArtifactsResponse = artifactsReadArtifactsResponses[keyof artifactsReadArtifactsResponses];
+
+export type artifactsCreateArtifactData = {
+    body: ArtifactCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/artifacts/';
+};
+
+export type artifactsCreateArtifactErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type artifactsCreateArtifactError = artifactsCreateArtifactErrors[keyof artifactsCreateArtifactErrors];
+
+export type artifactsCreateArtifactResponses = {
+    /**
+     * Successful Response
+     */
+    200: ArtifactPublic;
+};
+
+export type artifactsCreateArtifactResponse = artifactsCreateArtifactResponses[keyof artifactsCreateArtifactResponses];
+
+export type artifactsDeleteArtifactData = {
+    body?: never;
+    path: {
+        /**
+         * Artifact Id
+         */
+        artifact_id: string;
+    };
+    query?: never;
+    url: '/api/v1/artifacts/{artifact_id}';
+};
+
+export type artifactsDeleteArtifactErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type artifactsDeleteArtifactError = artifactsDeleteArtifactErrors[keyof artifactsDeleteArtifactErrors];
+
+export type artifactsDeleteArtifactResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type artifactsDeleteArtifactResponse = artifactsDeleteArtifactResponses[keyof artifactsDeleteArtifactResponses];
+
+export type artifactsReadArtifactData = {
+    body?: never;
+    path: {
+        /**
+         * Artifact Id
+         */
+        artifact_id: string;
+    };
+    query?: {
+        /**
+         * Lang
+         *
+         * Mã ngôn ngữ: vi, en...
+         */
+        lang?: string | null;
+    };
+    url: '/api/v1/artifacts/{artifact_id}';
+};
+
+export type artifactsReadArtifactErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type artifactsReadArtifactError = artifactsReadArtifactErrors[keyof artifactsReadArtifactErrors];
+
+export type artifactsReadArtifactResponses = {
+    /**
+     * Successful Response
+     */
+    200: ArtifactContentPublic;
+};
+
+export type artifactsReadArtifactResponse = artifactsReadArtifactResponses[keyof artifactsReadArtifactResponses];
+
+export type artifactsUpdateArtifactData = {
+    body: ArtifactUpdate;
+    path: {
+        /**
+         * Artifact Id
+         */
+        artifact_id: string;
+    };
+    query?: never;
+    url: '/api/v1/artifacts/{artifact_id}';
+};
+
+export type artifactsUpdateArtifactErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type artifactsUpdateArtifactError = artifactsUpdateArtifactErrors[keyof artifactsUpdateArtifactErrors];
+
+export type artifactsUpdateArtifactResponses = {
+    /**
+     * Successful Response
+     */
+    200: ArtifactPublic;
+};
+
+export type artifactsUpdateArtifactResponse = artifactsUpdateArtifactResponses[keyof artifactsUpdateArtifactResponses];
+
+export type artifactsReadTranslationsData = {
+    body?: never;
+    path: {
+        /**
+         * Artifact Id
+         */
+        artifact_id: string;
+    };
+    query?: never;
+    url: '/api/v1/artifacts/{artifact_id}/translations';
+};
+
+export type artifactsReadTranslationsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type artifactsReadTranslationsError = artifactsReadTranslationsErrors[keyof artifactsReadTranslationsErrors];
+
+export type artifactsReadTranslationsResponses = {
+    /**
+     * Response Artifacts-Read Translations
+     *
+     * Successful Response
+     */
+    200: Array<ArtifactTranslationPublic>;
+};
+
+export type artifactsReadTranslationsResponse = artifactsReadTranslationsResponses[keyof artifactsReadTranslationsResponses];
+
+export type artifactsDeleteTranslationData = {
+    body?: never;
+    path: {
+        /**
+         * Artifact Id
+         */
+        artifact_id: string;
+        /**
+         * Language Id
+         */
+        language_id: string;
+    };
+    query?: never;
+    url: '/api/v1/artifacts/{artifact_id}/translations/{language_id}';
+};
+
+export type artifactsDeleteTranslationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type artifactsDeleteTranslationError = artifactsDeleteTranslationErrors[keyof artifactsDeleteTranslationErrors];
+
+export type artifactsDeleteTranslationResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type artifactsDeleteTranslationResponse = artifactsDeleteTranslationResponses[keyof artifactsDeleteTranslationResponses];
+
+export type artifactsUpsertTranslationData = {
+    body: ArtifactTranslationBase;
+    path: {
+        /**
+         * Artifact Id
+         */
+        artifact_id: string;
+        /**
+         * Language Id
+         */
+        language_id: string;
+    };
+    query?: never;
+    url: '/api/v1/artifacts/{artifact_id}/translations/{language_id}';
+};
+
+export type artifactsUpsertTranslationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type artifactsUpsertTranslationError = artifactsUpsertTranslationErrors[keyof artifactsUpsertTranslationErrors];
+
+export type artifactsUpsertTranslationResponses = {
+    /**
+     * Successful Response
+     */
+    200: ArtifactTranslationPublic;
+};
+
+export type artifactsUpsertTranslationResponse = artifactsUpsertTranslationResponses[keyof artifactsUpsertTranslationResponses];
+
+export type mediaReadMediaListData = {
+    body?: never;
+    path: {
+        /**
+         * Artifact Id
+         */
+        artifact_id: string;
+    };
+    query?: never;
+    url: '/api/v1/artifacts/{artifact_id}/media';
+};
+
+export type mediaReadMediaListErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type mediaReadMediaListError = mediaReadMediaListErrors[keyof mediaReadMediaListErrors];
+
+export type mediaReadMediaListResponses = {
+    /**
+     * Response Media-Read Media List
+     *
+     * Successful Response
+     */
+    200: Array<MediaPublic>;
+};
+
+export type mediaReadMediaListResponse = mediaReadMediaListResponses[keyof mediaReadMediaListResponses];
+
+export type mediaCreateMediaData = {
+    body: MediaCreate;
+    path: {
+        /**
+         * Artifact Id
+         */
+        artifact_id: string;
+    };
+    query?: never;
+    url: '/api/v1/artifacts/{artifact_id}/media';
+};
+
+export type mediaCreateMediaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type mediaCreateMediaError = mediaCreateMediaErrors[keyof mediaCreateMediaErrors];
+
+export type mediaCreateMediaResponses = {
+    /**
+     * Successful Response
+     */
+    201: MediaPublic;
+};
+
+export type mediaCreateMediaResponse = mediaCreateMediaResponses[keyof mediaCreateMediaResponses];
+
+export type mediaDeleteMediaData = {
+    body?: never;
+    path: {
+        /**
+         * Artifact Id
+         */
+        artifact_id: string;
+        /**
+         * Media Id
+         */
+        media_id: string;
+    };
+    query?: never;
+    url: '/api/v1/artifacts/{artifact_id}/media/{media_id}';
+};
+
+export type mediaDeleteMediaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type mediaDeleteMediaError = mediaDeleteMediaErrors[keyof mediaDeleteMediaErrors];
+
+export type mediaDeleteMediaResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type mediaDeleteMediaResponse = mediaDeleteMediaResponses[keyof mediaDeleteMediaResponses];
+
+export type mediaReadMediaData = {
+    body?: never;
+    path: {
+        /**
+         * Artifact Id
+         */
+        artifact_id: string;
+        /**
+         * Media Id
+         */
+        media_id: string;
+    };
+    query?: never;
+    url: '/api/v1/artifacts/{artifact_id}/media/{media_id}';
+};
+
+export type mediaReadMediaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type mediaReadMediaError = mediaReadMediaErrors[keyof mediaReadMediaErrors];
+
+export type mediaReadMediaResponses = {
+    /**
+     * Successful Response
+     */
+    200: MediaPublic;
+};
+
+export type mediaReadMediaResponse = mediaReadMediaResponses[keyof mediaReadMediaResponses];
+
+export type mediaUpdateMediaData = {
+    body: MediaUpdate;
+    path: {
+        /**
+         * Artifact Id
+         */
+        artifact_id: string;
+        /**
+         * Media Id
+         */
+        media_id: string;
+    };
+    query?: never;
+    url: '/api/v1/artifacts/{artifact_id}/media/{media_id}';
+};
+
+export type mediaUpdateMediaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type mediaUpdateMediaError = mediaUpdateMediaErrors[keyof mediaUpdateMediaErrors];
+
+export type mediaUpdateMediaResponses = {
+    /**
+     * Successful Response
+     */
+    200: MediaPublic;
+};
+
+export type mediaUpdateMediaResponse = mediaUpdateMediaResponses[keyof mediaUpdateMediaResponses];
+
+export type beaconsResolveBeaconData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Proximity Uuid
+         *
+         * iBeacon UUID
+         */
+        proximity_uuid: string;
+        /**
+         * Major
+         */
+        major: number;
+        /**
+         * Minor
+         */
+        minor: number;
+        /**
+         * Lang
+         *
+         * Mã ngôn ngữ: vi, en...
+         */
+        lang?: string | null;
+    };
+    url: '/api/v1/beacons/resolve';
+};
+
+export type beaconsResolveBeaconErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type beaconsResolveBeaconError = beaconsResolveBeaconErrors[keyof beaconsResolveBeaconErrors];
+
+export type beaconsResolveBeaconResponses = {
+    /**
+     * Successful Response
+     */
+    200: BeaconResolvePublic;
+};
+
+export type beaconsResolveBeaconResponse = beaconsResolveBeaconResponses[keyof beaconsResolveBeaconResponses];
+
+export type beaconsDeleteBeaconData = {
+    body?: never;
+    path: {
+        /**
+         * Beacon Id
+         */
+        beacon_id: string;
+    };
+    query?: never;
+    url: '/api/v1/beacons/{beacon_id}';
+};
+
+export type beaconsDeleteBeaconErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type beaconsDeleteBeaconError = beaconsDeleteBeaconErrors[keyof beaconsDeleteBeaconErrors];
+
+export type beaconsDeleteBeaconResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type beaconsDeleteBeaconResponse = beaconsDeleteBeaconResponses[keyof beaconsDeleteBeaconResponses];
+
+export type beaconsReadBeaconData = {
+    body?: never;
+    path: {
+        /**
+         * Beacon Id
+         */
+        beacon_id: string;
+    };
+    query?: never;
+    url: '/api/v1/beacons/{beacon_id}';
+};
+
+export type beaconsReadBeaconErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type beaconsReadBeaconError = beaconsReadBeaconErrors[keyof beaconsReadBeaconErrors];
+
+export type beaconsReadBeaconResponses = {
+    /**
+     * Successful Response
+     */
+    200: BeaconPublic;
+};
+
+export type beaconsReadBeaconResponse = beaconsReadBeaconResponses[keyof beaconsReadBeaconResponses];
+
+export type beaconsUpdateBeaconData = {
+    body: BeaconUpdate;
+    path: {
+        /**
+         * Beacon Id
+         */
+        beacon_id: string;
+    };
+    query?: never;
+    url: '/api/v1/beacons/{beacon_id}';
+};
+
+export type beaconsUpdateBeaconErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type beaconsUpdateBeaconError = beaconsUpdateBeaconErrors[keyof beaconsUpdateBeaconErrors];
+
+export type beaconsUpdateBeaconResponses = {
+    /**
+     * Successful Response
+     */
+    200: BeaconPublic;
+};
+
+export type beaconsUpdateBeaconResponse = beaconsUpdateBeaconResponses[keyof beaconsUpdateBeaconResponses];
+
+export type beaconsReadBeaconsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Site Id
+         */
+        site_id?: string | null;
+        /**
+         * Artifact Id
+         */
+        artifact_id?: string | null;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/beacons/';
+};
+
+export type beaconsReadBeaconsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type beaconsReadBeaconsError = beaconsReadBeaconsErrors[keyof beaconsReadBeaconsErrors];
+
+export type beaconsReadBeaconsResponses = {
+    /**
+     * Successful Response
+     */
+    200: BeaconsPublic;
+};
+
+export type beaconsReadBeaconsResponse = beaconsReadBeaconsResponses[keyof beaconsReadBeaconsResponses];
+
+export type beaconsCreateBeaconData = {
+    body: BeaconCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/beacons/';
+};
+
+export type beaconsCreateBeaconErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type beaconsCreateBeaconError = beaconsCreateBeaconErrors[keyof beaconsCreateBeaconErrors];
+
+export type beaconsCreateBeaconResponses = {
+    /**
+     * Successful Response
+     */
+    201: BeaconPublic;
+};
+
+export type beaconsCreateBeaconResponse = beaconsCreateBeaconResponses[keyof beaconsCreateBeaconResponses];
 
 export type privateCreateUserData = {
     body: PrivateUserCreate;

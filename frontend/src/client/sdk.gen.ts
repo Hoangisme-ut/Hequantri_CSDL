@@ -2,7 +2,7 @@
 
 import { type Client, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
+import type { artifactsCreateArtifactData, artifactsCreateArtifactErrors, artifactsCreateArtifactResponses, artifactsDeleteArtifactData, artifactsDeleteArtifactErrors, artifactsDeleteArtifactResponses, artifactsDeleteTranslationData, artifactsDeleteTranslationErrors, artifactsDeleteTranslationResponses, artifactsReadArtifactData, artifactsReadArtifactErrors, artifactsReadArtifactResponses, artifactsReadArtifactsData, artifactsReadArtifactsErrors, artifactsReadArtifactsResponses, artifactsReadTranslationsData, artifactsReadTranslationsErrors, artifactsReadTranslationsResponses, artifactsUpdateArtifactData, artifactsUpdateArtifactErrors, artifactsUpdateArtifactResponses, artifactsUpsertTranslationData, artifactsUpsertTranslationErrors, artifactsUpsertTranslationResponses, beaconsCreateBeaconData, beaconsCreateBeaconErrors, beaconsCreateBeaconResponses, beaconsDeleteBeaconData, beaconsDeleteBeaconErrors, beaconsDeleteBeaconResponses, beaconsReadBeaconData, beaconsReadBeaconErrors, beaconsReadBeaconResponses, beaconsReadBeaconsData, beaconsReadBeaconsErrors, beaconsReadBeaconsResponses, beaconsResolveBeaconData, beaconsResolveBeaconErrors, beaconsResolveBeaconResponses, beaconsUpdateBeaconData, beaconsUpdateBeaconErrors, beaconsUpdateBeaconResponses, itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, languagesCreateLanguageData, languagesCreateLanguageErrors, languagesCreateLanguageResponses, languagesDeleteLanguageData, languagesDeleteLanguageErrors, languagesDeleteLanguageResponses, languagesReadLanguagesData, languagesReadLanguagesResponses, languagesUpdateLanguageData, languagesUpdateLanguageErrors, languagesUpdateLanguageResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, mediaCreateMediaData, mediaCreateMediaErrors, mediaCreateMediaResponses, mediaDeleteMediaData, mediaDeleteMediaErrors, mediaDeleteMediaResponses, mediaReadMediaData, mediaReadMediaErrors, mediaReadMediaListData, mediaReadMediaListErrors, mediaReadMediaListResponses, mediaReadMediaResponses, mediaUpdateMediaData, mediaUpdateMediaErrors, mediaUpdateMediaResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, sitesCreateSiteData, sitesCreateSiteErrors, sitesCreateSiteResponses, sitesDeleteSiteData, sitesDeleteSiteErrors, sitesDeleteSiteResponses, sitesReadSiteData, sitesReadSiteErrors, sitesReadSiteResponses, sitesReadSitesData, sitesReadSitesErrors, sitesReadSitesResponses, sitesUpdateSiteData, sitesUpdateSiteErrors, sitesUpdateSiteResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -355,6 +355,453 @@ export class ItemsService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/items/{id}',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+}
+
+export class LanguagesService {
+    /**
+     * Read Languages
+     *
+     * Danh sách ngôn ngữ đang bật. **Public** (app dùng để cho khách chọn ngôn ngữ).
+     */
+    public static readLanguages<ThrowOnError extends boolean = true>(options?: Options<languagesReadLanguagesData, ThrowOnError>) {
+        return (options?.client ?? client).get<languagesReadLanguagesResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/languages/',
+            ...options
+        });
+    }
+    
+    /**
+     * Create Language
+     *
+     * Thêm ngôn ngữ. **Admin**.
+     */
+    public static createLanguage<ThrowOnError extends boolean = true>(options: Options<languagesCreateLanguageData, ThrowOnError>) {
+        return (options.client ?? client).post<languagesCreateLanguageResponses, languagesCreateLanguageErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/languages/',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Delete Language
+     *
+     * Tắt ngôn ngữ (xóa mềm: is_active = false). **Admin**.
+     */
+    public static deleteLanguage<ThrowOnError extends boolean = true>(options: Options<languagesDeleteLanguageData, ThrowOnError>) {
+        return (options.client ?? client).delete<languagesDeleteLanguageResponses, languagesDeleteLanguageErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/languages/{language_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Update Language
+     *
+     * Sửa / bật-tắt / đặt ngôn ngữ mặc định. **Admin**.
+     */
+    public static updateLanguage<ThrowOnError extends boolean = true>(options: Options<languagesUpdateLanguageData, ThrowOnError>) {
+        return (options.client ?? client).put<languagesUpdateLanguageResponses, languagesUpdateLanguageErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/languages/{language_id}',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+}
+
+export class SitesService {
+    /**
+     * Read Sites
+     *
+     * Danh sách di tích. **Public**.
+     * Chỉ admin mới xem được di tích đã ẩn (`include_inactive=true`).
+     */
+    public static readSites<ThrowOnError extends boolean = true>(options?: Options<sitesReadSitesData, ThrowOnError>) {
+        return (options?.client ?? client).get<sitesReadSitesResponses, sitesReadSitesErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/sites/',
+            ...options
+        });
+    }
+    
+    /**
+     * Create Site
+     *
+     * Tạo di tích. **Admin**.
+     */
+    public static createSite<ThrowOnError extends boolean = true>(options: Options<sitesCreateSiteData, ThrowOnError>) {
+        return (options.client ?? client).post<sitesCreateSiteResponses, sitesCreateSiteErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/sites/',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Delete Site
+     *
+     * Ẩn di tích (xóa mềm: is_active = false). **Admin**.
+     */
+    public static deleteSite<ThrowOnError extends boolean = true>(options: Options<sitesDeleteSiteData, ThrowOnError>) {
+        return (options.client ?? client).delete<sitesDeleteSiteResponses, sitesDeleteSiteErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/sites/{site_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Read Site
+     *
+     * Chi tiết di tích. **Public** (di tích đã ẩn chỉ admin xem được).
+     */
+    public static readSite<ThrowOnError extends boolean = true>(options: Options<sitesReadSiteData, ThrowOnError>) {
+        return (options.client ?? client).get<sitesReadSiteResponses, sitesReadSiteErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/sites/{site_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Update Site
+     *
+     * Sửa di tích (cả bật lại `is_active`). **Admin**.
+     */
+    public static updateSite<ThrowOnError extends boolean = true>(options: Options<sitesUpdateSiteData, ThrowOnError>) {
+        return (options.client ?? client).put<sitesUpdateSiteResponses, sitesUpdateSiteErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/sites/{site_id}',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+}
+
+export class ArtifactsService {
+    /**
+     * Read Artifacts
+     *
+     * Danh sách hiện vật kèm tiêu đề theo ngôn ngữ. **Public**.
+     */
+    public static readArtifacts<ThrowOnError extends boolean = true>(options?: Options<artifactsReadArtifactsData, ThrowOnError>) {
+        return (options?.client ?? client).get<artifactsReadArtifactsResponses, artifactsReadArtifactsErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/',
+            ...options
+        });
+    }
+    
+    /**
+     * Create Artifact
+     *
+     * Tạo hiện vật. **Admin**. Mã `code` không được trùng trong cùng di tích.
+     */
+    public static createArtifact<ThrowOnError extends boolean = true>(options: Options<artifactsCreateArtifactData, ThrowOnError>) {
+        return (options.client ?? client).post<artifactsCreateArtifactResponses, artifactsCreateArtifactErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Delete Artifact
+     *
+     * Ẩn hiện vật (xóa mềm: is_active = false). **Admin**.
+     */
+    public static deleteArtifact<ThrowOnError extends boolean = true>(options: Options<artifactsDeleteArtifactData, ThrowOnError>) {
+        return (options.client ?? client).delete<artifactsDeleteArtifactResponses, artifactsDeleteArtifactErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Read Artifact
+     *
+     * Chi tiết hiện vật + nội dung theo ngôn ngữ + media. **Public**.
+     * Nếu chưa có bản dịch cho `lang` thì dùng ngôn ngữ mặc định (`is_fallback = true`).
+     */
+    public static readArtifact<ThrowOnError extends boolean = true>(options: Options<artifactsReadArtifactData, ThrowOnError>) {
+        return (options.client ?? client).get<artifactsReadArtifactResponses, artifactsReadArtifactErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Update Artifact
+     *
+     * Sửa hiện vật (cả bật lại `is_active`). **Admin**.
+     */
+    public static updateArtifact<ThrowOnError extends boolean = true>(options: Options<artifactsUpdateArtifactData, ThrowOnError>) {
+        return (options.client ?? client).put<artifactsUpdateArtifactResponses, artifactsUpdateArtifactErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Read Translations
+     *
+     * Tất cả bản dịch của hiện vật. **Admin**.
+     */
+    public static readTranslations<ThrowOnError extends boolean = true>(options: Options<artifactsReadTranslationsData, ThrowOnError>) {
+        return (options.client ?? client).get<artifactsReadTranslationsResponses, artifactsReadTranslationsErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}/translations',
+            ...options
+        });
+    }
+    
+    /**
+     * Delete Translation
+     *
+     * Xóa bản dịch của 1 ngôn ngữ. **Admin**.
+     */
+    public static deleteTranslation<ThrowOnError extends boolean = true>(options: Options<artifactsDeleteTranslationData, ThrowOnError>) {
+        return (options.client ?? client).delete<artifactsDeleteTranslationResponses, artifactsDeleteTranslationErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}/translations/{language_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Upsert Translation
+     *
+     * Thêm hoặc sửa nội dung hiện vật cho 1 ngôn ngữ (upsert). **Admin**.
+     */
+    public static upsertTranslation<ThrowOnError extends boolean = true>(options: Options<artifactsUpsertTranslationData, ThrowOnError>) {
+        return (options.client ?? client).put<artifactsUpsertTranslationResponses, artifactsUpsertTranslationErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}/translations/{language_id}',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+}
+
+export class MediaService {
+    /**
+     * Read Media List
+     *
+     * List all media metadata for an artifact. Admin only.
+     */
+    public static readMediaList<ThrowOnError extends boolean = true>(options: Options<mediaReadMediaListData, ThrowOnError>) {
+        return (options.client ?? client).get<mediaReadMediaListResponses, mediaReadMediaListErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}/media',
+            ...options
+        });
+    }
+    
+    /**
+     * Create Media
+     *
+     * Save an HTTP(S) media URL and metadata; no file upload or download.
+     */
+    public static createMedia<ThrowOnError extends boolean = true>(options: Options<mediaCreateMediaData, ThrowOnError>) {
+        return (options.client ?? client).post<mediaCreateMediaResponses, mediaCreateMediaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}/media',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Delete Media
+     *
+     * Delete metadata only; the remote file is not modified.
+     */
+    public static deleteMedia<ThrowOnError extends boolean = true>(options: Options<mediaDeleteMediaData, ThrowOnError>) {
+        return (options.client ?? client).delete<mediaDeleteMediaResponses, mediaDeleteMediaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}/media/{media_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Read Media
+     */
+    public static readMedia<ThrowOnError extends boolean = true>(options: Options<mediaReadMediaData, ThrowOnError>) {
+        return (options.client ?? client).get<mediaReadMediaResponses, mediaReadMediaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}/media/{media_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Update Media
+     *
+     * Update supplied fields; null clears caption or language_id.
+     */
+    public static updateMedia<ThrowOnError extends boolean = true>(options: Options<mediaUpdateMediaData, ThrowOnError>) {
+        return (options.client ?? client).put<mediaUpdateMediaResponses, mediaUpdateMediaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}/media/{media_id}',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+}
+
+export class BeaconsService {
+    /**
+     * Resolve Beacon
+     *
+     * **App gọi khi quét được beacon**: trả hiện vật gắn với beacon + nội dung đúng
+     * ngôn ngữ + media. Ngôn ngữ: `lang` -> ngôn ngữ ưa thích của user -> mặc định.
+     * **Visitor / Admin** (cần đăng nhập).
+     */
+    public static resolveBeacon<ThrowOnError extends boolean = true>(options: Options<beaconsResolveBeaconData, ThrowOnError>) {
+        return (options.client ?? client).get<beaconsResolveBeaconResponses, beaconsResolveBeaconErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/beacons/resolve',
+            ...options
+        });
+    }
+    
+    /**
+     * Delete Beacon
+     *
+     * Tắt beacon (xóa mềm) và gỡ khỏi hiện vật. **Admin**.
+     */
+    public static deleteBeacon<ThrowOnError extends boolean = true>(options: Options<beaconsDeleteBeaconData, ThrowOnError>) {
+        return (options.client ?? client).delete<beaconsDeleteBeaconResponses, beaconsDeleteBeaconErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/beacons/{beacon_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Read Beacon
+     *
+     * Lấy chi tiết một beacon. **Admin**.
+     */
+    public static readBeacon<ThrowOnError extends boolean = true>(options: Options<beaconsReadBeaconData, ThrowOnError>) {
+        return (options.client ?? client).get<beaconsReadBeaconResponses, beaconsReadBeaconErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/beacons/{beacon_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Update Beacon
+     *
+     * Cấu hình beacon / gán hoặc gỡ hiện vật (`artifact_id: null` để gỡ). **Admin**.
+     */
+    public static updateBeacon<ThrowOnError extends boolean = true>(options: Options<beaconsUpdateBeaconData, ThrowOnError>) {
+        return (options.client ?? client).put<beaconsUpdateBeaconResponses, beaconsUpdateBeaconErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/beacons/{beacon_id}',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Read Beacons
+     *
+     * Danh sách beacon. **Admin**.
+     */
+    public static readBeacons<ThrowOnError extends boolean = true>(options?: Options<beaconsReadBeaconsData, ThrowOnError>) {
+        return (options?.client ?? client).get<beaconsReadBeaconsResponses, beaconsReadBeaconsErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/beacons/',
+            ...options
+        });
+    }
+    
+    /**
+     * Create Beacon
+     *
+     * Đăng ký beacon (và có thể gán hiện vật luôn). **Admin**.
+     */
+    public static createBeacon<ThrowOnError extends boolean = true>(options: Options<beaconsCreateBeaconData, ThrowOnError>) {
+        return (options.client ?? client).post<beaconsCreateBeaconResponses, beaconsCreateBeaconErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/beacons/',
             ...options,
             headers: {
                 'Content-Type': 'application/json',

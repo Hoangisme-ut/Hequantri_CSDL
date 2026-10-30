@@ -7,12 +7,13 @@
 
 ## Local Development
 
-Run the backend locally and connect it to PostgreSQL in Docker Compose.
+Run the backend locally and connect it to the SQL Server database in Docker Compose.
 
-From the project root, start PostgreSQL and Mailpit:
+From the project root, start SQL Server and Mailpit, then ensure the `app` database exists:
 
 ```console
-$ docker compose up -d db mailpit
+$ docker compose up -d --wait db mailpit
+$ docker compose run --rm db-init
 ```
 
 Then, from `./backend/`, install the dependencies, prepare the database, and start the development server:
@@ -104,7 +105,7 @@ When the tests run, they generate `htmlcov/index.html`. Open it in your browser 
 
 ## Migrations
 
-Make sure you create a revision of your models and upgrade the database with that revision every time you change them. From the `backend` directory, use `uv` to run Alembic against the PostgreSQL container:
+Make sure you create a revision of your models and upgrade the database with that revision every time you change them. From the `backend` directory, use `uv` to run Alembic against the SQL Server database configured in the root `.env` file:
 
 * Alembic is already configured to import your SQLModel models from `./backend/app/models.py`.
 
@@ -155,3 +156,39 @@ Once you are done, regenerate the templates used by the application:
 ```console
 $ bun run email:export
 ```
+# Media metadata API
+
+All media management endpoints require an authenticated Admin (including the
+existing superuser fallback). Paths below are relative to `/api/v1`:
+
+| Method | Path | Behavior |
+| --- | --- | --- |
+| GET | `/artifacts/{artifact_id}/media` | List all media, ordered by `sort_order` |
+| POST | `/artifacts/{artifact_id}/media` | Create metadata; returns 201 |
+| GET | `/artifacts/{artifact_id}/media/{media_id}` | Read metadata |
+| PUT | `/artifacts/{artifact_id}/media/{media_id}` | Update supplied fields |
+| DELETE | `/artifacts/{artifact_id}/media/{media_id}` | Delete metadata |
+
+Example POST body:
+
+```json
+{
+  "media_type": "audio",
+  "url": "https://cdn.example.com/artifacts/introduction.mp3",
+  "language_id": null,
+  "caption": "Introduction",
+  "sort_order": 0
+}
+```
+
+`media_type` accepts `image` (default), `video`, or `audio`. `url` is required
+and must be an absolute HTTP(S) URL of at most 500 characters. `language_id`
+may reference an existing language or be null for shared media. PUT preserves
+omitted fields; null clears `language_id` or `caption`, but is rejected for
+`url`, `media_type`, and `sort_order`. Invalid metadata returns 422; missing
+Artifact, language, or Media (including Media belonging to another Artifact)
+returns 404. No remote file is fetched, uploaded, or deleted.
+
+`GET /beacons/resolve` includes the saved metadata in `artifact.media`, ordered
+by `sort_order`: shared media plus media matching the selected language or the
+translation fallback language. Changes and deletions apply on the next resolve.

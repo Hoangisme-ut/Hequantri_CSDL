@@ -33,7 +33,9 @@ export function Main({ items }: MainProps) {
     }
   }
 
-  const sections = [...new Set(items.map((item) => item.section ?? "Navigation"))]
+  const sections = [
+    ...new Set(items.map((item) => item.section ?? "Navigation")),
+  ]
 
   return sections.map((section) => (
     <SidebarGroup key={section} className="px-3 py-2">
@@ -42,28 +44,41 @@ export function Main({ items }: MainProps) {
       </p>
       <SidebarGroupContent>
         <SidebarMenu>
-          {items.filter((item) => (item.section ?? "Navigation") === section).map((item) => {
-            const isActive = currentPath === item.path || (item.path !== "/" && item.path !== "/preview" && currentPath.startsWith(item.path))
-            return (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton
-                  tooltip={item.title}
-                  isActive={isActive}
-                  disabled={item.disabled}
-                  className="h-9 rounded-lg px-3 text-[13px] text-sidebar-foreground/80 data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  asChild={!item.disabled}
-                >
-                  {item.disabled ? (
-                    <span><item.icon /><span>{item.title}</span></span>
-                  ) : (
-                    <RouterLink to={item.path as never} onClick={handleMenuClick}>
-                      <item.icon /><span>{item.title}</span>
-                    </RouterLink>
-                  )}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )
-          })}
+          {items
+            .filter((item) => (item.section ?? "Navigation") === section)
+            .map((item) => {
+              const isActive =
+                currentPath === item.path ||
+                (item.path !== "/" &&
+                  item.path !== "/preview" &&
+                  currentPath.startsWith(item.path))
+              return (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    tooltip={item.title}
+                    isActive={isActive}
+                    disabled={item.disabled}
+                    className="h-9 rounded-lg px-3 text-[13px] text-sidebar-foreground/80 data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground data-[active=true]:shadow-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    asChild={!item.disabled}
+                  >
+                    {item.disabled ? (
+                      <span>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </span>
+                    ) : (
+                      <RouterLink
+                        to={item.path as never}
+                        onClick={handleMenuClick}
+                      >
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </RouterLink>
+                    )}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )
+            })}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
