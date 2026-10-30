@@ -321,8 +321,6 @@ class Artifact(ArtifactBase, table=True):
     visit_logs: list[VisitLog] = Relationship(
         back_populates="artifact", cascade_delete=True
     )
-        back_populates="artifact", cascade_delete=True
-    )
     favorites: list["Favorite"] = Relationship(
         back_populates="artifact", cascade_delete=True
     )
@@ -717,7 +715,7 @@ class ArtifactContentPublic(ArtifactPublic):
 
 
 class BeaconResolvePublic(SQLModel):
-    """Kết quả khi app quét được beacon."""
+    
 
     beacon: BeaconPublic
     artifact: ArtifactContentPublic
