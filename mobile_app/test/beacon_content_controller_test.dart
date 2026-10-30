@@ -164,7 +164,7 @@ void main() {
   });
 }
 
-/// Thay API thật bằng các phản hồi do bài kiểm thử điều khiển.
+/// Provides controlled API responses for controller tests.
 class _FakeBeaconService extends BeaconContentService {
   _FakeBeaconService() : super(baseUrl: Uri.parse('https://example.com'));
 

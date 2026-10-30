@@ -195,7 +195,7 @@ class _BeaconSimulationPageState extends State<BeaconSimulationPage> {
               if (content.languageCode != null)
                 Text('Ngôn ngữ: ${content.languageCode}'),
               if (content.isFallback)
-                const Text('Đang hiển thị ngôn ngữ thay thế.'),
+                const Text('Đang hiển thị ngôn ngữ dự phòng.'),
               if (content.description?.trim().isNotEmpty ?? false) ...[
                 const SizedBox(height: 12),
                 SelectableText(content.description!),

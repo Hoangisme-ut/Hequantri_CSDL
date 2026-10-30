@@ -69,7 +69,7 @@ class BeaconContent {
   final String? coverImageUrl;
   final String? languageCode;
 
-  /// True khi backend trả nội dung của ngôn ngữ thay thế.
+  /// True khi backend dùng ngôn ngữ dự phòng.
   final bool isFallback;
 
   final List<BeaconMedia> media;
