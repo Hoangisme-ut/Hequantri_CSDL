@@ -97,6 +97,9 @@ def update_site(
 def delete_site(session: SessionDep, _admin: AdminUser, site_id: uuid.UUID) -> Message:
     """
     Ẩn di tích (xóa mềm: is_active = false). **Admin**.
+
+    Không sửa dữ liệu con: hiện vật + beacon của Site ẩn tự không trả cho du khách
+    (kiểm tra lúc đọc). Bật lại Site (`PUT is_active=true`) -> hiển thị lại như cũ.
     """
     site = session.get(Site, site_id)
     if not site:
