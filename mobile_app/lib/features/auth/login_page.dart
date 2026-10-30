@@ -13,11 +13,17 @@ class LoginPage extends StatefulWidget {
     super.key,
     this.onDemoContinue,
     this.onLoginSuccess,
+    this.onAuthenticated,
     this.authService,
   });
 
   final VoidCallback? onDemoContinue;
   final VoidCallback? onLoginSuccess;
+
+  /// Receives the token after successful backend authentication.
+  /// The caller owns session storage and navigation.
+  final ValueChanged<AuthToken>? onAuthenticated;
+
   final AuthService? authService;
 
   @override
@@ -40,7 +46,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _submit() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_isLoading || !(_formKey.currentState?.validate() ?? false)) return;
 
     FocusScope.of(context).unfocus();
 
@@ -49,26 +55,21 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     final strings = AppStrings.of(context);
-
-    if (widget.authService == null &&
-        widget.onLoginSuccess == null &&
-        widget.onDemoContinue == null) {
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(strings.loginSubmitNotice)));
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-      return;
-    }
-
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
+    AuthService? ownedService;
 
     try {
+      if (widget.authService == null &&
+          widget.onAuthenticated == null &&
+          widget.onLoginSuccess == null &&
+          widget.onDemoContinue == null) {
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(strings.loginSubmitNotice)));
+        return;
+      }
+
       final service =
           widget.authService ??
           AuthService(
@@ -76,36 +77,63 @@ class _LoginPageState extends State<LoginPage> {
             client: IoAuthHttpClient(),
           );
 
-      // Thực hiện đăng nhập thật qua API backend:
-      await service.login(email: email, password: password);
+      if (widget.authService == null) {
+        ownedService = service;
+      }
+
+      final token = await service.login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
 
       if (!mounted) return;
 
-      // Chỉ khi máy chủ xác thực thành công (nhận Token hợp lệ):
-      if (widget.onLoginSuccess != null) {
+      if (token.accessToken.trim().isEmpty ||
+          token.tokenType.trim().toLowerCase() != 'bearer') {
+        throw const AuthServiceException(AuthFailure.invalidResponse);
+      }
+
+      final onAuthenticated = widget.onAuthenticated;
+
+      if (onAuthenticated != null) {
+        onAuthenticated(token);
+      } else if (widget.onLoginSuccess != null) {
         widget.onLoginSuccess!();
       } else if (widget.onDemoContinue != null) {
         widget.onDemoContinue!();
       } else {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(strings.loginSubmitNotice)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              strings.isEnglish
+                  ? 'Signed in successfully.'
+                  : 'Đăng nhập thành công.',
+            ),
+          ),
+        );
       }
-    } on AuthServiceException catch (e) {
+    } on AuthServiceException catch (error) {
       if (!mounted) return;
-      final String message;
-      if (e.failure == AuthFailure.loginRejected) {
-        message = strings.isEnglish
-            ? 'Incorrect email or password.'
-            : 'Email hoặc mật khẩu không chính xác.';
-      } else if (e.failure == AuthFailure.network) {
-        message = strings.isEnglish
-            ? 'Cannot connect to server. Check your network.'
-            : 'Không thể kết nối tới máy chủ. Vui lòng thử lại sau.';
-      } else {
-        message = strings.isEnglish
-            ? 'Login failed. Please try again.'
-            : 'Đăng nhập thất bại. Vui lòng thử lại.';
-      }
+
+      final message = switch (error.failure) {
+        AuthFailure.loginRejected =>
+          strings.isEnglish
+              ? 'Incorrect email or password.'
+              : 'Email hoặc mật khẩu không chính xác.',
+        AuthFailure.network =>
+          strings.isEnglish
+              ? 'Cannot connect to server. Check your network.'
+              : 'Không thể kết nối tới máy chủ. Vui lòng thử lại sau.',
+        AuthFailure.invalidResponse =>
+          strings.isEnglish
+              ? 'The server returned an invalid sign-in response.'
+              : 'Máy chủ trả về thông tin đăng nhập không hợp lệ.',
+        _ =>
+          strings.isEnglish
+              ? 'Login failed. Please try again.'
+              : 'Đăng nhập thất bại. Vui lòng thử lại.',
+      };
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
@@ -114,6 +142,7 @@ class _LoginPageState extends State<LoginPage> {
       );
     } catch (_) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -125,6 +154,8 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
     } finally {
+      ownedService?.close();
+
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -255,6 +286,7 @@ class _LoginPageState extends State<LoginPage> {
             AuthSubmitButton(
               buttonKey: const Key('login-submit'),
               label: strings.loginSubmit,
+              isLoading: _isLoading,
               onPressed: _isLoading ? null : _submit,
             ),
 
