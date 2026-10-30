@@ -4,11 +4,11 @@ import 'package:dchs_flutter_beacon/dchs_flutter_beacon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
-// Dùng import tương đối để test luôn tìm thấy Widget
 import 'beacon_simulation_page.dart';
 import 'features/artifacts/artifact.dart';
 import 'features/auth/auth_config.dart';
 import 'features/auth/auth_service.dart';
+import 'features/auth/auth_session.dart';
 import 'features/auth/login_page.dart';
 import 'features/home/main_navigation_scaffold.dart';
 import 'features/welcome/welcome_page.dart';
@@ -21,9 +21,14 @@ void main() {
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key, @visibleForTesting this.appShell});
+  const MyApp({
+    super.key,
+    @visibleForTesting this.appShell,
+    @visibleForTesting this.authService,
+  });
 
   final AppShell? appShell;
+  final AuthService? authService;
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -31,30 +36,65 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
+  final _session = AuthSession();
+
+  late final AuthService _authService;
+  late final bool _ownsAuthService;
+
   Locale _locale = const Locale('vi');
 
-  void _changeLocale(Locale locale) => setState(() => _locale = locale);
+  @override
+  void initState() {
+    super.initState();
+
+    _ownsAuthService = widget.authService == null;
+    _authService =
+        widget.authService ??
+        AuthService(baseUrl: AuthConfig.apiBaseUrl, client: IoAuthHttpClient());
+  }
+
+  void _changeLocale(Locale locale) {
+    if (!mounted) return;
+    setState(() => _locale = locale);
+  }
+
+  void _onAuthenticated(AuthToken token) {
+    _session.authenticate(token);
+    _enterMainApp();
+  }
+
+  void _enterDemo() {
+    _session.enterDemo();
+    _enterMainApp();
+  }
 
   void _enterMainApp() {
-    _navigatorKey.currentState!.pushAndRemoveUntil(
+    final navigator = _navigatorKey.currentState;
+    if (!mounted || navigator == null) return;
+
+    navigator.pushAndRemoveUntil(
       MaterialPageRoute<void>(
         builder: (_) => MainNavigationScaffold(
           onLocaleChanged: _changeLocale,
-          onLogout: () {
-            _navigatorKey.currentState!.pushAndRemoveUntil(
-              MaterialPageRoute<void>(
-                builder: (_) => LoginPage(
-                  onDemoContinue: _enterMainApp,
-                  onLoginSuccess: _enterMainApp,
-                  authService: AuthService(
-                    baseUrl: AuthConfig.apiBaseUrl,
-                    client: IoAuthHttpClient(),
-                  ),
-                ),
-              ),
-              (_) => false,
-            );
-          },
+          onLogout: _logout,
+        ),
+      ),
+      (_) => false,
+    );
+  }
+
+  void _logout() {
+    _session.clear();
+
+    final navigator = _navigatorKey.currentState;
+    if (!mounted || navigator == null) return;
+
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute<void>(
+        builder: (_) => LoginPage(
+          onDemoContinue: _enterDemo,
+          onAuthenticated: _onAuthenticated,
+          authService: _authService,
         ),
       ),
       (_) => false,
@@ -62,28 +102,43 @@ class _MyAppState extends State<MyApp> {
   }
 
   @override
+  void dispose() {
+    if (_ownsAuthService) {
+      _authService.close();
+    }
+
+    _session.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Smart Heritage',
-      navigatorKey: _navigatorKey,
-      locale: _locale,
-      supportedLocales: const [Locale('vi'), Locale('en')],
-      localizationsDelegates: const [
-        AppStrings.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system,
-      home:
-          widget.appShell ??
-          WelcomePage(
-            onLocaleChanged: _changeLocale,
-            onDemoContinue: _enterMainApp,
-          ),
+    return AuthSessionScope(
+      session: _session,
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Smart Heritage',
+        navigatorKey: _navigatorKey,
+        locale: _locale,
+        supportedLocales: const [Locale('vi'), Locale('en')],
+        localizationsDelegates: const [
+          AppStrings.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: ThemeMode.system,
+        home:
+            widget.appShell ??
+            WelcomePage(
+              onLocaleChanged: _changeLocale,
+              onDemoContinue: _enterDemo,
+              onAuthenticated: _onAuthenticated,
+              authService: _authService,
+            ),
+      ),
     );
   }
 }
@@ -95,11 +150,13 @@ class AppShell extends StatefulWidget {
     this.onLocaleChanged,
     this.isDemoSession = false,
     this.stopScanning,
+    this.readToken,
   });
 
   final ArtifactCatalog? catalog;
   final ValueChanged<Locale>? onLocaleChanged;
   final Future<bool> Function()? stopScanning;
+  final AuthToken? Function()? readToken;
   final bool isDemoSession;
 
   @override
@@ -107,29 +164,52 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
+  final _scanPageKey = GlobalKey<BeaconTestPageState>();
+
   int _selectedIndex = 0;
+  bool _switching = false;
 
   Future<void> _onDestinationSelected(int index) async {
-    if (index == _selectedIndex) return;
+    if (index == _selectedIndex || _switching) return;
 
-    if (widget.stopScanning != null) {
-      final canSwitch = await widget.stopScanning!();
-      if (!canSwitch) return;
-    }
+    _switching = true;
 
-    if (mounted) {
-      setState(() {
-        _selectedIndex = index;
-      });
+    try {
+      if (_selectedIndex == 0) {
+        final scanPage = _scanPageKey.currentState;
+
+        if (scanPage?.isBusy ?? false) return;
+
+        final canSwitch = widget.stopScanning != null
+            ? await widget.stopScanning!()
+            : await (scanPage?.stopScanningIfNeeded() ?? Future.value(true));
+
+        if (!mounted || !canSwitch) return;
+      }
+
+      if (mounted) {
+        setState(() => _selectedIndex = index);
+      }
+    } finally {
+      _switching = false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final session = AuthSessionScope.maybeOf(context);
+    final readToken = widget.readToken ?? session?.readToken;
+
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
-        children: const [BeaconTestPage(), BeaconSimulationPage()],
+        children: [
+          BeaconTestPage(key: _scanPageKey),
+          BeaconSimulationPage(
+            readToken: readToken,
+            languageCode: Localizations.localeOf(context).languageCode,
+          ),
+        ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
