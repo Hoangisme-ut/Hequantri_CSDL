@@ -225,7 +225,10 @@ class _BeaconSimulationPageState extends State<BeaconSimulationPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Task 4 — iBeacon Simulation')),
+      appBar: AppBar(
+        leading: Navigator.of(context).canPop() ? const BackButton() : null,
+        title: const Text('Task 4 — iBeacon Simulation'),
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
