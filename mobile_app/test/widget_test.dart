@@ -17,6 +17,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const MyApp());
+    await tester.pumpAndSettle();
 
     expect(find.byType(WelcomePage), findsOneWidget);
     expect(find.text('Nơi lưu giữ tinh hoa hiếu học Việt Nam'), findsOneWidget);
@@ -51,6 +52,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const MyApp());
+    await tester.pumpAndSettle();
 
     const stories = [
       (
@@ -108,6 +110,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const MyApp());
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('welcome-page-content-0')));
     await tester.pumpAndSettle();
@@ -131,6 +134,7 @@ void main() {
       tester.view.devicePixelRatio = 1;
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpWidget(const MyApp());
+      await tester.pumpAndSettle();
 
       expect(find.byType(WelcomePage), findsOneWidget);
       final initialException = tester.takeException();
@@ -205,6 +209,7 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.science_outlined));
     await tester.pumpAndSettle();
@@ -219,6 +224,7 @@ void main() {
     await tester.pumpWidget(
       MyApp(appShell: AppShell(stopScanning: () async => false)),
     );
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.science_outlined));
     await tester.pumpAndSettle();

@@ -16,18 +16,16 @@ class HeritageMark extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       image: true,
-      label: 'Biểu tượng kiến trúc di sản',
+      label: 'Smart Heritage',
       child: SizedBox.square(
         dimension: size,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: HeritagePalette.authGold.withValues(alpha: 0.08),
-            border: Border.all(
-              color: HeritagePalette.authGold.withValues(alpha: 0.68),
-            ),
+            color: HeritagePalette.primaryNavy,
+            border: Border.all(color: HeritagePalette.border),
             borderRadius: BorderRadius.circular(AppRadii.small),
           ),
-          child: Icon(icon, size: size * 0.48, color: HeritagePalette.authGold),
+          child: Icon(icon, size: size * 0.48, color: HeritagePalette.surface),
         ),
       ),
     );
@@ -53,38 +51,50 @@ class AuthSubmitButton extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final compact = MediaQuery.sizeOf(context).width < 400;
 
-    return FilledButton(
-      key: buttonKey,
-      onPressed: isLoading ? null : onPressed,
-      style: FilledButton.styleFrom(
-        backgroundColor: colorScheme.secondary,
-        foregroundColor: colorScheme.onSecondary,
-        disabledBackgroundColor: colorScheme.secondary,
-        disabledForegroundColor: colorScheme.onSecondary,
-        shape: const StadiumBorder(),
-      ),
-      child: isLoading
-          ? SizedBox.square(
-              dimension: 22,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: colorScheme.onSecondary,
-              ),
-            )
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton(
+        key: buttonKey,
+        onPressed: isLoading ? null : onPressed,
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(52),
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 12 : AppSpacing.medium,
+            vertical: 12,
+          ),
+          backgroundColor: colorScheme.secondary,
+          foregroundColor: colorScheme.onSecondary,
+          disabledBackgroundColor: colorScheme.secondary,
+          disabledForegroundColor: colorScheme.onSecondary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.medium),
+          ),
+        ),
+        child: isLoading
+            ? SizedBox.square(
+                dimension: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: colorScheme.onSecondary,
                 ),
-                SizedBox(width: compact ? 4 : AppSpacing.small),
-                Icon(Icons.arrow_forward_rounded, size: compact ? 16 : 18),
-              ],
-            ),
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.max,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  SizedBox(width: compact ? 4 : AppSpacing.small),
+                  Icon(Icons.arrow_forward_rounded, size: compact ? 16 : 18),
+                ],
+              ),
+      ),
     );
   }
 }

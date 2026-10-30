@@ -1,25 +1,34 @@
 import 'package:flutter/material.dart';
 
 abstract final class HeritagePalette {
-  static const authNavy = Color(0xFF0B1F3A);
-  static const authNavyRaised = Color(0xFF142D50);
-  static const authGold = Color(0xFFD9B66F);
-  static const authCta = Color(0xFFE7BD68);
-  static const authText = Color(0xFFF7F2E8);
-  static const navy = Color(0xFF17324D);
-  static const deepNavy = Color(0xFF10263D);
-  static const gold = Color(0xFFC6A15B);
-  static const ivory = Color(0xFFF7F4EC);
-  static const paper = Color(0xFFFFFEFA);
-  static const ink = Color(0xFF202B36);
-  static const mutedInk = Color(0xFF65717D);
-  static const outline = Color(0xFFD9D3C7);
-  static const darkCanvas = Color(0xFF101D2A);
-  static const darkSurface = Color(0xFF192B3D);
-  static const darkRaised = Color(0xFF22374B);
-  static const darkText = Color(0xFFF5F1E8);
-  static const error = Color(0xFFB3261E);
-  static const darkError = Color(0xFFF2B8B5);
+  static const primaryNavy = Color(0xFF1E2A5A);
+  static const actionBlue = Color(0xFF384CCA);
+  static const lavender = Color(0xFF8B7CFF);
+  static const secondaryText = Color(0xFF94A3B8);
+  static const background = Color(0xFFF1F5F9);
+  static const surface = Color(0xFFFFFFFF);
+  static const border = Color(0xFFE2E8F0);
+  static const bodyText = Color(0xFF334155);
+  static const error = Color(0xFFB42335);
+
+  static const authNavy = primaryNavy;
+  static const authNavyRaised = Color(0xFF2C3970);
+  static const authGold = actionBlue;
+  static const authCta = actionBlue;
+  static const authText = surface; // Trắng
+  static const navy = primaryNavy;
+  static const deepNavy = primaryNavy;
+  static const gold = actionBlue;
+  static const ivory = background;
+  static const paper = surface;
+  static const ink = primaryNavy;
+  static const mutedInk = secondaryText;
+  static const outline = border;
+  static const darkCanvas = Color(0xFF111827);
+  static const darkSurface = Color(0xFF1E293B);
+  static const darkRaised = Color(0xFF29364A);
+  static const darkText = Color(0xFFF1F5F9);
+  static const darkError = Color(0xFFFFB4AB);
 }
 
 abstract final class AppSpacing {
@@ -43,43 +52,47 @@ abstract final class AppTheme {
   static ThemeData dark() => _buildTheme(Brightness.dark);
 
   static ThemeData auth(ThemeData base) {
+    // Sửa lỗi test Dark Theme: Inherit độ sáng thay vì ép Brightness.light
     final colorScheme = base.colorScheme.copyWith(
-      brightness: Brightness.dark,
+      brightness: base.brightness,
       primary: HeritagePalette.authGold,
-      onPrimary: HeritagePalette.authNavy,
+      onPrimary: HeritagePalette.surface,
       secondary: HeritagePalette.authCta,
-      onSecondary: HeritagePalette.authNavy,
-      surface: HeritagePalette.authNavy,
-      onSurface: HeritagePalette.authText,
-      surfaceContainerLowest: HeritagePalette.authNavyRaised,
-      surfaceContainerLow: HeritagePalette.authNavyRaised,
-      surfaceContainerHighest: HeritagePalette.authNavy,
-      onSurfaceVariant: HeritagePalette.authText.withValues(alpha: 0.78),
-      outline: HeritagePalette.authGold.withValues(alpha: 0.54),
-      outlineVariant: HeritagePalette.authGold.withValues(alpha: 0.28),
-      error: const Color(0xFFFFB4AB),
+      onSecondary: HeritagePalette.surface,
+      tertiary: HeritagePalette.deepNavy,
+      surface: HeritagePalette.surface,
+      onSurface: HeritagePalette.primaryNavy,
+      surfaceContainerLowest: HeritagePalette.surface,
+      surfaceContainerLow: HeritagePalette.surface,
+      surfaceContainerHighest: HeritagePalette.background,
+      onSurfaceVariant: HeritagePalette.bodyText,
+      outline: HeritagePalette.border,
+      outlineVariant: HeritagePalette.border,
+      error: HeritagePalette.error,
     );
+
     final textTheme = base.textTheme.apply(
-      bodyColor: HeritagePalette.authText,
-      displayColor: HeritagePalette.authText,
+      bodyColor: HeritagePalette.bodyText,
+      displayColor: HeritagePalette
+          .authText, // Sửa lỗi tiêu đề Auth không hiển thị màu Trắng
     );
 
     return base.copyWith(
-      brightness: Brightness.dark,
+      brightness: base.brightness,
       colorScheme: colorScheme,
       textTheme: textTheme,
       scaffoldBackgroundColor: HeritagePalette.authNavy,
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: HeritagePalette.authNavyRaised,
+        fillColor: HeritagePalette.surface,
         constraints: const BoxConstraints(minHeight: 56),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.medium,
           vertical: 14,
         ),
-        hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+        hintStyle: const TextStyle(color: HeritagePalette.secondaryText),
         labelStyle: TextStyle(color: colorScheme.onSurfaceVariant),
-        floatingLabelStyle: TextStyle(color: HeritagePalette.authGold),
+        floatingLabelStyle: const TextStyle(color: HeritagePalette.primaryNavy),
         errorMaxLines: 2,
         helperMaxLines: 2,
         errorStyle: TextStyle(
@@ -87,41 +100,36 @@ abstract final class AppTheme {
           fontWeight: FontWeight.w600,
           height: 1.2,
         ),
-        prefixIconColor: HeritagePalette.authGold,
-        suffixIconColor: HeritagePalette.authGold,
-        border: _authInputBorder(
-          color: HeritagePalette.authGold.withValues(alpha: 0.55),
-        ),
-        enabledBorder: _authInputBorder(
-          color: HeritagePalette.authGold.withValues(alpha: 0.55),
-        ),
-        focusedBorder: _authInputBorder(
+        prefixIconColor: HeritagePalette.primaryNavy,
+        suffixIconColor: HeritagePalette.secondaryText,
+        border: _inputBorder(color: HeritagePalette.border),
+        enabledBorder: _inputBorder(color: HeritagePalette.border),
+        focusedBorder: _inputBorder(
           color: HeritagePalette.authGold,
           width: 1.8,
         ),
-        errorBorder: _authInputBorder(color: colorScheme.error),
-        focusedErrorBorder: _authInputBorder(
-          color: colorScheme.error,
-          width: 1.8,
-        ),
+        errorBorder: _inputBorder(color: colorScheme.error),
+        focusedErrorBorder: _inputBorder(color: colorScheme.error, width: 1.8),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size.fromHeight(56),
+          minimumSize: const Size.fromHeight(52),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.large),
-          backgroundColor: HeritagePalette.authCta,
-          foregroundColor: HeritagePalette.authNavy,
-          disabledBackgroundColor: HeritagePalette.authCta,
-          disabledForegroundColor: HeritagePalette.authNavy,
+          backgroundColor: HeritagePalette.actionBlue,
+          foregroundColor: HeritagePalette.surface,
+          disabledBackgroundColor: HeritagePalette.actionBlue,
+          disabledForegroundColor: HeritagePalette.surface,
           textStyle: textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.w700,
           ),
-          shape: const StadiumBorder(),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.medium),
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: HeritagePalette.authGold,
+          foregroundColor: HeritagePalette.primaryNavy,
           textStyle: textTheme.labelLarge,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.small),
@@ -129,17 +137,17 @@ abstract final class AppTheme {
         ),
       ),
       iconButtonTheme: IconButtonThemeData(
-        style: IconButton.styleFrom(foregroundColor: HeritagePalette.authGold),
+        style: IconButton.styleFrom(
+          foregroundColor: HeritagePalette.primaryNavy,
+        ),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: HeritagePalette.authNavyRaised,
-        contentTextStyle: const TextStyle(color: HeritagePalette.authText),
+        backgroundColor: HeritagePalette.primaryNavy,
+        contentTextStyle: const TextStyle(color: HeritagePalette.surface),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.small),
-          side: BorderSide(
-            color: HeritagePalette.authGold.withValues(alpha: 0.28),
-          ),
+          side: const BorderSide(color: HeritagePalette.border),
         ),
       ),
     );
@@ -147,33 +155,50 @@ abstract final class AppTheme {
 
   static ThemeData _buildTheme(Brightness brightness) {
     final isLight = brightness == Brightness.light;
-    final seedScheme = ColorScheme.fromSeed(
-      seedColor: HeritagePalette.navy,
+
+    final colorScheme = ColorScheme(
       brightness: brightness,
-    );
-    final colorScheme = seedScheme.copyWith(
-      primary: isLight ? HeritagePalette.navy : HeritagePalette.gold,
-      onPrimary: isLight ? Colors.white : HeritagePalette.deepNavy,
+      primary: HeritagePalette.authGold,
+      onPrimary: isLight
+          ? HeritagePalette.surface
+          : HeritagePalette.primaryNavy,
       secondary: HeritagePalette.gold,
-      onSecondary: HeritagePalette.deepNavy,
+      onSecondary: HeritagePalette.surface,
       tertiary: isLight ? HeritagePalette.deepNavy : HeritagePalette.gold,
-      surface: isLight ? HeritagePalette.ivory : HeritagePalette.darkCanvas,
-      onSurface: isLight ? HeritagePalette.ink : HeritagePalette.darkText,
-      surfaceContainerLowest: isLight
-          ? HeritagePalette.paper
-          : HeritagePalette.darkSurface,
-      surfaceContainerLow: isLight ? Colors.white : HeritagePalette.darkRaised,
-      outline: isLight ? HeritagePalette.outline : Colors.blueGrey.shade600,
+      onTertiary: HeritagePalette.surface,
       error: isLight ? HeritagePalette.error : HeritagePalette.darkError,
+      onError: HeritagePalette.surface,
+      surface: isLight
+          ? HeritagePalette.background
+          : HeritagePalette.darkCanvas,
+      onSurface: isLight
+          ? HeritagePalette.primaryNavy
+          : HeritagePalette.darkText,
+      surfaceContainerLowest: isLight
+          ? HeritagePalette.surface
+          : HeritagePalette.darkSurface,
+      surfaceContainerLow: isLight
+          ? HeritagePalette.surface
+          : HeritagePalette.darkRaised,
+      surfaceContainerHighest: isLight
+          ? HeritagePalette.background
+          : HeritagePalette.darkCanvas,
+      onSurfaceVariant: isLight
+          ? HeritagePalette.bodyText
+          : HeritagePalette.darkText,
+      outline: isLight ? HeritagePalette.border : Colors.blueGrey.shade600,
     );
+
     final baseTextTheme = ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
     ).textTheme;
+
     final textTheme = baseTextTheme.copyWith(
       headlineSmall: baseTextTheme.headlineSmall?.copyWith(
         fontWeight: FontWeight.w700,
         letterSpacing: -0.4,
+        color: isLight ? HeritagePalette.primaryNavy : HeritagePalette.darkText,
       ),
       titleLarge: baseTextTheme.titleLarge?.copyWith(
         fontWeight: FontWeight.w700,
@@ -192,7 +217,9 @@ abstract final class AppTheme {
       brightness: brightness,
       colorScheme: colorScheme,
       textTheme: textTheme,
-      scaffoldBackgroundColor: colorScheme.surface,
+      scaffoldBackgroundColor: isLight
+          ? colorScheme.surface
+          : HeritagePalette.darkCanvas,
       appBarTheme: AppBarTheme(
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
@@ -219,7 +246,7 @@ abstract final class AppTheme {
         ),
         border: _inputBorder(color: colorScheme.outline),
         enabledBorder: _inputBorder(color: colorScheme.outline),
-        focusedBorder: _inputBorder(color: colorScheme.primary, width: 2),
+        focusedBorder: _inputBorder(color: HeritagePalette.authGold, width: 2),
         errorBorder: _inputBorder(color: colorScheme.error),
         focusedErrorBorder: _inputBorder(color: colorScheme.error, width: 2),
       ),
@@ -227,8 +254,8 @@ abstract final class AppTheme {
         style: FilledButton.styleFrom(
           minimumSize: const Size.fromHeight(56),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.large),
-          backgroundColor: colorScheme.primary,
-          foregroundColor: colorScheme.onPrimary,
+          backgroundColor: colorScheme.secondary,
+          foregroundColor: colorScheme.onSecondary,
           disabledBackgroundColor: colorScheme.surfaceContainerHighest,
           disabledForegroundColor: colorScheme.onSurfaceVariant,
           textStyle: textTheme.labelLarge,
@@ -257,7 +284,7 @@ abstract final class AppTheme {
         ),
       ),
       cardTheme: CardThemeData(
-        color: colorScheme.surfaceContainerLowest,
+        color: HeritagePalette.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.large),
@@ -286,16 +313,6 @@ abstract final class AppTheme {
   }) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppRadii.small),
-      borderSide: BorderSide(color: color, width: width),
-    );
-  }
-
-  static OutlineInputBorder _authInputBorder({
-    required Color color,
-    double width = 1,
-  }) {
-    return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppRadii.pill),
       borderSide: BorderSide(color: color, width: width),
     );
   }
