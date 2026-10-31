@@ -49,11 +49,15 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             const SizedBox(width: 10),
-            Text(
-              'Smart Heritage',
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: HeritagePalette.primaryNavy,
-                fontWeight: FontWeight.bold,
+            Expanded(
+              child: Text(
+                'Smart Heritage',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: HeritagePalette.primaryNavy,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -88,7 +92,6 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Search bar
             TextField(
               controller: _searchController,
               decoration: InputDecoration(
@@ -120,22 +123,20 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             const SizedBox(height: AppSpacing.large),
-
-            // Hero Banner
             _buildHeroBanner(isEn, theme),
             const SizedBox(height: AppSpacing.large),
-
-            // Featured Destinations header
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  isEn ? 'Featured Destinations' : 'Địa điểm nổi bật',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: HeritagePalette.primaryNavy,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    isEn ? 'Featured Destinations' : 'Địa điểm nổi bật',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: HeritagePalette.primaryNavy,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
+                const SizedBox(width: AppSpacing.small),
                 TextButton(
                   onPressed: () {},
                   child: Text(isEn ? 'See All' : 'Xem tất cả'),
@@ -143,8 +144,6 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
             const SizedBox(height: AppSpacing.small),
-
-            // Horizontal Location Cards
             SizedBox(
               height: 210,
               child: ListView.builder(
@@ -191,18 +190,19 @@ class _HomePageState extends State<HomePage> {
                               height: 120,
                               width: double.infinity,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Container(
-                                    height: 120,
-                                    color: HeritagePalette.background,
-                                    child: const Center(
-                                      child: Icon(
-                                        Icons.account_balance_outlined,
-                                        color: HeritagePalette.secondaryText,
-                                        size: 40,
-                                      ),
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  height: 120,
+                                  color: HeritagePalette.background,
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.account_balance_outlined,
+                                      color: HeritagePalette.secondaryText,
+                                      size: 40,
                                     ),
                                   ),
+                                );
+                              },
                             ),
                           ),
                           Padding(
@@ -231,13 +231,13 @@ class _HomePageState extends State<HomePage> {
                                     Expanded(
                                       child: Text(
                                         locationObj.city,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         style: theme.textTheme.bodySmall
                                             ?.copyWith(
                                               color:
                                                   HeritagePalette.secondaryText,
                                             ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                     const Icon(
@@ -264,10 +264,7 @@ class _HomePageState extends State<HomePage> {
                 },
               ),
             ),
-
             const SizedBox(height: AppSpacing.large),
-
-            // Highlighted Artifacts header
             Text(
               isEn ? 'Highlighted Artifacts' : 'Hiện vật tiêu biểu',
               style: theme.textTheme.titleMedium?.copyWith(
@@ -276,8 +273,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             const SizedBox(height: AppSpacing.small),
-
-            // Artifact list
             ...sampleArtifacts.map((artifact) {
               return Card(
                 margin: const EdgeInsets.only(bottom: AppSpacing.small),
@@ -290,15 +285,17 @@ class _HomePageState extends State<HomePage> {
                       width: 54,
                       height: 54,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        width: 54,
-                        height: 54,
-                        color: HeritagePalette.background,
-                        child: const Icon(
-                          Icons.account_balance_outlined,
-                          color: HeritagePalette.secondaryText,
-                        ),
-                      ),
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 54,
+                          height: 54,
+                          color: HeritagePalette.background,
+                          child: const Icon(
+                            Icons.account_balance_outlined,
+                            color: HeritagePalette.secondaryText,
+                          ),
+                        );
+                      },
                     ),
                   ),
                   title: Text(
@@ -346,7 +343,7 @@ class _HomePageState extends State<HomePage> {
       },
       child: Container(
         width: double.infinity,
-        height: 150,
+        constraints: const BoxConstraints(minHeight: 150),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppRadii.large),
           gradient: const LinearGradient(
@@ -370,10 +367,12 @@ class _HomePageState extends State<HomePage> {
                 child: Opacity(
                   opacity: 0.35,
                   child: Image.asset(
-                    'assets/images/van_mieu_welcome.jpg',
+                    'assets/images/onboarding/'
+                    'welcome_temple_of_literature.jpg',
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const SizedBox.shrink(),
+                    errorBuilder: (context, error, stackTrace) {
+                      return const SizedBox.shrink();
+                    },
                   ),
                 ),
               ),
@@ -381,8 +380,8 @@ class _HomePageState extends State<HomePage> {
             Padding(
               padding: const EdgeInsets.all(AppSpacing.large),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     isEn
@@ -394,8 +393,8 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  SizedBox(
-                    width: 200,
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 200),
                     child: Text(
                       isEn
                           ? 'Automatic iBeacon audio guide system.'

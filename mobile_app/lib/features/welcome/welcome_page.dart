@@ -2,22 +2,28 @@ import 'package:flutter/material.dart';
 
 import '../../shared/widgets/heritage_widgets.dart';
 import '../../theme/app_theme.dart';
-import '../auth/auth_config.dart';
 import '../auth/auth_service.dart';
 import '../auth/login_page.dart';
 
 class WelcomePage extends StatefulWidget {
-  const WelcomePage({super.key, this.onDemoContinue, this.onLocaleChanged});
+  const WelcomePage({
+    super.key,
+    this.onDemoContinue,
+    this.onLocaleChanged,
+    this.onAuthenticated,
+    this.authService,
+  });
 
   final VoidCallback? onDemoContinue;
   final ValueChanged<Locale>? onLocaleChanged;
+  final ValueChanged<AuthToken>? onAuthenticated;
+  final AuthService? authService;
 
   @override
   State<WelcomePage> createState() => _WelcomePageState();
 }
 
 class _WelcomePageState extends State<WelcomePage> {
-  // Cập nhật đường dẫn ảnh lấy trực tiếp từ thư mục assets/images/onboarding/
   static const _stories = [
     _HeritageStory(
       titleVi: 'Nơi lưu giữ tinh hoa hiếu học Việt Nam',
@@ -56,11 +62,8 @@ class _WelcomePageState extends State<WelcomePage> {
       MaterialPageRoute<void>(
         builder: (_) => LoginPage(
           onDemoContinue: widget.onDemoContinue,
-          onLoginSuccess: widget.onDemoContinue,
-          authService: AuthService(
-            baseUrl: AuthConfig.apiBaseUrl,
-            client: IoAuthHttpClient(),
-          ),
+          onAuthenticated: widget.onAuthenticated,
+          authService: widget.authService,
         ),
       ),
     );
@@ -73,10 +76,12 @@ class _WelcomePageState extends State<WelcomePage> {
     }
 
     final nextPage = _currentPage + 1;
+
     if (MediaQuery.disableAnimationsOf(context)) {
       _pageController.jumpToPage(nextPage);
       return;
     }
+
     await _pageController.animateToPage(
       nextPage,
       duration: const Duration(milliseconds: 320),

@@ -22,6 +22,7 @@ class ProfilePage extends StatelessWidget {
       ),
       builder: (ctx) {
         final theme = Theme.of(ctx);
+
         return Container(
           padding: const EdgeInsets.symmetric(
             vertical: AppSpacing.large,
@@ -89,6 +90,7 @@ class ProfilePage extends StatelessWidget {
       context: context,
       builder: (ctx) {
         final theme = Theme.of(ctx);
+
         return AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.medium),
@@ -118,6 +120,7 @@ class ProfilePage extends StatelessWidget {
               ),
               onPressed: () {
                 Navigator.pop(ctx);
+
                 if (onLogout != null) {
                   onLogout!();
                 } else {
@@ -156,9 +159,10 @@ class ProfilePage extends StatelessWidget {
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
-        // Profile page mang nội dung "Cài đặt & Cá nhân"
         title: Text(
           isEn ? 'Profile & Settings' : 'Cá nhân & Cài đặt',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: theme.textTheme.titleLarge?.copyWith(
             color: HeritagePalette.primaryNavy,
             fontWeight: FontWeight.bold,
@@ -171,7 +175,6 @@ class ProfilePage extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.large),
         child: Column(
           children: [
-            // User Profile Card
             Row(
               children: [
                 const CircleAvatar(
@@ -224,8 +227,6 @@ class ProfilePage extends StatelessWidget {
             const SizedBox(height: AppSpacing.large),
             const Divider(height: 1),
             const SizedBox(height: AppSpacing.small),
-
-            // Settings Options List
             _buildSettingTile(
               icon: Icons.history,
               title: isEn ? 'Visit History' : 'Lịch sử tham quan',
@@ -295,10 +296,7 @@ class ProfilePage extends StatelessWidget {
               onTap: () => _showDemoNotice(context, isEn),
               theme: theme,
             ),
-
             const SizedBox(height: AppSpacing.xLarge),
-
-            // Logout Button
             SizedBox(
               width: double.infinity,
               height: 48,
@@ -341,23 +339,18 @@ class ProfilePage extends StatelessWidget {
           fontWeight: FontWeight.w500,
         ),
       ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (subtitle != null)
-            Text(
+      subtitle: subtitle == null
+          ? null
+          : Text(
               subtitle,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: HeritagePalette.secondaryText,
               ),
             ),
-          const SizedBox(width: 4),
-          const Icon(
-            Icons.chevron_right,
-            color: HeritagePalette.secondaryText,
-            size: 20,
-          ),
-        ],
+      trailing: const Icon(
+        Icons.chevron_right,
+        color: HeritagePalette.secondaryText,
+        size: 20,
       ),
       onTap: onTap,
     );
