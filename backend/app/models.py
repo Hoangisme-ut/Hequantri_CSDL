@@ -710,6 +710,17 @@ class FavoritesDetailPublic(SQLModel):
     count: int
 
 
+class VisitDetailPublic(VisitLogPublic):
+    """Một lượt tham quan kèm tóm tắt hiện vật (tiêu đề theo ngôn ngữ)."""
+
+    artifact: ArtifactSummary
+
+
+class VisitsDetailPublic(SQLModel):
+    data: list[VisitDetailPublic]
+    count: int
+
+
 class ArtifactContentPublic(ArtifactPublic):
     """Chi tiết hiện vật + nội dung theo ngôn ngữ + media."""
 
