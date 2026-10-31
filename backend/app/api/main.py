@@ -7,12 +7,10 @@ from app.api.routes import (
     items,
     languages,
     login,
-    media,
     private,
     sites,
     users,
     utils,
-    visit_logs,
 )
 from app.core.config import settings
 
@@ -24,9 +22,7 @@ api_router.include_router(items.router)
 api_router.include_router(languages.router)
 api_router.include_router(sites.router)
 api_router.include_router(artifacts.router)
-api_router.include_router(media.router)
 api_router.include_router(beacons.router)
-api_router.include_router(visit_logs.router)
 api_router.include_router(favorites.router)
 
 
