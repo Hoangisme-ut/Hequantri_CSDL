@@ -48,34 +48,34 @@ class AuthSubmitButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final compact = MediaQuery.sizeOf(context).width < 400;
-
     return SizedBox(
+      height: 56,
       width: double.infinity,
       child: FilledButton(
         key: buttonKey,
         onPressed: isLoading ? null : onPressed,
         style: FilledButton.styleFrom(
-          minimumSize: const Size.fromHeight(52),
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 12 : AppSpacing.medium,
-            vertical: 12,
+          backgroundColor: HeritagePalette.authCta,
+          foregroundColor: HeritagePalette.surface,
+          disabledBackgroundColor: HeritagePalette.authCta.withValues(
+            alpha: 0.5,
           ),
-          backgroundColor: colorScheme.secondary,
-          foregroundColor: colorScheme.onSecondary,
-          disabledBackgroundColor: colorScheme.secondary,
-          disabledForegroundColor: colorScheme.onSecondary,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.medium),
+          disabledForegroundColor: HeritagePalette.surface.withValues(
+            alpha: 0.7,
+          ),
+          shape: const StadiumBorder(),
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
           ),
         ),
         child: isLoading
-            ? SizedBox.square(
-                dimension: 22,
+            ? const SizedBox(
+                width: 24,
+                height: 24,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: colorScheme.onSecondary,
+                  strokeWidth: 2.5,
+                  color: HeritagePalette.surface,
                 ),
               )
             : Row(
@@ -90,8 +90,8 @@ class AuthSubmitButton extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                   ),
-                  SizedBox(width: compact ? 4 : AppSpacing.small),
-                  Icon(Icons.arrow_forward_rounded, size: compact ? 16 : 18),
+                  const SizedBox(width: AppSpacing.xSmall),
+                  const Icon(Icons.arrow_forward_rounded, size: 18),
                 ],
               ),
       ),

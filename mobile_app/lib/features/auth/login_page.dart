@@ -341,7 +341,7 @@ class _LoginPageState extends State<LoginPage> {
                 backgroundColor: Colors.white.withValues(alpha: 0.88),
                 side: const BorderSide(color: HeritagePalette.border),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(AppRadii.small),
                 ),
               ),
               child: Row(

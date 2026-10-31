@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_strings.dart';
 import '../../theme/app_theme.dart';
 import 'auth_config.dart';
 import 'auth_service.dart';
@@ -37,12 +38,12 @@ class _SignupPageState extends State<SignupPage> {
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
+    final strings = AppStrings.of(context);
+
     if (!_agreeToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Vui lòng đồng ý với Điều khoản sử dụng và Chính sách bảo mật.',
-          ),
+        SnackBar(
+          content: Text(strings.signupTermsRequiredError),
         ),
       );
       return;
@@ -50,8 +51,8 @@ class _SignupPageState extends State<SignupPage> {
 
     if (widget.authService == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Biểu mẫu hợp lệ. Đăng ký chưa kết nối máy chủ.'),
+        SnackBar(
+          content: Text(strings.signupSubmitNotice),
         ),
       );
       return;
@@ -80,9 +81,9 @@ class _SignupPageState extends State<SignupPage> {
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đăng ký tài khoản thành công! Vui lòng đăng nhập.'),
-            backgroundColor: Color(0xFF10B981),
+          SnackBar(
+            content: Text(AppStrings.of(context).signupSuccess),
+            backgroundColor: const Color(0xFF10B981),
           ),
         );
         Navigator.of(context).pop();
@@ -90,23 +91,23 @@ class _SignupPageState extends State<SignupPage> {
         if (!mounted) return;
         if (e.failure == AuthFailure.emailAlreadyRegistered) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Email này đã được đăng ký trong hệ thống.'),
-              backgroundColor: Color(0xFFEF4444),
+            SnackBar(
+              content: Text(AppStrings.of(context).signupEmailAlreadyRegistered),
+              backgroundColor: const Color(0xFFEF4444),
             ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Biểu mẫu hợp lệ. Đăng ký chưa kết nối máy chủ.'),
+            SnackBar(
+              content: Text(AppStrings.of(context).signupSubmitNotice),
             ),
           );
         }
       } catch (_) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Biểu mẫu hợp lệ. Đăng ký chưa kết nối máy chủ.'),
+          SnackBar(
+            content: Text(AppStrings.of(context).signupSubmitNotice),
           ),
         );
       }
@@ -124,6 +125,7 @@ class _SignupPageState extends State<SignupPage> {
     // SỬA LỖI: Tạo authTheme để đồng bộ màu sắc với LoginPage
     final baseTheme = Theme.of(context);
     final authTheme = AppTheme.auth(baseTheme);
+    final strings = AppStrings.of(context);
 
     final compactHeight = isCompactAuthViewport(context);
 
@@ -146,7 +148,7 @@ class _SignupPageState extends State<SignupPage> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: IconButton.filledTonal(
-                  tooltip: 'Quay lại đăng nhập',
+                  tooltip: strings.signupBackToLoginTooltip,
                   onPressed: () => Navigator.of(context).pop(),
                   style: IconButton.styleFrom(
                     foregroundColor: HeritagePalette.primaryNavy,
@@ -161,8 +163,8 @@ class _SignupPageState extends State<SignupPage> {
 
               // Tiêu đề di sản.
               AuthBrandHeader(
-                title: 'Tạo tài khoản',
-                subtitle: 'Bắt đầu hành trình khám phá di sản',
+                title: strings.signupHeaderTitle,
+                subtitle: strings.signupHeaderSubtitle,
                 icon: Icons.account_balance_outlined,
                 seamless: true,
               ),
@@ -171,9 +173,8 @@ class _SignupPageState extends State<SignupPage> {
 
               Text(
                 key: const Key('signup-title'),
-                'Thông tin tài khoản',
+                strings.signupAccountInfoTitle,
                 style: authTheme.textTheme.titleLarge?.copyWith(
-                  // SỬA LỖI Ở DÒNG BÊN DƯỚI: Đổi primaryNavy thành authText (Trắng)
                   color: HeritagePalette.authText,
                   fontWeight: FontWeight.w700,
                 ),
@@ -186,9 +187,9 @@ class _SignupPageState extends State<SignupPage> {
                 controller: _fullNameController,
                 textInputAction: TextInputAction.next,
                 scrollPadding: const EdgeInsets.only(bottom: AppSpacing.xLarge),
-                decoration: const InputDecoration(
-                  labelText: 'Họ và tên',
-                  prefixIcon: Icon(Icons.person_outline),
+                decoration: InputDecoration(
+                  labelText: strings.signupFullNameLabel,
+                  prefixIcon: const Icon(Icons.person_outline),
                 ),
               ),
 
@@ -204,17 +205,17 @@ class _SignupPageState extends State<SignupPage> {
               AuthPasswordField(
                 key: const Key('signup-password'),
                 controller: _passwordController,
-                label: 'Mật khẩu',
+                label: strings.signupPasswordLabel,
                 textInputAction: TextInputAction.next,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Vui lòng nhập mật khẩu.';
+                    return strings.signupPasswordRequired;
                   }
                   if (value.length < 8) {
-                    return 'Mật khẩu phải có ít nhất 8 ký tự.';
+                    return strings.signupPasswordMinLength;
                   }
                   if (value.length > 128) {
-                    return 'Mật khẩu không được vượt quá 128 ký tự.';
+                    return strings.signupPasswordMaxLength;
                   }
                   return null;
                 },
@@ -225,13 +226,13 @@ class _SignupPageState extends State<SignupPage> {
               AuthPasswordField(
                 key: const Key('signup-confirm-password'),
                 controller: _confirmPasswordController,
-                label: 'Xác nhận mật khẩu',
+                label: strings.signupConfirmPasswordLabel,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Vui lòng xác nhận mật khẩu.';
+                    return strings.signupConfirmPasswordRequired;
                   }
                   if (value != _passwordController.text) {
-                    return 'Mật khẩu xác nhận không khớp.';
+                    return strings.signupPasswordMismatch;
                   }
                   return null;
                 },
@@ -240,20 +241,20 @@ class _SignupPageState extends State<SignupPage> {
               SizedBox(height: mediumGap),
 
               // Điều khoản sử dụng dạng Checkbox chuẩn mockup
-              _buildTermsCheckbox(authTheme),
+              _buildTermsCheckbox(authTheme, strings),
 
               SizedBox(height: largeGap),
 
               AuthSubmitButton(
                 buttonKey: const Key('signup-submit'),
-                label: 'Đăng ký',
+                label: strings.signupSubmit,
                 isLoading: _isLoading,
                 onPressed: _isLoading ? null : _submit,
               ),
 
               SizedBox(height: mediumGap),
 
-              _buildLoginPrompt(authTheme),
+              _buildLoginPrompt(authTheme, strings),
             ],
           ),
         ),
@@ -261,7 +262,7 @@ class _SignupPageState extends State<SignupPage> {
     );
   }
 
-  Widget _buildTermsCheckbox(ThemeData theme) {
+  Widget _buildTermsCheckbox(ThemeData theme, AppStrings strings) {
     return InkWell(
       key: const Key('signup-terms-agree'),
       borderRadius: BorderRadius.circular(8),
@@ -293,22 +294,22 @@ class _SignupPageState extends State<SignupPage> {
             Expanded(
               child: Text.rich(
                 TextSpan(
-                  text: 'Tôi đồng ý với ',
+                  text: strings.signupTermsAgreement,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: HeritagePalette.secondaryText,
                     height: 1.4,
                   ),
                   children: [
                     TextSpan(
-                      text: 'Điều khoản sử dụng',
+                      text: strings.signupTermsOfService,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: HeritagePalette.primaryNavy,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const TextSpan(text: ' và '),
+                    TextSpan(text: strings.signupAndWord),
                     TextSpan(
-                      text: 'Chính sách bảo mật',
+                      text: strings.signupPrivacyPolicy,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: HeritagePalette.primaryNavy,
                         fontWeight: FontWeight.w700,
@@ -324,7 +325,7 @@ class _SignupPageState extends State<SignupPage> {
     );
   }
 
-  Widget _buildLoginPrompt(ThemeData theme) {
+  Widget _buildLoginPrompt(ThemeData theme, AppStrings strings) {
     return Center(
       child: InkWell(
         onTap: () => Navigator.of(context).pop(),
@@ -336,13 +337,13 @@ class _SignupPageState extends State<SignupPage> {
           ),
           child: Text.rich(
             TextSpan(
-              text: 'Đã có tài khoản? ',
+              text: strings.signupPromptQuestion,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: HeritagePalette.secondaryText,
               ),
               children: [
                 TextSpan(
-                  text: 'Đăng nhập',
+                  text: strings.signupPromptAction,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: HeritagePalette.primaryNavy,
                     fontWeight: FontWeight.w700,

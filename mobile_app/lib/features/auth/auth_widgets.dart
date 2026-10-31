@@ -1002,61 +1002,6 @@ class _AuthPasswordFieldState extends State<AuthPasswordField> {
   }
 }
 
-class AuthSubmitButton extends StatelessWidget {
-  const AuthSubmitButton({
-    required this.label,
-    required this.onPressed,
-    this.isLoading = false,
-    this.buttonKey,
-    super.key,
-  });
-
-  final String label;
-  final VoidCallback? onPressed;
-  final bool isLoading;
-  final Key? buttonKey;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 56,
-      child: FilledButton(
-        key: buttonKey,
-        onPressed: isLoading ? null : onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: HeritagePalette.authCta,
-          foregroundColor: HeritagePalette.authNavy,
-          disabledBackgroundColor: HeritagePalette.authCta.withValues(
-            alpha: 0.5,
-          ),
-          disabledForegroundColor: HeritagePalette.authNavy.withValues(
-            alpha: 0.5,
-          ),
-          shape: const StadiumBorder(),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        child: isLoading
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: HeritagePalette.authNavy,
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(label),
-                  const SizedBox(width: AppSpacing.xSmall),
-                  const Icon(Icons.arrow_forward_rounded),
-                ],
-              ),
-      ),
-    );
-  }
-}
-
 String? validateEmail(
   String? value, {
   String requiredMessage = 'Vui lòng nhập email hoặc số điện thoại.',
