@@ -1,11 +1,15 @@
 import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Optional
+from typing import Any, Optional
 
-from pydantic import EmailStr, HttpUrl, field_validator
+from pydantic import EmailStr, field_validator
 from sqlalchemy import CheckConstraint, Index, Unicode, UniqueConstraint, text
 from sqlmodel import Field, Relationship, SQLModel
+
+# SQLModel chỉ khai báo ondelete = CASCADE / SET NULL / RESTRICT; SQL Server cần
+# NO ACTION (không cascade) nên dùng giá trị kiểu Any để qua kiểm tra kiểu.
+NO_ACTION: Any = "NO ACTION"
 
 
 def get_datetime_utc() -> datetime:
@@ -64,7 +68,6 @@ class User(UserBase, table=True):
     language_id: uuid.UUID | None = Field(
         default=None, foreign_key="language.id", ondelete="SET NULL"
     )
-    # SQLModel needs Optional forward references for relationships on Python 3.14.
     role: Optional["Role"] = Relationship(back_populates="users")  # noqa: UP037, UP045
     language: Optional["Language"] = Relationship(back_populates="users")  # noqa: UP037, UP045
     items: list[Item] = Relationship(back_populates="owner", cascade_delete=True)
@@ -195,12 +198,12 @@ class Language(LanguageBase, table=True):
         ),
     )
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    users: list["User"] = Relationship(back_populates="language")
-    translations: list["ArtifactTranslation"] = Relationship(
+    users: list[User] = Relationship(back_populates="language")
+    translations: list[ArtifactTranslation] = Relationship(
         back_populates="language", cascade_delete=True
     )
-    media: list["Media"] = Relationship(back_populates="language")
-    visit_logs: list["VisitLog"] = Relationship(back_populates="language")
+    media: list[Media] = Relationship(back_populates="language")
+    visit_logs: list[VisitLog] = Relationship(back_populates="language")
 
 
 class LanguagePublic(LanguageBase):
@@ -313,7 +316,7 @@ class Artifact(ArtifactBase, table=True):
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
     updated_at: datetime | None = None
     site: Site | None = Relationship(back_populates="artifacts")
-    translations: list["ArtifactTranslation"] = Relationship(
+    translations: list[ArtifactTranslation] = Relationship(
         back_populates="artifact", cascade_delete=True
     )
     media: list[Media] = Relationship(back_populates="artifact", cascade_delete=True)
@@ -321,12 +324,10 @@ class Artifact(ArtifactBase, table=True):
     visit_logs: list[VisitLog] = Relationship(
         back_populates="artifact", cascade_delete=True
     )
+    favorites: list[Favorite] = Relationship(
         back_populates="artifact", cascade_delete=True
     )
-    favorites: list["Favorite"] = Relationship(
-        back_populates="artifact", cascade_delete=True
-    )
-    feedbacks: list["Feedback"] = Relationship(
+    feedbacks: list[Feedback] = Relationship(
         back_populates="artifact", cascade_delete=True
     )
 
@@ -408,12 +409,6 @@ class MediaCreate(MediaBase):
     # audio/video theo ngôn ngữ -> có language_id; ảnh dùng chung -> để None
     language_id: uuid.UUID | None = None
 
-    @field_validator("url")
-    @classmethod
-    def validate_url(cls, value: str) -> str:
-        HttpUrl(value)
-        return value
-
 
 class MediaUpdate(SQLModel):
     media_type: str | None = Field(default=None, max_length=20)
@@ -421,13 +416,6 @@ class MediaUpdate(SQLModel):
     caption: str | None = Field(default=None, max_length=255)
     sort_order: int | None = None
     language_id: uuid.UUID | None = None
-
-    @field_validator("url")
-    @classmethod
-    def validate_url(cls, value: str | None) -> str | None:
-        if value is not None:
-            HttpUrl(value)
-        return value
 
     @field_validator("media_type")
     @classmethod
@@ -537,14 +525,16 @@ class Beacon(BeaconBase, table=True):
     # mỗi hiện vật gắn tối đa 1 beacon (index unique ở __table_args__).
     # NO ACTION: SQL Server cấm nhiều đường cascade; khi xóa Artifact lẻ,
     # code CRUD phải gỡ beacon (artifact_id = None) trước.
-    artifact_id: uuid.UUID | None = Field(default=None, foreign_key="artifact.id")
+    artifact_id: uuid.UUID | None = Field(
+        default=None, foreign_key="artifact.id", ondelete=NO_ACTION
+    )
     battery_level: int | None = None
     last_seen_at: datetime | None = None
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
     updated_at: datetime | None = None
     site: Site | None = Relationship(back_populates="beacons")
     artifact: Artifact | None = Relationship(back_populates="beacon")
-    visit_logs: list["VisitLog"] = Relationship(back_populates="beacon")
+    visit_logs: list[VisitLog] = Relationship(back_populates="beacon")
 
 
 class BeaconPublic(BeaconBase):
@@ -580,8 +570,12 @@ class VisitLog(SQLModel, table=True):
         foreign_key="artifact.id", nullable=False, ondelete="CASCADE", index=True
     )
     # NO ACTION (không cascade/set null) để tránh "multiple cascade paths" ở SQL Server
-    beacon_id: uuid.UUID | None = Field(default=None, foreign_key="beacon.id")
-    language_id: uuid.UUID | None = Field(default=None, foreign_key="language.id")
+    beacon_id: uuid.UUID | None = Field(
+        default=None, foreign_key="beacon.id", ondelete=NO_ACTION
+    )
+    language_id: uuid.UUID | None = Field(
+        default=None, foreign_key="language.id", ondelete=NO_ACTION
+    )
     visited_at: datetime | None = Field(default_factory=get_datetime_utc, index=True)
     duration_seconds: int | None = None
     rssi: int | None = None
@@ -702,6 +696,17 @@ class ArtifactSummary(SQLModel):
 
 class ArtifactSummariesPublic(SQLModel):
     data: list[ArtifactSummary]
+    count: int
+
+
+class FavoriteDetailPublic(FavoritePublic):
+    """Hiện vật yêu thích kèm tiêu đề theo ngôn ngữ (để app hiển thị luôn)."""
+
+    artifact: ArtifactSummary
+
+
+class FavoritesDetailPublic(SQLModel):
+    data: list[FavoriteDetailPublic]
     count: int
 
 
