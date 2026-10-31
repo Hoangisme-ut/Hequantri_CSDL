@@ -1,4 +1,5 @@
 import uuid
+from datetime import timedelta
 from typing import Any
 
 from sqlmodel import Session, col, select
@@ -19,6 +20,7 @@ from app.models import (
     User,
     UserCreate,
     UserUpdate,
+    VisitLog,
     get_datetime_utc,
 )
 
@@ -244,3 +246,29 @@ def build_artifact_summary(
             ),
         },
     )
+
+
+# =============================================================================
+# [Smart Heritage] Lượt xem / lịch sử tham quan
+# Quy tắc ghi lượt xem (thống nhất với app - P4, BR-05):
+#  - App chỉ gọi POST /visits/ khi TriggerManager hiện nội dung hiện vật
+#    (vào vùng beacon mới), KHÔNG gọi mỗi lần nhận tín hiệu BLE.
+#  - Server chặn thêm một lớp: cùng người dùng + cùng hiện vật trong
+#    VISIT_DEDUP_SECONDS giây chỉ tính 1 lượt xem.
+# =============================================================================
+VISIT_DEDUP_SECONDS = 300
+
+
+def find_recent_visit(
+    *, session: Session, user_id: uuid.UUID, artifact_id: uuid.UUID
+) -> VisitLog | None:
+    cutoff = get_datetime_utc() - timedelta(seconds=VISIT_DEDUP_SECONDS)
+    return session.exec(
+        select(VisitLog)
+        .where(
+            col(VisitLog.user_id) == user_id,
+            col(VisitLog.artifact_id) == artifact_id,
+            col(VisitLog.visited_at) >= cutoff,
+        )
+        .order_by(col(VisitLog.visited_at).desc())
+    ).first()
