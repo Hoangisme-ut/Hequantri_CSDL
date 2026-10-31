@@ -41,7 +41,7 @@ class BeaconSimulationPage extends StatefulWidget {
 class _BeaconSimulationPageState extends State<BeaconSimulationPage> {
   static const _beaconA = SimulatedBeacon(
     name: 'Beacon A',
-    uuid: '11111111-2222-3333-4444-555555555555',
+    uuid: 'FDA50693-A4E2-4FB1-AFCF-C6EB07647825',
     major: 1,
     minor: 1,
     distance: 1.5,
@@ -49,7 +49,7 @@ class _BeaconSimulationPageState extends State<BeaconSimulationPage> {
 
   static const _beaconB = SimulatedBeacon(
     name: 'Beacon B',
-    uuid: '11111111-2222-3333-4444-555555555555',
+    uuid: 'FDA50693-A4E2-4FB1-AFCF-C6EB07647825',
     major: 1,
     minor: 2,
     distance: 2.0,
