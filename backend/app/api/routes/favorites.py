@@ -8,6 +8,7 @@ from sqlmodel import col, func, select
 
 from app import crud
 from app.api.deps import SessionDep, VisitorUser
+from app.api.docs import errors
 from app.models import (
     Artifact,
     Favorite,
@@ -21,11 +22,6 @@ from app.models import (
 
 router = APIRouter(prefix="/favorites", tags=["favorites"])
 
-_ERRORS: dict[int | str, dict[str, Any]] = {
-    401: {"description": "Thiếu hoặc sai token đăng nhập"},
-    403: {"description": "Không đủ quyền"},
-}
-
 
 def _get_own_favorite(
     session: SessionDep, user_id: uuid.UUID, artifact_id: uuid.UUID
@@ -38,7 +34,7 @@ def _get_own_favorite(
     ).first()
 
 
-@router.get("/me", response_model=FavoritesDetailPublic, responses=_ERRORS)
+@router.get("/me", response_model=FavoritesDetailPublic, responses=errors(401, 403))
 def read_my_favorites(
     session: SessionDep,
     current_user: VisitorUser,
@@ -97,9 +93,8 @@ def read_my_favorites(
     response_model=FavoritePublic,
     status_code=status.HTTP_201_CREATED,
     responses={
-        **_ERRORS,
+        **errors(401, 403, 404),
         200: {"description": "Đã yêu thích từ trước (không tạo bản ghi mới)"},
-        404: {"description": "Hiện vật không tồn tại hoặc đang bị ẩn"},
     },
 )
 def add_favorite(
@@ -144,7 +139,7 @@ def add_favorite(
 
 @router.delete(
     "/{artifact_id}",
-    responses={**_ERRORS, 404: {"description": "Hiện vật chưa nằm trong yêu thích"}},
+    responses=errors(401, 403, 404),
 )
 def remove_favorite(
     session: SessionDep, current_user: VisitorUser, artifact_id: uuid.UUID

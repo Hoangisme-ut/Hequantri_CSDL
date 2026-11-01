@@ -2,9 +2,11 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
+from sqlalchemy import ColumnElement, true
 from sqlmodel import col, func, select
 
 from app.api.deps import AdminUser, OptionalUser, SessionDep, is_admin
+from app.api.docs import errors
 from app.models import (
     Message,
     Site,
@@ -31,9 +33,9 @@ def read_sites(
     Danh sách di tích. **Public**.
     Chỉ admin mới xem được di tích đã ẩn (`include_inactive=true`).
     """
-    conditions: list[Any] = []
+    conditions: list[ColumnElement[bool]] = []
     if not (include_inactive and is_admin(current_user)):
-        conditions.append(col(Site.is_active))
+        conditions.append(col(Site.is_active) == true())
     if q:
         conditions.append(col(Site.name).contains(q))
     count = session.exec(
@@ -50,7 +52,7 @@ def read_sites(
     return SitesPublic(data=[SitePublic.model_validate(s) for s in sites], count=count)
 
 
-@router.get("/{site_id}", response_model=SitePublic)
+@router.get("/{site_id}", response_model=SitePublic, responses=errors(404))
 def read_site(
     session: SessionDep, current_user: OptionalUser, site_id: uuid.UUID
 ) -> Any:
@@ -63,7 +65,7 @@ def read_site(
     return site
 
 
-@router.post("/", response_model=SitePublic)
+@router.post("/", response_model=SitePublic, responses=errors(401, 403))
 def create_site(*, session: SessionDep, _admin: AdminUser, site_in: SiteCreate) -> Any:
     """
     Tạo di tích. **Admin**.
@@ -75,7 +77,7 @@ def create_site(*, session: SessionDep, _admin: AdminUser, site_in: SiteCreate) 
     return site
 
 
-@router.put("/{site_id}", response_model=SitePublic)
+@router.put("/{site_id}", response_model=SitePublic, responses=errors(401, 403, 404))
 def update_site(
     *, session: SessionDep, _admin: AdminUser, site_id: uuid.UUID, site_in: SiteUpdate
 ) -> Any:
@@ -93,13 +95,10 @@ def update_site(
     return site
 
 
-@router.delete("/{site_id}")
+@router.delete("/{site_id}", responses=errors(401, 403, 404))
 def delete_site(session: SessionDep, _admin: AdminUser, site_id: uuid.UUID) -> Message:
     """
     Ẩn di tích (xóa mềm: is_active = false). **Admin**.
-
-    Không sửa dữ liệu con: hiện vật + beacon của Site ẩn tự không trả cho du khách
-    (kiểm tra lúc đọc). Bật lại Site (`PUT is_active=true`) -> hiển thị lại như cũ.
     """
     site = session.get(Site, site_id)
     if not site:

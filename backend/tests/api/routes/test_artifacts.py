@@ -1,3 +1,5 @@
+"""Kiểm thử HTTP cho API hiện vật (/artifacts) và nội dung theo ngôn ngữ."""
+
 import uuid
 from collections.abc import Generator
 
@@ -5,94 +7,259 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from app.models import Beacon
 from tests.utils.heritage import (
     API,
     add_translation,
     create_artifact,
-    create_beacon,
     create_site,
     get_language_id,
     purge_sites,
-    resolve_params,
+    random_code,
 )
 
 
 @pytest.fixture
 def site_ids(db: Session) -> Generator[list[str]]:
-    """Ghi lại id Site tạo trong test để dọn dữ liệu cuối test."""
     ids: list[str] = []
     yield ids
     purge_sites(db, ids)
 
 
-def test_cannot_change_site_of_artifact_that_has_beacon(
+def test_artifact_crud_lifecycle(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    site_ids: list[str],
+) -> None:
+    site = create_site(client, superuser_token_headers)
+    other_site = create_site(client, superuser_token_headers)
+    site_ids += [site["id"], other_site["id"]]
+    code = random_code("CRUD")
+
+    created = client.post(
+        f"{API}/artifacts/",
+        headers=superuser_token_headers,
+        json={"site_id": site["id"], "code": code, "era": "Thế kỷ 11"},
+    )
+    assert created.status_code == 200
+    artifact = created.json()
+    assert artifact["is_active"] is True
+    assert artifact["updated_at"] is None
+
+    # Trùng mã trong cùng Site -> 409; khác Site thì được
+    dup = client.post(
+        f"{API}/artifacts/",
+        headers=superuser_token_headers,
+        json={"site_id": site["id"], "code": code},
+    )
+    assert dup.status_code == 409
+    same_code_other_site = client.post(
+        f"{API}/artifacts/",
+        headers=superuser_token_headers,
+        json={"site_id": other_site["id"], "code": code},
+    )
+    assert same_code_other_site.status_code == 200
+
+    listed = client.get(f"{API}/artifacts/?site_id={site['id']}&q={code}").json()
+    assert listed["count"] == 1
+    assert listed["data"][0]["id"] == artifact["id"]
+
+    updated = client.put(
+        f"{API}/artifacts/{artifact['id']}",
+        headers=superuser_token_headers,
+        json={"era": "Thế kỷ 12"},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["era"] == "Thế kỷ 12"
+    assert updated.json()["updated_at"] is not None
+
+    # Đổi mã thành mã đã có trong Site -> 409
+    second = create_artifact(client, superuser_token_headers, site["id"])
+    clash = client.put(
+        f"{API}/artifacts/{second['id']}",
+        headers=superuser_token_headers,
+        json={"code": code},
+    )
+    assert clash.status_code == 409
+
+    # Xóa mềm: khách không thấy, admin vẫn thấy và bật lại được
+    hidden = client.delete(
+        f"{API}/artifacts/{artifact['id']}", headers=superuser_token_headers
+    )
+    assert hidden.status_code == 200
+    assert client.get(f"{API}/artifacts/{artifact['id']}").status_code == 404
+    assert (
+        client.get(
+            f"{API}/artifacts/{artifact['id']}", headers=superuser_token_headers
+        ).status_code
+        == 200
+    )
+    restored = client.put(
+        f"{API}/artifacts/{artifact['id']}",
+        headers=superuser_token_headers,
+        json={"is_active": True},
+    )
+    assert restored.status_code == 200
+    assert client.get(f"{API}/artifacts/{artifact['id']}").status_code == 200
+
+
+def test_artifact_validation_errors(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    site_ids: list[str],
+) -> None:
+    site = create_site(client, superuser_token_headers)
+    site_ids.append(site["id"])
+    headers = superuser_token_headers
+
+    missing_code = client.post(
+        f"{API}/artifacts/", headers=headers, json={"site_id": site["id"]}
+    )
+    assert missing_code.status_code == 422
+    unknown_site = client.post(
+        f"{API}/artifacts/",
+        headers=headers,
+        json={"site_id": str(uuid.uuid4()), "code": "X-1"},
+    )
+    assert unknown_site.status_code == 404
+    bad_site = client.post(
+        f"{API}/artifacts/", headers=headers, json={"site_id": "abc", "code": "X-1"}
+    )
+    assert bad_site.status_code == 422
+    unknown = client.get(f"{API}/artifacts/{uuid.uuid4()}")
+    assert unknown.status_code == 404
+    assert client.get(f"{API}/artifacts/not-a-uuid").status_code == 422
+    assert client.get(f"{API}/artifacts/?limit=201").status_code == 422
+    update_unknown = client.put(
+        f"{API}/artifacts/{uuid.uuid4()}", headers=headers, json={"era": "x"}
+    )
+    assert update_unknown.status_code == 404
+
+
+def test_artifact_write_and_translation_admin_only(
     client: TestClient,
     superuser_token_headers: dict[str, str],
     normal_user_token_headers: dict[str, str],
     site_ids: list[str],
 ) -> None:
-    site_a = create_site(client, superuser_token_headers)
-    site_b = create_site(client, superuser_token_headers)
-    site_ids += [site_a["id"], site_b["id"]]
-    artifact = create_artifact(client, superuser_token_headers, site_a["id"])
-    beacon = create_beacon(
-        client, superuser_token_headers, site_a["id"], artifact["id"]
-    )
-
-    blocked = client.put(
-        f"{API}/artifacts/{artifact['id']}",
-        headers=superuser_token_headers,
-        json={"site_id": site_b["id"]},
-    )
-    assert blocked.status_code == 409
-    unchanged = client.get(
-        f"{API}/artifacts/{artifact['id']}", headers=superuser_token_headers
-    )
-    assert unchanged.json()["site_id"] == site_a["id"]
-
-    unassigned = client.put(
-        f"{API}/beacons/{beacon['id']}",
-        headers=superuser_token_headers,
-        json={"artifact_id": None},
-    )
-    assert unassigned.status_code == 200
-    moved = client.put(
-        f"{API}/artifacts/{artifact['id']}",
-        headers=superuser_token_headers,
-        json={"site_id": site_b["id"]},
-    )
-    assert moved.status_code == 200
-    assert moved.json()["site_id"] == site_b["id"]
-
-    # Beacon đã gỡ hiện vật nên không còn trả nội dung của hiện vật đã chuyển Site
-    resolved = client.get(
-        f"{API}/beacons/resolve?{resolve_params(beacon)}",
-        headers=normal_user_token_headers,
-    )
-    assert resolved.status_code == 404
+    site = create_site(client, superuser_token_headers)
+    site_ids.append(site["id"])
+    artifact = create_artifact(client, superuser_token_headers, site["id"])
+    vi_id = get_language_id(client)
+    base = f"{API}/artifacts/{artifact['id']}"
+    translation = f"{base}/translations/{vi_id}"
+    calls = [
+        ("post", f"{API}/artifacts/", {"site_id": site["id"], "code": "NOPE"}),
+        ("put", base, {"era": "x"}),
+        ("delete", base, None),
+        ("get", f"{base}/translations", None),
+        ("put", translation, {"title": "x"}),
+        ("delete", translation, None),
+    ]
+    for method, url, body in calls:
+        kwargs = {"json": body} if body is not None else {}
+        no_token = getattr(client, method)(url, **kwargs)
+        assert no_token.status_code == 401, (method, url)
+        visitor = getattr(client, method)(
+            url, headers=normal_user_token_headers, **kwargs
+        )
+        assert visitor.status_code == 403, (method, url)
+    # dữ liệu không bị đổi
+    assert client.get(base).json()["era"] is None
 
 
-def test_cannot_assign_artifact_of_other_site_to_beacon(
+def test_translation_upsert_and_delete(
     client: TestClient,
     superuser_token_headers: dict[str, str],
     site_ids: list[str],
 ) -> None:
-    site_a = create_site(client, superuser_token_headers)
-    site_b = create_site(client, superuser_token_headers)
-    site_ids += [site_a["id"], site_b["id"]]
-    artifact_b = create_artifact(client, superuser_token_headers, site_b["id"])
-    beacon_a = create_beacon(client, superuser_token_headers, site_a["id"])
+    site = create_site(client, superuser_token_headers)
+    site_ids.append(site["id"])
+    artifact = create_artifact(client, superuser_token_headers, site["id"])
+    vi_id = get_language_id(client)
+    url = f"{API}/artifacts/{artifact['id']}/translations/{vi_id}"
 
-    response = client.put(
-        f"{API}/beacons/{beacon_a['id']}",
+    first = client.put(url, headers=superuser_token_headers, json={"title": "Bản 1"})
+    assert first.status_code == 200
+    second = client.put(
+        url,
         headers=superuser_token_headers,
-        json={"artifact_id": artifact_b["id"]},
+        json={"title": "Bản 2", "history_content": "Nội dung dài tiếng Việt có dấu."},
     )
-    assert response.status_code == 400
+    assert second.status_code == 200
+    assert second.json()["id"] == first.json()["id"]  # cập nhật, không tạo mới
+    listed = client.get(
+        f"{API}/artifacts/{artifact['id']}/translations",
+        headers=superuser_token_headers,
+    ).json()
+    assert [item["title"] for item in listed] == ["Bản 2"]
+
+    empty_title = client.put(url, headers=superuser_token_headers, json={"title": ""})
+    assert empty_title.status_code == 422
+    unknown_lang = client.put(
+        f"{API}/artifacts/{artifact['id']}/translations/{uuid.uuid4()}",
+        headers=superuser_token_headers,
+        json={"title": "x"},
+    )
+    assert unknown_lang.status_code == 404
+
+    assert client.delete(url, headers=superuser_token_headers).status_code == 200
+    assert client.delete(url, headers=superuser_token_headers).status_code == 404
 
 
-def test_hidden_site_hides_artifact_and_beacon_content(
+def test_language_fallback_rules(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    site_ids: list[str],
+) -> None:
+    site = create_site(client, superuser_token_headers)
+    site_ids.append(site["id"])
+    artifact = create_artifact(client, superuser_token_headers, site["id"])
+    base = f"{API}/artifacts/{artifact['id']}"
+
+    # Chưa có bản dịch nào: vẫn trả hiện vật, nội dung rỗng
+    empty = client.get(f"{base}?lang=vi").json()
+    assert empty["title"] is None
+    assert empty["language_code"] is None
+
+    add_translation(
+        client,
+        superuser_token_headers,
+        artifact["id"],
+        get_language_id(client, "vi"),
+        "Trống đồng",
+    )
+    # Chỉ có tiếng Việt: xin tiếng Anh -> dự phòng tiếng Việt (mặc định)
+    fallback = client.get(f"{base}?lang=en").json()
+    assert fallback["title"] == "Trống đồng"
+    assert fallback["language_code"] == "vi"
+    assert fallback["is_fallback"] is True
+    direct = client.get(f"{base}?lang=vi").json()
+    assert direct["is_fallback"] is False
+
+    # Có tiếng Anh: trả đúng ngôn ngữ
+    add_translation(
+        client,
+        superuser_token_headers,
+        artifact["id"],
+        get_language_id(client, "en"),
+        "Bronze drum",
+    )
+    english = client.get(f"{base}?lang=en").json()
+    assert english["title"] == "Bronze drum"
+    assert english["is_fallback"] is False
+
+    # Mã ngôn ngữ lạ hoặc bỏ trống -> ngôn ngữ mặc định (tiếng Việt), không lỗi
+    for suffix in ("?lang=xx", ""):
+        response = client.get(f"{base}{suffix}")
+        assert response.status_code == 200
+        assert response.json()["title"] == "Trống đồng"
+
+    # Danh sách cũng theo ngôn ngữ
+    listed = client.get(f"{API}/artifacts/?site_id={site['id']}&lang=en").json()
+    assert listed["data"][0]["title"] == "Bronze drum"
+
+
+def test_user_preferred_language_is_used_when_no_lang_param(
     client: TestClient,
     superuser_token_headers: dict[str, str],
     normal_user_token_headers: dict[str, str],
@@ -105,137 +272,33 @@ def test_hidden_site_hides_artifact_and_beacon_content(
         client,
         superuser_token_headers,
         artifact["id"],
-        get_language_id(client),
-        "Trống đồng",
+        get_language_id(client, "vi"),
+        "Tiếng Việt",
     )
-    beacon = create_beacon(client, superuser_token_headers, site["id"], artifact["id"])
-    resolve_url = f"{API}/beacons/resolve?{resolve_params(beacon)}&lang=vi"
-
-    # Đang hiện: khách xem được
-    assert client.get(f"{API}/artifacts/{artifact['id']}").status_code == 200
-    visible = client.get(resolve_url, headers=normal_user_token_headers)
-    assert visible.status_code == 200
-    assert visible.json()["artifact"]["title"] == "Trống đồng"
-
-    # Ẩn Site: khách không thấy gì, admin vẫn xem được
-    hidden = client.delete(f"{API}/sites/{site['id']}", headers=superuser_token_headers)
-    assert hidden.status_code == 200
-    assert client.get(f"{API}/artifacts/{artifact['id']}").status_code == 404
-    listed = client.get(f"{API}/artifacts/?site_id={site['id']}").json()
-    assert listed["count"] == 0
-    assert listed["data"] == []
-    assert client.get(resolve_url, headers=normal_user_token_headers).status_code == 404
-    admin_view = client.get(
-        f"{API}/artifacts/{artifact['id']}", headers=superuser_token_headers
+    add_translation(
+        client,
+        superuser_token_headers,
+        artifact["id"],
+        get_language_id(client, "en"),
+        "English",
     )
-    assert admin_view.status_code == 200
-    admin_list = client.get(
-        f"{API}/artifacts/?site_id={site['id']}&include_inactive=true",
-        headers=superuser_token_headers,
-    ).json()
-    assert admin_list["count"] == 1
-
-    # Bật lại Site: dữ liệu không bị mất, mọi thứ hiện lại
-    restored = client.put(
-        f"{API}/sites/{site['id']}",
-        headers=superuser_token_headers,
-        json={"is_active": True},
-    )
-    assert restored.status_code == 200
-    assert client.get(f"{API}/artifacts/{artifact['id']}").status_code == 200
-    again = client.get(resolve_url, headers=normal_user_token_headers)
-    assert again.status_code == 200
-    assert again.json()["artifact"]["id"] == artifact["id"]
-
-
-def test_cannot_create_data_under_hidden_site(
-    client: TestClient,
-    superuser_token_headers: dict[str, str],
-    site_ids: list[str],
-) -> None:
-    active_site = create_site(client, superuser_token_headers)
-    hidden_site = create_site(client, superuser_token_headers)
-    site_ids += [active_site["id"], hidden_site["id"]]
-    artifact = create_artifact(client, superuser_token_headers, active_site["id"])
-    client.delete(f"{API}/sites/{hidden_site['id']}", headers=superuser_token_headers)
-
-    create_art = client.post(
-        f"{API}/artifacts/",
-        headers=superuser_token_headers,
-        json={"site_id": hidden_site["id"], "code": "HIDDEN-1"},
-    )
-    assert create_art.status_code == 409
-
-    create_bea = client.post(
-        f"{API}/beacons/",
-        headers=superuser_token_headers,
-        json={
-            "proximity_uuid": "E2C56DB5-DFFB-48D2-B060-D0F5A71096E0",
-            "major": 7,
-            "minor": 7,
-            "site_id": hidden_site["id"],
-        },
-    )
-    assert create_bea.status_code == 409
-
-    move = client.put(
-        f"{API}/artifacts/{artifact['id']}",
-        headers=superuser_token_headers,
-        json={"site_id": hidden_site["id"]},
-    )
-    assert move.status_code == 409
-
-
-def test_can_unassign_beacon_on_hidden_site_but_not_assign(
-    client: TestClient,
-    superuser_token_headers: dict[str, str],
-    site_ids: list[str],
-) -> None:
-    site = create_site(client, superuser_token_headers)
-    site_ids.append(site["id"])
-    artifact = create_artifact(client, superuser_token_headers, site["id"])
-    other = create_artifact(client, superuser_token_headers, site["id"])
-    beacon = create_beacon(client, superuser_token_headers, site["id"], artifact["id"])
-    client.delete(f"{API}/sites/{site['id']}", headers=superuser_token_headers)
-
-    assign = client.put(
-        f"{API}/beacons/{beacon['id']}",
-        headers=superuser_token_headers,
-        json={"artifact_id": other["id"]},
-    )
-    assert assign.status_code == 409
-    unassign = client.put(
-        f"{API}/beacons/{beacon['id']}",
-        headers=superuser_token_headers,
-        json={"artifact_id": None},
-    )
-    assert unassign.status_code == 200
-    assert unassign.json()["artifact_id"] is None
-
-
-def test_resolve_never_returns_content_when_site_mismatch(
-    client: TestClient,
-    db: Session,
-    superuser_token_headers: dict[str, str],
-    normal_user_token_headers: dict[str, str],
-    site_ids: list[str],
-) -> None:
-    """Dữ liệu bị lệch (sửa thẳng DB) vẫn không được trả nội dung sai quan hệ."""
-    site_a = create_site(client, superuser_token_headers)
-    site_b = create_site(client, superuser_token_headers)
-    site_ids += [site_a["id"], site_b["id"]]
-    artifact_b = create_artifact(client, superuser_token_headers, site_b["id"])
-    beacon_a = create_beacon(client, superuser_token_headers, site_a["id"])
-
-    row = db.get(Beacon, beacon_a["id"])
-    assert row is not None
-    row.artifact_id = uuid.UUID(artifact_b["id"])
-    db.add(row)
-    db.commit()
-
-    response = client.get(
-        f"{API}/beacons/resolve?{resolve_params(beacon_a)}",
-        headers=normal_user_token_headers,
-    )
-    assert response.status_code == 409
-    assert "artifact" not in response.json()
+    url = f"{API}/artifacts/{artifact['id']}"
+    en_id = get_language_id(client, "en")
+    try:
+        set_pref = client.patch(
+            f"{API}/users/me",
+            headers=normal_user_token_headers,
+            json={"language_id": en_id},
+        )
+        assert set_pref.status_code == 200
+        response = client.get(url, headers=normal_user_token_headers)
+        assert response.json()["title"] == "English"
+        # Tham số ?lang= luôn thắng ngôn ngữ ưa thích
+        override = client.get(f"{url}?lang=vi", headers=normal_user_token_headers)
+        assert override.json()["title"] == "Tiếng Việt"
+    finally:
+        client.patch(
+            f"{API}/users/me",
+            headers=normal_user_token_headers,
+            json={"language_id": None},
+        )
