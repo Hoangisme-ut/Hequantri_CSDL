@@ -6,6 +6,7 @@ from sqlmodel import col, func, select
 
 from app import crud
 from app.api.deps import SessionDep, VisitorUser
+from app.api.docs import errors
 from app.models import (
     Artifact,
     Beacon,
@@ -20,26 +21,19 @@ from app.models import (
 
 router = APIRouter(prefix="/visits", tags=["visits"])
 
-_ERRORS: dict[int | str, dict[str, Any]] = {
-    401: {"description": "Thiếu hoặc sai token đăng nhập"},
-    403: {"description": "Không đủ quyền"},
-}
-
 
 @router.post(
     "/",
     response_model=VisitLogPublic,
     status_code=status.HTTP_201_CREATED,
     responses={
-        **_ERRORS,
+        **errors(401, 403, 404, 400),
         200: {
             "description": (
                 f"Đã có lượt xem hiện vật này trong {crud.VISIT_DEDUP_SECONDS} giây "
                 "gần nhất (không tạo bản ghi mới)"
             )
         },
-        400: {"description": "Beacon không gắn với hiện vật được gửi lên"},
-        404: {"description": "Hiện vật / beacon / ngôn ngữ không tồn tại hoặc bị ẩn"},
     },
 )
 def record_visit(
@@ -108,7 +102,7 @@ def record_visit(
     return visit
 
 
-@router.get("/me", response_model=VisitsDetailPublic, responses=_ERRORS)
+@router.get("/me", response_model=VisitsDetailPublic, responses=errors(401, 403))
 def read_my_visits(
     session: SessionDep,
     current_user: VisitorUser,

@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from sqlmodel import col, func, select
 
 from app.api.deps import AdminUser, SessionDep
+from app.api.docs import errors
 from app.models import (
     Language,
     LanguageCreate,
@@ -41,9 +42,9 @@ def read_languages(session: SessionDep) -> Any:
     )
 
 
-@router.post("/", response_model=LanguagePublic)
+@router.post("/", response_model=LanguagePublic, responses=errors(401, 403, 409))
 def create_language(
-    *, session: SessionDep, admin: AdminUser, language_in: LanguageCreate
+    *, session: SessionDep, _admin: AdminUser, language_in: LanguageCreate
 ) -> Any:
     """
     Thêm ngôn ngữ. **Admin**.
@@ -59,11 +60,15 @@ def create_language(
     return language
 
 
-@router.put("/{language_id}", response_model=LanguagePublic)
+@router.put(
+    "/{language_id}",
+    response_model=LanguagePublic,
+    responses=errors(400, 401, 403, 404, 409),
+)
 def update_language(
     *,
     session: SessionDep,
-    admin: AdminUser,
+    _admin: AdminUser,
     language_id: uuid.UUID,
     language_in: LanguageUpdate,
 ) -> Any:
@@ -91,9 +96,9 @@ def update_language(
     return language
 
 
-@router.delete("/{language_id}")
+@router.delete("/{language_id}", responses=errors(400, 401, 403, 404))
 def delete_language(
-    session: SessionDep, admin: AdminUser, language_id: uuid.UUID
+    session: SessionDep, _admin: AdminUser, language_id: uuid.UUID
 ) -> Message:
     """
     Tắt ngôn ngữ (xóa mềm: is_active = false). **Admin**.
