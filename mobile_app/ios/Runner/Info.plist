@@ -24,6 +24,10 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Smart Heritage dùng vị trí khi bạn mở màn hình quét để nhận biết iBeacon và hiển thị nội dung hiện vật gần bạn.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Smart Heritage dùng Bluetooth để nhận tín hiệu iBeacon khi bạn tham quan.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

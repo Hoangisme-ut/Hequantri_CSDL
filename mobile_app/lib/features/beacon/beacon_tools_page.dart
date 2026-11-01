@@ -8,8 +8,11 @@ import '../../shared/config/api_config.dart';
 import '../artifacts/artifact.dart';
 import '../auth/auth_service.dart';
 import '../auth/auth_session.dart';
+import '../visits/visit_log_service.dart';
+import 'beacon_content_panel.dart';
 import 'beacon_content_controller.dart';
 import 'beacon_content_service.dart';
+import 'beacon_scanner.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({
@@ -75,10 +78,12 @@ class _AppShellState extends State<AppShell> {
         children: [
           BeaconTestPage(
             key: _scanPageKey,
+            isActive: _selectedIndex == 0,
             readToken: readToken,
             languageCode: languageCode,
           ),
           BeaconSimulationPage(
+            isActive: _selectedIndex == 1,
             readToken: readToken,
             languageCode: languageCode,
           ),
@@ -107,32 +112,48 @@ class BeaconTestPage extends StatefulWidget {
     super.key,
     this.readToken,
     this.languageCode = 'vi',
+    this.isActive = true,
+    @visibleForTesting this.visitLogService,
     @visibleForTesting this.contentService,
     @visibleForTesting this.beaconStream,
+    @visibleForTesting this.scanner,
   });
 
   final AuthToken? Function()? readToken;
   final String languageCode;
+  final bool isActive;
+  final VisitLogService? visitLogService;
 
   final BeaconContentService? contentService;
   final Stream<List<Beacon>>? beaconStream;
+  final BeaconScanner? scanner;
 
   @override
   State<BeaconTestPage> createState() => BeaconTestPageState();
 }
 
-class BeaconTestPageState extends State<BeaconTestPage> {
+class BeaconTestPageState extends State<BeaconTestPage>
+    with WidgetsBindingObserver {
   StreamSubscription<List<Beacon>>? _subscription;
+  StreamSubscription<BluetoothState>? _bluetoothSubscription;
+  StreamSubscription<AuthorizationStatus>? _authorizationSubscription;
+  late final BeaconScanner _scanner;
+  Timer? _rawExpiryTimer;
+  Timer? _selectionExpiryTimer;
+  int _scanEpoch = 0;
+  bool _checkingServices = false;
+  String? _pendingScanProblem;
 
   BeaconContentService? _service;
   BeaconContentController? _contentController;
 
   bool _ownsService = false;
+  VisitLogService? _visitService;
+  bool _ownsVisitService = false;
   String? _configurationError;
   Beacon? _selectedBeacon;
 
   List<Beacon> _beacons = [];
-  DateTime? _lastBeaconSeenAt;
 
   String _status = 'Chưa bắt đầu quét';
   bool _scanning = false;
@@ -153,6 +174,8 @@ class BeaconTestPageState extends State<BeaconTestPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scanner = widget.scanner ?? BeaconScanner();
 
     try {
       final service =
@@ -162,7 +185,16 @@ class BeaconTestPageState extends State<BeaconTestPage> {
       _service = service;
       _ownsService = widget.contentService == null;
 
+      _visitService =
+          widget.visitLogService ??
+          (widget.contentService == null
+              ? VisitLogService(baseUrl: ApiConfig.baseUrl)
+              : null);
+      _ownsVisitService =
+          widget.visitLogService == null && _visitService != null;
+
       _contentController = BeaconContentController(
+        visitLogService: _visitService,
         service: service,
         readToken: () => widget.readToken?.call(),
       );
@@ -196,29 +228,102 @@ class BeaconTestPageState extends State<BeaconTestPage> {
         '${beacon.major}:${beacon.minor}';
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        _scanning &&
+        !_busy &&
+        widget.beaconStream == null) {
+      unawaited(_checkServicesOnResume(_scanEpoch));
+    }
+  }
+
+  Future<void> _checkServicesOnResume(int epoch) async {
+    if (_checkingServices) return;
+    _checkingServices = true;
+    try {
+      await _scanner.checkReady();
+    } catch (error) {
+      if (_isCurrentScan(epoch)) {
+        await _stopScanning(message: _scanError(error), clearReadings: true);
+      }
+    } finally {
+      _checkingServices = false;
+    }
+  }
+
+  bool _isCurrentScan(int epoch) => mounted && _scanning && epoch == _scanEpoch;
+
+  void _interruptScan(String message) {
+    if (_busy) {
+      _pendingScanProblem = message;
+    } else {
+      unawaited(_stopScanning(message: message, clearReadings: true));
+    }
+  }
+
+  String _scanError(Object error) => error is BeaconScanException
+      ? error.message
+      : 'Không thể quét BLE. Kiểm tra Bluetooth, Vị trí và quyền ứng dụng rồi thử lại.';
+
+  void _cancelExpiryTimers() {
+    _rawExpiryTimer?.cancel();
+    _rawExpiryTimer = null;
+    _selectionExpiryTimer?.cancel();
+    _selectionExpiryTimer = null;
+  }
+
+  void _armSelectionExpiry() {
+    _selectionExpiryTimer?.cancel();
+    final epoch = _scanEpoch;
+    _selectionExpiryTimer = Timer(
+      const Duration(milliseconds: _keepBeaconMilliseconds),
+      () {
+        if (!_isCurrentScan(epoch)) return;
+        _selectedBeacon = null;
+        _lastNotifiedBeaconKey = null;
+        _candidateBeaconKey = null;
+        _candidateHits = 0;
+        _contentController?.reset();
+        setState(() {
+          _notificationStatus =
+              'Đã mất tín hiệu beacon đang chọn. Chờ nhận lại.';
+        });
+      },
+    );
+  }
+
   void _updateBeaconDisplay(List<Beacon> detectedBeacons) {
     if (!mounted || !_scanning) return;
 
-    setState(() {
-      final now = DateTime.now();
+    if (detectedBeacons.isNotEmpty) {
+      _rawExpiryTimer?.cancel();
+      final epoch = _scanEpoch;
+      _rawExpiryTimer = Timer(
+        const Duration(milliseconds: _keepBeaconMilliseconds),
+        () {
+          if (!_isCurrentScan(epoch)) return;
+          setState(() {
+            _beacons = [];
+            _status = 'Đang quét — chưa phát hiện iBeacon';
+          });
+        },
+      );
+    }
+    if (detectedBeacons.any(
+      (b) => b.rssi < 0 && _beaconKey(b) == _lastNotifiedBeaconKey,
+    )) {
+      _armSelectionExpiry();
+    }
 
+    setState(() {
       if (detectedBeacons.isNotEmpty) {
         _beacons = List<Beacon>.of(detectedBeacons);
-        _lastBeaconSeenAt = now;
         _status = 'Phát hiện ${_beacons.length} beacon';
-        return;
-      }
-
-      final lastSeen = _lastBeaconSeenAt;
-      final keepPreviousData =
-          lastSeen != null &&
-          now.difference(lastSeen).inMilliseconds < _keepBeaconMilliseconds;
-
-      if (_beacons.isNotEmpty && keepPreviousData) {
-        _status = 'Tạm chưa nhận tín hiệu — đang giữ dữ liệu lần nhận cuối';
       } else {
-        _beacons = [];
-        _status = 'Đang quét — chưa phát hiện iBeacon';
+        _status = _beacons.isNotEmpty
+            ? 'Tạm chưa nhận tín hiệu — đang giữ dữ liệu lần nhận cuối'
+            : 'Đang quét — chưa phát hiện iBeacon';
       }
     });
   }
@@ -291,6 +396,7 @@ class BeaconTestPageState extends State<BeaconTestPage> {
     });
 
     _selectedBeacon = selected;
+    _armSelectionExpiry();
     _requestContent(selected);
 
     final messenger = ScaffoldMessenger.of(context);
@@ -315,7 +421,10 @@ class BeaconTestPageState extends State<BeaconTestPage> {
   bool get isBusy => _busy;
 
   Future<bool> stopScanningIfNeeded() async {
-    if (_scanning || _subscription != null) {
+    if (_scanning ||
+        _subscription != null ||
+        _bluetoothSubscription != null ||
+        _authorizationSubscription != null) {
       return _stopScanning();
     }
 
@@ -331,8 +440,11 @@ class BeaconTestPageState extends State<BeaconTestPage> {
     if (_busy || _scanning) return;
 
     setState(() => _busy = true);
+    _pendingScanProblem = null;
 
     try {
+      await _cancelSubscriptions();
+      if (!mounted) return;
       final Stream<List<Beacon>> detections;
       final testStream = widget.beaconStream;
 
@@ -341,42 +453,20 @@ class BeaconTestPageState extends State<BeaconTestPage> {
       } else {
         _setStatus('Đang kiểm tra quyền và dịch vụ...');
 
-        final initialized = await flutterBeacon.initializeAndCheckScanning;
+        await _scanner.prepare();
         if (!mounted) return;
-
-        if (!initialized) {
-          _setStatus('Chưa thể quét. Kiểm tra quyền Bluetooth và vị trí.');
-          return;
-        }
-
-        final locationEnabled =
-            await flutterBeacon.checkLocationServicesIfEnabled;
-        if (!mounted) return;
-
-        if (!locationEnabled) {
-          _setStatus('Hãy bật vị trí rồi quay lại bấm Bắt đầu quét.');
-          await flutterBeacon.openLocationSettings;
-          return;
-        }
-
-        final regions = [Region(identifier: 'all-beacons')];
-
-        detections = flutterBeacon
-            .ranging(regions)
-            .map((result) => result.beacons);
+        detections = _scanner.detections;
       }
-
-      await _subscription?.cancel();
-      _subscription = null;
 
       if (!mounted) return;
 
+      _cancelExpiryTimers();
       _contentController?.reset();
       _selectedBeacon = null;
+      final epoch = ++_scanEpoch;
 
       setState(() {
         _beacons = [];
-        _lastBeaconSeenAt = null;
 
         _lastNotifiedBeaconKey = null;
         _candidateBeaconKey = null;
@@ -392,7 +482,7 @@ class BeaconTestPageState extends State<BeaconTestPage> {
 
       _subscription = detections.listen(
         (beacons) {
-          if (!mounted || !_scanning) return;
+          if (!_isCurrentScan(epoch)) return;
 
           debugPrint('RANGING: ${beacons.length} beacon');
 
@@ -400,69 +490,119 @@ class BeaconTestPageState extends State<BeaconTestPage> {
           _handleBeaconDetection(beacons);
         },
         onError: (Object error) {
-          if (!mounted) return;
-
-          _contentController?.reset();
-          _selectedBeacon = null;
-
-          setState(() {
-            _scanning = false;
-            _status = 'Lỗi quét: $error';
-          });
-
-          unawaited(_subscription?.cancel());
+          if (_isCurrentScan(epoch)) {
+            _interruptScan(_scanError(error));
+          }
         },
         onDone: () {
-          if (!mounted) return;
-
-          _contentController?.reset();
-          _selectedBeacon = null;
-
-          setState(() {
-            _scanning = false;
-            _status = 'Luồng quét đã kết thúc';
-          });
+          if (_isCurrentScan(epoch)) {
+            _interruptScan('Luồng quét đã kết thúc');
+          }
         },
       );
+      if (testStream == null) {
+        _bluetoothSubscription = _scanner.bluetoothChanges.listen(
+          (state) {
+            if (_isCurrentScan(epoch) && state != BluetoothState.stateOn) {
+              _interruptScan(BeaconScanner.bluetoothProblem(state));
+            }
+          },
+          onError: (Object error) {
+            if (_isCurrentScan(epoch)) {
+              _interruptScan(_scanError(error));
+            }
+          },
+        );
+        _authorizationSubscription = _scanner.authorizationChanges.listen(
+          (state) {
+            if (_isCurrentScan(epoch) && !BeaconScanner.isAuthorized(state)) {
+              _interruptScan(
+                'Quyền quét đã bị thu hồi. Hãy kiểm tra Cài đặt ứng dụng.',
+              );
+            }
+          },
+          onError: (Object error) {
+            if (_isCurrentScan(epoch)) {
+              _interruptScan(_scanError(error));
+            }
+          },
+        );
+        await _scanner.checkReady();
+      }
     } catch (error) {
       if (!mounted) return;
-
+      _cancelExpiryTimers();
+      _scanEpoch++;
       _contentController?.reset();
       _selectedBeacon = null;
-
+      _scanning = false;
+      try {
+        await _cancelSubscriptions();
+      } catch (cancelError) {
+        debugPrint('BLE cancellation failed: $cancelError');
+      }
+      if (!mounted) return;
       setState(() {
         _scanning = false;
-        _status = 'Không thể bắt đầu quét: $error';
+        _status = _scanError(error);
       });
     } finally {
       if (mounted) {
         setState(() => _busy = false);
+        final problem = _pendingScanProblem;
+        _pendingScanProblem = null;
+        if (_scanning && problem != null) _interruptScan(problem);
       }
     }
   }
 
-  Future<bool> _stopScanning() async {
+  Future<void> _cancelSubscriptions() async {
+    // Clear handles only after cancellation succeeds, allowing an explicit retry.
+    await _subscription?.cancel();
+    _subscription = null;
+    await _bluetoothSubscription?.cancel();
+    _bluetoothSubscription = null;
+    await _authorizationSubscription?.cancel();
+    _authorizationSubscription = null;
+  }
+
+  Future<bool> _stopScanning({
+    String? message,
+    bool clearReadings = false,
+  }) async {
     if (_busy) return false;
-    if (!_scanning && _subscription == null) return true;
+    if (!_scanning &&
+        _subscription == null &&
+        _bluetoothSubscription == null &&
+        _authorizationSubscription == null) {
+      return true;
+    }
 
     setState(() {
       _busy = true;
       _scanning = false;
     });
 
+    _scanEpoch++;
+    _cancelExpiryTimers();
     _contentController?.reset();
     _selectedBeacon = null;
+    _lastNotifiedBeaconKey = null;
+    _candidateBeaconKey = null;
+    _candidateHits = 0;
 
     try {
-      await _subscription?.cancel();
-      _subscription = null;
+      await _cancelSubscriptions();
 
       if (!mounted) return false;
 
       setState(() {
-        _status = _beacons.isEmpty
-            ? 'Đã dừng quét'
-            : 'Đã dừng quét — hiển thị dữ liệu lần nhận cuối';
+        if (clearReadings) _beacons = [];
+        _status =
+            message ??
+            (_beacons.isEmpty
+                ? 'Đã dừng quét'
+                : 'Đã dừng quét — hiển thị dữ liệu lần nhận cuối');
       });
 
       return true;
@@ -494,65 +634,23 @@ class BeaconTestPageState extends State<BeaconTestPage> {
       );
     }
 
-    return ListenableBuilder(
-      listenable: controller,
-      builder: (context, child) {
-        final content = controller.content;
-        final error = controller.errorMessage;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Số lần gọi API trong phiên: ${controller.requestCount}'),
-            const SizedBox(height: 12),
-            if (controller.isLoading) ...[
-              const LinearProgressIndicator(),
-              const SizedBox(height: 8),
-              const Text('Đang chờ tải nội dung...'),
-            ] else if (error != null) ...[
-              Text(
-                error,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton(
-                  onPressed: controller.retry,
-                  child: const Text('Thử lại'),
-                ),
-              ),
-            ] else if (content != null) ...[
-              Text(
-                content.title ?? content.code,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              Text('Mã hiện vật: ${content.code}'),
-              if (content.languageCode != null)
-                Text('Ngôn ngữ: ${content.languageCode}'),
-              if (content.isFallback)
-                const Text('Đang hiển thị ngôn ngữ dự phòng.'),
-              if (content.description?.trim().isNotEmpty ?? false) ...[
-                const SizedBox(height: 12),
-                SelectableText(content.description!),
-              ],
-              if (content.historyContent?.trim().isNotEmpty ?? false) ...[
-                const SizedBox(height: 12),
-                SelectableText(content.historyContent!),
-              ],
-            ] else
-              const Text('Chưa có nội dung từ backend.'),
-          ],
-        );
-      },
+    return BeaconContentPanel(
+      controller: controller,
+      isActive: widget.isActive,
+      rssi: _selectedBeacon?.rssi,
     );
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _scanEpoch++;
+    _cancelExpiryTimers();
     unawaited(_subscription?.cancel());
+    unawaited(_bluetoothSubscription?.cancel());
+    unawaited(_authorizationSubscription?.cancel());
     _contentController?.dispose();
+    if (_ownsVisitService) _visitService?.close();
 
     if (_ownsService) {
       _service?.close();
