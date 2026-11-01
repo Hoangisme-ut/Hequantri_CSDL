@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'features/auth/auth_service.dart';
 import 'features/beacon/beacon_content_controller.dart';
+import 'features/beacon/beacon_content_panel.dart';
+import 'features/visits/visit_log_service.dart';
 import 'features/beacon/beacon_content_service.dart';
 import 'shared/config/api_config.dart';
 
@@ -28,11 +30,17 @@ class BeaconSimulationPage extends StatefulWidget {
     super.key,
     this.readToken,
     this.languageCode = 'vi',
+    this.isActive = true,
+    @visibleForTesting this.contentService,
+    @visibleForTesting this.visitLogService,
   });
 
   // P5 cung cấp hàm đọc token từ phiên đăng nhập.
   final AuthToken? Function()? readToken;
   final String languageCode;
+  final bool isActive;
+  final BeaconContentService? contentService;
+  final VisitLogService? visitLogService;
 
   @override
   State<BeaconSimulationPage> createState() => _BeaconSimulationPageState();
@@ -56,6 +64,8 @@ class _BeaconSimulationPageState extends State<BeaconSimulationPage> {
   );
 
   BeaconContentService? _service;
+  VisitLogService? _visitService;
+  bool _ownsVisitService = false;
   BeaconContentController? _controller;
   String? _configurationError;
 
@@ -72,15 +82,39 @@ class _BeaconSimulationPageState extends State<BeaconSimulationPage> {
     super.initState();
 
     try {
-      final service = BeaconContentService(baseUrl: ApiConfig.baseUrl);
+      final service =
+          widget.contentService ??
+          BeaconContentService(baseUrl: ApiConfig.baseUrl);
 
       _service = service;
+      _visitService =
+          widget.visitLogService ??
+          (widget.contentService == null
+              ? VisitLogService(baseUrl: ApiConfig.baseUrl)
+              : null);
+      _ownsVisitService =
+          widget.visitLogService == null && _visitService != null;
       _controller = BeaconContentController(
+        visitLogService: _visitService,
         service: service,
         readToken: () => widget.readToken?.call(),
       );
     } on StateError catch (error) {
       _configurationError = error.message.toString();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant BeaconSimulationPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final beacon = _currentBeacon;
+    if (oldWidget.languageCode != widget.languageCode && beacon != null) {
+      _controller?.receiveBeacon(
+        proximityUuid: beacon.uuid,
+        major: beacon.major,
+        minor: beacon.minor,
+        languageCode: widget.languageCode,
+      );
     }
   }
 
@@ -157,65 +191,17 @@ class _BeaconSimulationPageState extends State<BeaconSimulationPage> {
       );
     }
 
-    return ListenableBuilder(
-      listenable: controller,
-      builder: (context, child) {
-        final content = controller.content;
-        final error = controller.errorMessage;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Số lần gọi API trong phiên: ${controller.requestCount}'),
-            const SizedBox(height: 12),
-            if (controller.isLoading) ...[
-              const LinearProgressIndicator(),
-              const SizedBox(height: 8),
-              const Text('Đang chờ tải nội dung...'),
-            ] else if (error != null) ...[
-              Text(
-                error,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton(
-                  onPressed: controller.retry,
-                  child: const Text('Thử lại'),
-                ),
-              ),
-            ] else if (content != null) ...[
-              Text(
-                content.title ?? content.code,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              Text('Mã hiện vật: ${content.code}'),
-              if (content.languageCode != null)
-                Text('Ngôn ngữ: ${content.languageCode}'),
-              if (content.isFallback)
-                const Text('Đang hiển thị ngôn ngữ dự phòng.'),
-              if (content.description?.trim().isNotEmpty ?? false) ...[
-                const SizedBox(height: 12),
-                SelectableText(content.description!),
-              ],
-              if (content.historyContent?.trim().isNotEmpty ?? false) ...[
-                const SizedBox(height: 12),
-                SelectableText(content.historyContent!),
-              ],
-            ] else
-              const Text('Chưa có nội dung từ backend.'),
-          ],
-        );
-      },
+    return BeaconContentPanel(
+      controller: controller,
+      isActive: widget.isActive,
     );
   }
 
   @override
   void dispose() {
     _controller?.dispose();
-    _service?.close();
+    if (widget.contentService == null) _service?.close();
+    if (_ownsVisitService) _visitService?.close();
     super.dispose();
   }
 

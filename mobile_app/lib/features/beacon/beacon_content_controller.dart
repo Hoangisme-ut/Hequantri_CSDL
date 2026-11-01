@@ -3,17 +3,20 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../auth/auth_service.dart';
+import '../visits/visit_log_service.dart';
 import 'beacon_content_service.dart';
 
 class BeaconContentController extends ChangeNotifier {
   BeaconContentController({
     required this.service,
     required this.readToken,
+    this.visitLogService,
     this.minRequestInterval = const Duration(seconds: 3),
   }) : assert(!minRequestInterval.isNegative);
 
   final BeaconContentService service;
   final AuthToken? Function() readToken;
+  final VisitLogService? visitLogService;
   final Duration minRequestInterval;
 
   _BeaconRequest? _selected;
@@ -29,6 +32,20 @@ class BeaconContentController extends ChangeNotifier {
 
   int _revision = 0;
   int _requestCount = 0;
+
+  int _visitEpoch = 0;
+  int? _recordedVisitEpoch;
+  String? _recordedArtifactId;
+  String? _contentAccessToken;
+  String? _visitError;
+  bool _savingVisit = false;
+  VisitRecordResult? _visitResult;
+  final Set<int> _visitsInFlight = {};
+
+  bool get canRecordVisits => visitLogService != null;
+  bool get isSavingVisit => _savingVisit;
+  String? get visitError => _visitError;
+  VisitRecordResult? get visitResult => _visitResult;
 
   BeaconContent? get content => _content;
   String? get errorMessage => _errorMessage;
@@ -56,6 +73,8 @@ class BeaconContentController extends ChangeNotifier {
     // Cùng beacon và cùng ngôn ngữ: không gọi API lại.
     if (request.key == _selected?.key) return;
 
+    // A language change reloads content, but is not a new beacon entry.
+    if (request.identity != _selected?.identity) _clearVisitSelection();
     _selected = request;
     _queueRequest();
   }
@@ -71,6 +90,7 @@ class BeaconContentController extends ChangeNotifier {
     _pending = true;
     _loading = true;
     _content = null;
+    _contentAccessToken = null;
     _errorMessage = null;
 
     notifyListeners();
@@ -127,6 +147,7 @@ class BeaconContentController extends ChangeNotifier {
       // Người dùng đã chuyển beacon thì bỏ kết quả cũ.
       if (_isCurrent(revision)) {
         _content = result;
+        _contentAccessToken = token.accessToken;
         _errorMessage = null;
       }
     } on BeaconApiException catch (error) {
@@ -158,15 +179,99 @@ class BeaconContentController extends ChangeNotifier {
     return !_disposed && revision == _revision;
   }
 
+  /// Called by the visible content panel after a frame displays this result.
+  /// Resolving content alone, hidden tabs and raw ranging callbacks do not log.
+  Future<void> recordDisplayedContent(
+    BeaconContent displayed, {
+    int? rssi,
+  }) async {
+    final visits = visitLogService;
+    final epoch = _visitEpoch;
+    if (_disposed ||
+        visits == null ||
+        _loading ||
+        !identical(displayed, _content) ||
+        _selected == null ||
+        _visitsInFlight.contains(epoch) ||
+        _visitError != null ||
+        (_recordedVisitEpoch == epoch &&
+            _recordedArtifactId == displayed.artifactId)) {
+      return;
+    }
+
+    final token = readToken();
+    if (token == null ||
+        token.accessToken.trim().isEmpty ||
+        token.accessToken != _contentAccessToken) {
+      _visitError = 'Cần tải lại nội dung bằng phiên đăng nhập hiện tại.';
+      notifyListeners();
+      return;
+    }
+
+    _visitsInFlight.add(epoch);
+    _savingVisit = true;
+    notifyListeners();
+
+    bool stillSelected() =>
+        !_disposed &&
+        epoch == _visitEpoch &&
+        readToken()?.accessToken == token.accessToken;
+
+    try {
+      final result = await visits.record(
+        artifactId: displayed.artifactId,
+        beaconId: displayed.beaconId,
+        token: token,
+        rssi: rssi,
+      );
+      if (stillSelected()) {
+        _recordedVisitEpoch = epoch;
+        _recordedArtifactId = displayed.artifactId;
+        _visitResult = result;
+        _visitError = null;
+      }
+    } on VisitLogException catch (error) {
+      if (stillSelected()) _visitError = error.message;
+    } catch (_) {
+      if (stillSelected()) {
+        _visitError = 'Chưa lưu được lượt xem. Vui lòng thử lại.';
+      }
+    } finally {
+      _visitsInFlight.remove(epoch);
+      if (!_disposed && epoch == _visitEpoch) {
+        _savingVisit = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  void retryVisitLog({int? rssi}) {
+    final displayed = _content;
+    if (_disposed || _savingVisit || displayed == null) return;
+    _visitError = null;
+    unawaited(recordDisplayedContent(displayed, rssi: rssi));
+  }
+
+  void _clearVisitSelection() {
+    _visitEpoch++;
+    _recordedVisitEpoch = null;
+    _recordedArtifactId = null;
+    _visitError = null;
+    _visitResult = null;
+    _savingVisit = false;
+  }
+
   /// Xóa trạng thái và bỏ qua kết quả của yêu cầu cũ.
   void reset() {
     if (_disposed) return;
 
     _revision++;
+    _clearVisitSelection();
     _selected = null;
     _pending = false;
     _loading = false;
     _content = null;
+    _contentAccessToken = null;
     _errorMessage = null;
 
     // Giữ thời gian chờ để reset không vượt giới hạn gọi API.
@@ -176,6 +281,7 @@ class BeaconContentController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _visitEpoch++;
     _revision++;
     _pending = false;
     _cooldownTimer?.cancel();
@@ -197,6 +303,8 @@ class _BeaconRequest {
   final int major;
   final int minor;
   final String? languageCode;
+
+  String get identity => '${proximityUuid.toLowerCase()}:$major:$minor';
 
   String get key {
     return '${proximityUuid.toLowerCase()}:'
