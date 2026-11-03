@@ -20,7 +20,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(WelcomePage), findsOneWidget);
-    expect(find.text('Nơi lưu giữ tinh hoa hiếu học Việt Nam'), findsOneWidget);
+    expect(
+      find.text('Nơi lưu giữ tinh hoa hiếu học Việt Nam'),
+      findsOneWidget,
+    );
     expect(
       find.text(
         'Văn Miếu – Quốc Tử Giám là di tích lịch sử gắn với truyền thống '
@@ -35,8 +38,11 @@ void main() {
       isA<AssetImage>(),
     );
     expect(
-      (await rootBundle.load('assets/images/van_mieu_welcome.jpg'))
-          .lengthInBytes,
+      (
+        await rootBundle.load(
+          'assets/images/onboarding/welcome_temple_of_literature.jpg',
+        )
+      ).lengthInBytes,
       greaterThan(0),
     );
 
@@ -57,19 +63,19 @@ void main() {
     const stories = [
       (
         'Nơi lưu giữ tinh hoa hiếu học Việt Nam',
-        'assets/images/van_mieu_welcome.jpg',
+        'assets/images/onboarding/welcome_temple_of_literature.jpg',
         'Văn Miếu – Quốc Tử Giám là di tích lịch sử gắn với truyền thống '
             'hiếu học và giáo dục Việt Nam.',
       ),
       (
         'Dấu ấn giao thoa của những nền văn hóa',
-        'assets/images/hoi_an_welcome.jpg',
+        'assets/images/onboarding/welcome_hoi_an.jpg',
         'Những ngôi nhà truyền thống và kiến trúc phố cổ lưu giữ dấu ấn '
             'lịch sử của thương cảng Hội An.',
       ),
       (
         'Khám phá vẻ đẹp kinh thành xưa',
-        'assets/images/hue_welcome.jpg',
+        'assets/images/onboarding/welcome_thien_mu_pagoda.jpg',
         'Khám phá kiến trúc cung đình và giá trị lịch sử của quần thể '
             'di tích Cố đô Huế.',
       ),
@@ -78,26 +84,32 @@ void main() {
     for (var index = 0; index < stories.length; index++) {
       expect(find.text(stories[index].$1), findsOneWidget);
       expect(find.text(stories[index].$3), findsOneWidget);
+
       final image = tester.widget<Image>(
         find.byKey(Key('welcome-photo-$index')),
       );
+
       expect(image.image, isA<AssetImage>());
       expect(
         (await rootBundle.load(stories[index].$2)).lengthInBytes,
         greaterThan(0),
       );
       expect(
-        find.bySemanticsLabel('Trang ${index + 1} trên ${stories.length}'),
+        find.bySemanticsLabel(
+          'Trang ${index + 1} trên ${stories.length}',
+        ),
         findsOneWidget,
       );
 
       final action = find.byKey(const Key('welcome-next'));
+
       expect(
         find.text(
           index == stories.length - 1 ? 'Bắt đầu khám phá' : 'Tiếp tục',
         ),
         findsOneWidget,
       );
+
       await tester.tap(action);
       await tester.pumpAndSettle();
     }
@@ -112,10 +124,15 @@ void main() {
     await tester.pumpWidget(const MyApp());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('welcome-page-content-0')));
+    await tester.tap(
+      find.byKey(const Key('welcome-page-content-0')),
+    );
     await tester.pumpAndSettle();
 
-    expect(find.text('Dấu ấn giao thoa của những nền văn hóa'), findsOneWidget);
+    expect(
+      find.text('Dấu ấn giao thoa của những nền văn hóa'),
+      findsOneWidget,
+    );
     expect(find.bySemanticsLabel('Trang 2 trên 3'), findsOneWidget);
   });
 
@@ -132,12 +149,15 @@ void main() {
     ]) {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
+
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpWidget(const MyApp());
       await tester.pumpAndSettle();
 
       expect(find.byType(WelcomePage), findsOneWidget);
+
       final initialException = tester.takeException();
+
       expect(
         initialException,
         isNull,
@@ -146,14 +166,22 @@ void main() {
 
       for (var index = 0; index < 3; index++) {
         final action = find.byKey(const Key('welcome-next'));
+
         expect(
           tester.getBottomRight(action).dy,
           lessThanOrEqualTo(size.height),
         );
+
         await tester.tap(action);
         await tester.pumpAndSettle();
+
         final exception = tester.takeException();
-        expect(exception, isNull, reason: 'Viewport $size, page ${index + 1}');
+
+        expect(
+          exception,
+          isNull,
+          reason: 'Viewport $size, page ${index + 1}',
+        );
       }
 
       expect(find.byType(LoginPage), findsOneWidget);
@@ -177,6 +205,7 @@ void main() {
   ) async {
     tester.view.physicalSize = const Size(320, 260);
     tester.view.devicePixelRatio = 1;
+
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
@@ -191,6 +220,7 @@ void main() {
         matching: find.byType(Scrollable),
       ),
     );
+
     expect(scrollable.position.maxScrollExtent, greaterThan(0));
   });
 
@@ -222,7 +252,11 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      MyApp(appShell: AppShell(stopScanning: () async => false)),
+      MyApp(
+        appShell: AppShell(
+          stopScanning: () async => false,
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -256,12 +290,14 @@ void main() {
 
     await tester.tap(find.text('Simulate Beacon A'));
     await tester.pump();
+
     expect(find.text('Notifications triggered: 1'), findsOneWidget);
     expect(find.text('Duplicate detections suppressed: 0'), findsOneWidget);
     expect(find.text('Beacon A'), findsWidgets);
 
     await tester.tap(find.text('Simulate Beacon A'));
     await tester.pump();
+
     expect(find.text('Notifications triggered: 1'), findsOneWidget);
     expect(find.text('Duplicate detections suppressed: 1'), findsOneWidget);
     expect(
@@ -271,15 +307,18 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.bluetooth_searching));
     await tester.pumpAndSettle();
+
     expect(find.text('Chưa bắt đầu quét'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.science_outlined));
     await tester.pumpAndSettle();
+
     expect(find.text('Notifications triggered: 1'), findsOneWidget);
     expect(find.text('Duplicate detections suppressed: 1'), findsOneWidget);
 
     await tester.tap(find.text('Reset'));
     await tester.pump();
+
     expect(find.text('Notifications triggered: 0'), findsOneWidget);
     expect(find.text('Duplicate detections suppressed: 0'), findsOneWidget);
     expect(find.text('No simulated beacon detected yet.'), findsOneWidget);
@@ -291,6 +330,7 @@ void main() {
     await openAppShell(tester);
 
     final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
+
     expect(app.theme?.useMaterial3, isTrue);
     expect(app.theme?.colorScheme.secondary, HeritagePalette.gold);
     expect(app.theme?.colorScheme.tertiary, HeritagePalette.deepNavy);
@@ -301,14 +341,25 @@ void main() {
     expect(app.themeMode, ThemeMode.system);
 
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
-    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    addTearDown(
+      tester.platformDispatcher.clearPlatformBrightnessTestValue,
+    );
+
     await openAppShell(tester);
     await tester.tap(find.byIcon(Icons.science_outlined));
     await tester.pumpAndSettle();
 
-    final simulationLabel = tester.widget<Text>(find.text('SIMULATION MODE'));
-    final activeTheme = Theme.of(tester.element(find.text('SIMULATION MODE')));
+    final simulationLabel = tester.widget<Text>(
+      find.text('SIMULATION MODE'),
+    );
+    final activeTheme = Theme.of(
+      tester.element(find.text('SIMULATION MODE')),
+    );
+
     expect(activeTheme.brightness, Brightness.dark);
-    expect(simulationLabel.style?.color, activeTheme.colorScheme.tertiary);
+    expect(
+      simulationLabel.style?.color,
+      activeTheme.colorScheme.tertiary,
+    );
   });
 }

@@ -2,11 +2,11 @@ import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { Archive, MapPin, MessageSquare, Radio } from "lucide-react"
 
-import { ItemsService } from "@/client"
 import { ApiPendingCard, ErrorState, MetricCard } from "@/components/Common/AdminPrimitives"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import useAuth from "@/hooks/useAuth"
+import { artifactKeys, artifactsService } from "@/services/artifacts"
 
 export const Route = createFileRoute("/_layout/")({
   component: Dashboard,
@@ -16,8 +16,8 @@ export const Route = createFileRoute("/_layout/")({
 function Dashboard() {
   const { user } = useAuth()
   const artifactsQuery = useQuery({
-    queryKey: ["items"],
-    queryFn: async () => (await ItemsService.readItems({ query: { skip: 0, limit: 100 } })).data,
+    queryKey: artifactKeys.list({ skip: 0, limit: 100, include_inactive: true }),
+    queryFn: () => artifactsService.list({ skip: 0, limit: 100, include_inactive: true }),
   })
   const artifactCount = artifactsQuery.data?.data.length
 
@@ -46,7 +46,7 @@ function Dashboard() {
         {artifactsQuery.isError ? (
           <Card className="gap-0 border-border/70 bg-card shadow-sm">
             <CardHeader className="border-b border-border/70 px-5 py-3"><CardTitle className="text-sm">Artifact records</CardTitle></CardHeader>
-            <CardContent className="p-0"><ErrorState description="The existing Items API could not be reached." onRetry={() => void artifactsQuery.refetch()} /></CardContent>
+            <CardContent className="p-0"><ErrorState description="The Artifact API could not be reached." onRetry={() => void artifactsQuery.refetch()} /></CardContent>
           </Card>
         ) : (
           <ApiPendingCard title="Beacon status" description="Connectivity and assignment status need a confirmed beacon data source." />

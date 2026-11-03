@@ -31,3 +31,17 @@ here.
 - Credit: Photo by CEphoto, Uwe Aranas
 
 Both onboarding thumbnails are bundled locally so they are available offline.
+
+## Artifact images awaiting provenance review
+
+The files below are present in `images/artifacts/`, but their original source,
+creator, and license could not be established from the repository. They are
+not referenced by the sample artifact catalog until that information is
+verified. Do not treat these entries as a license or attribution:
+
+| File | Observed subject | Source, creator, license |
+| --- | --- | --- |
+| `images/artifacts/blue_white_ceramic.jpg` | Blue and white ceramic vessel | Unknown; verification required |
+| `images/artifacts/doctor_stelae.jpg` | Golden animal sculpture, not a doctoral stele | Unknown; verification required |
+| `images/artifacts/dong_son_drum.jpg` | Drum surface with Dong Son style motifs | Unknown; verification required |
+| `images/artifacts/ly_sword.jpg` | Close-up of a small metal object; sword identity unconfirmed | Unknown; verification required |

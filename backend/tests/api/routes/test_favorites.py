@@ -1,231 +1,237 @@
+"""Kiểm thử HTTP cho API yêu thích hiện vật (/favorites)."""
+
 import uuid
+from collections.abc import Generator
 
 import pytest
-from fastapi import HTTPException
-from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine, select
+from fastapi.testclient import TestClient
+from sqlmodel import Session
 
-from app.api.routes.favorites import create_favorite, delete_favorite, read_favorites
-from app.models import Artifact, Favorite, FavoriteCreate, Site, User
+from tests.utils.heritage import (
+    API,
+    add_translation,
+    create_artifact,
+    create_site,
+    get_language_id,
+    purge_sites,
+)
+from tests.utils.user import authentication_token_from_email
 
 
 @pytest.fixture
-def session() -> Session:
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+def site_ids(db: Session) -> Generator[list[str]]:
+    ids: list[str] = []
+    yield ids
+    purge_sites(db, ids)
+
+
+@pytest.fixture
+def other_user_headers(client: TestClient, db: Session) -> dict[str, str]:
+    return authentication_token_from_email(
+        client=client, email="favorite-other@example.com", db=db
     )
-    SQLModel.metadata.create_all(engine)
-    with Session(engine) as db_session:
-        yield db_session
 
 
-def make_user(session: Session, name: str) -> User:
-    user = User(
-        email=f"{name}-{uuid.uuid4().hex[:6]}@example.com",
-        hashed_password="not-used-in-unit-tests",
-    )
-    session.add(user)
-    session.commit()
-    session.refresh(user)
-    return user
-
-
-def make_artifact(
-    session: Session,
-    site: Site | None = None,
-    *,
-    is_active: bool = True,
-) -> Artifact:
-    if site is None:
-        site = Site(name="Test site")
-        session.add(site)
-        session.commit()
-        session.refresh(site)
-    artifact = Artifact(
-        site_id=site.id, code=f"ART-{uuid.uuid4().hex[:8]}", is_active=is_active
-    )
-    session.add(artifact)
-    session.commit()
-    session.refresh(artifact)
+def _setup_artifact(
+    client: TestClient, admin: dict[str, str], site_ids: list[str], title: str
+) -> dict[str, str]:
+    site = create_site(client, admin)
+    site_ids.append(site["id"])
+    artifact = create_artifact(client, admin, site["id"])
+    add_translation(client, admin, artifact["id"], get_language_id(client), title)
     return artifact
 
 
-def add(session: Session, user: User, artifact: Artifact):  # type: ignore[no-untyped-def]
-    return create_favorite(
-        session=session,
-        current_user=user,
-        favorite_in=FavoriteCreate(artifact_id=artifact.id),
-    )
-
-
-def listing(session: Session, user: User, *, skip: int = 0, limit: int = 100):  # type: ignore[no-untyped-def]
-    return read_favorites(session=session, current_user=user, skip=skip, limit=limit)
-
-
-def test_add_list_and_remove_favorite(session: Session) -> None:
-    user = make_user(session, "alice")
-    artifact = make_artifact(session)
-
-    created = add(session, user, artifact)
-    assert created.user_id == user.id
-    assert created.artifact_id == artifact.id
-    assert created.created_at is not None
-
-    result = listing(session, user)
-    assert result.count == 1
-    assert [f.artifact_id for f in result.data] == [artifact.id]
-
-    removed = delete_favorite(
-        session=session, current_user=user, artifact_id=artifact.id
-    )
-    assert removed.message == "Favorite removed successfully"
-    assert listing(session, user).count == 0
-
-
-def test_cannot_create_duplicate_favorite(session: Session) -> None:
-    user = make_user(session, "alice")
-    artifact = make_artifact(session)
-    add(session, user, artifact)
-
-    with pytest.raises(HTTPException) as exc_info:
-        add(session, user, artifact)
-
-    assert exc_info.value.status_code == 409
-    rows = session.exec(select(Favorite).where(Favorite.user_id == user.id)).all()
-    assert len(rows) == 1
-
-
-def test_different_users_can_favorite_same_artifact(session: Session) -> None:
-    alice = make_user(session, "alice")
-    bob = make_user(session, "bob")
-    artifact = make_artifact(session)
-
-    add(session, alice, artifact)
-    add(session, bob, artifact)
-
-    assert listing(session, alice).count == 1
-    assert listing(session, bob).count == 1
-
-
-def test_list_only_returns_own_favorites(session: Session) -> None:
-    alice = make_user(session, "alice")
-    bob = make_user(session, "bob")
-    art_a = make_artifact(session)
-    art_b = make_artifact(session)
-    add(session, alice, art_a)
-    add(session, bob, art_b)
-
-    alice_list = listing(session, alice)
-    assert [f.artifact_id for f in alice_list.data] == [art_a.id]
-    assert all(f.user_id == alice.id for f in alice_list.data)
-
-    bob_list = listing(session, bob)
-    assert [f.artifact_id for f in bob_list.data] == [art_b.id]
-
-
-def test_cannot_delete_other_users_favorite(session: Session) -> None:
-    alice = make_user(session, "alice")
-    bob = make_user(session, "bob")
-    artifact = make_artifact(session)
-    add(session, alice, artifact)
-
-    with pytest.raises(HTTPException) as exc_info:
-        delete_favorite(session=session, current_user=bob, artifact_id=artifact.id)
-
-    assert exc_info.value.status_code == 404
-    # yêu thích của alice còn nguyên
-    assert listing(session, alice).count == 1
-
-
-def test_delete_missing_favorite_returns_404(session: Session) -> None:
-    user = make_user(session, "alice")
-    artifact = make_artifact(session)
-
-    with pytest.raises(HTTPException) as exc_info:
-        delete_favorite(session=session, current_user=user, artifact_id=artifact.id)
-    assert exc_info.value.status_code == 404
-
-
-def test_cannot_favorite_missing_or_hidden_artifact(session: Session) -> None:
-    user = make_user(session, "alice")
-
-    with pytest.raises(HTTPException) as exc_info:
-        create_favorite(
-            session=session,
-            current_user=user,
-            favorite_in=FavoriteCreate(artifact_id=uuid.uuid4()),
-        )
-    assert exc_info.value.status_code == 404
-
-    hidden_artifact = make_artifact(session, is_active=False)
-    with pytest.raises(HTTPException) as exc_info:
-        add(session, user, hidden_artifact)
-    assert exc_info.value.status_code == 404
-
-    hidden_site = Site(name="Hidden", is_active=False)
-    session.add(hidden_site)
-    session.commit()
-    session.refresh(hidden_site)
-    under_hidden_site = make_artifact(session, hidden_site)
-    with pytest.raises(HTTPException) as exc_info:
-        add(session, user, under_hidden_site)
-    assert exc_info.value.status_code == 404
-
-    assert listing(session, user).count == 0
-
-
-def test_hidden_artifact_or_site_is_not_listed_and_comes_back_when_restored(
-    session: Session,
+def test_add_list_and_remove_favorite(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    site_ids: list[str],
 ) -> None:
-    user = make_user(session, "alice")
-    site = Site(name="Site")
-    session.add(site)
-    session.commit()
-    session.refresh(site)
-    artifact = make_artifact(session, site)
-    add(session, user, artifact)
+    artifact = _setup_artifact(client, superuser_token_headers, site_ids, "Trống đồng")
 
-    # ẩn hiện vật
-    artifact.is_active = False
-    session.add(artifact)
-    session.commit()
-    assert listing(session, user).count == 0
-    artifact.is_active = True
-    session.add(artifact)
-    session.commit()
-    assert listing(session, user).count == 1
+    created = client.post(
+        f"{API}/favorites/",
+        headers=normal_user_token_headers,
+        json={"artifact_id": artifact["id"]},
+    )
+    assert created.status_code == 201
+    favorite = created.json()
+    assert favorite["artifact_id"] == artifact["id"]
 
-    # ẩn Site
-    site.is_active = False
-    session.add(site)
-    session.commit()
-    hidden = listing(session, user)
-    assert hidden.count == 0
-    assert hidden.data == []
+    listed = client.get(f"{API}/favorites/me", headers=normal_user_token_headers)
+    assert listed.status_code == 200
+    body = listed.json()
+    mine = [item for item in body["data"] if item["artifact_id"] == artifact["id"]]
+    assert len(mine) == 1
+    assert mine[0]["artifact"]["title"] == "Trống đồng"
 
-    # vẫn bỏ yêu thích được khi hiện vật bị ẩn
-    delete_favorite(session=session, current_user=user, artifact_id=artifact.id)
-    site.is_active = True
-    session.add(site)
-    session.commit()
-    assert listing(session, user).count == 0
+    removed = client.delete(
+        f"{API}/favorites/{artifact['id']}", headers=normal_user_token_headers
+    )
+    assert removed.status_code == 200
+    again = client.delete(
+        f"{API}/favorites/{artifact['id']}", headers=normal_user_token_headers
+    )
+    assert again.status_code == 404
+    after = client.get(f"{API}/favorites/me", headers=normal_user_token_headers).json()
+    assert all(item["artifact_id"] != artifact["id"] for item in after["data"])
 
 
-def test_favorites_pagination(session: Session) -> None:
-    user = make_user(session, "alice")
-    artifacts = [make_artifact(session) for _ in range(3)]
-    for artifact in artifacts:
-        add(session, user, artifact)
+def test_adding_twice_does_not_create_duplicate(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    site_ids: list[str],
+) -> None:
+    artifact = _setup_artifact(client, superuser_token_headers, site_ids, "Bình gốm")
+    first = client.post(
+        f"{API}/favorites/",
+        headers=normal_user_token_headers,
+        json={"artifact_id": artifact["id"]},
+    )
+    second = client.post(
+        f"{API}/favorites/",
+        headers=normal_user_token_headers,
+        json={"artifact_id": artifact["id"]},
+    )
+    assert first.status_code == 201
+    assert second.status_code == 200
+    assert second.json()["id"] == first.json()["id"]
+    listed = client.get(f"{API}/favorites/me", headers=normal_user_token_headers).json()
+    assert [i["artifact_id"] for i in listed["data"]].count(artifact["id"]) == 1
 
-    page = listing(session, user, skip=0, limit=2)
-    assert page.count == 3
-    assert len(page.data) == 2
 
-    rest = listing(session, user, skip=2, limit=2)
-    assert rest.count == 3
-    assert len(rest.data) == 1
+def test_favorites_require_token(client: TestClient) -> None:
+    random_id = str(uuid.uuid4())
+    assert client.get(f"{API}/favorites/me").status_code == 401
+    assert (
+        client.post(f"{API}/favorites/", json={"artifact_id": random_id}).status_code
+        == 401
+    )
+    assert client.delete(f"{API}/favorites/{random_id}").status_code == 401
 
-    seen = {f.artifact_id for f in page.data} | {f.artifact_id for f in rest.data}
-    assert seen == {a.id for a in artifacts}
+
+def test_cannot_favorite_unknown_or_hidden_artifact(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    site_ids: list[str],
+) -> None:
+    unknown = client.post(
+        f"{API}/favorites/",
+        headers=normal_user_token_headers,
+        json={"artifact_id": str(uuid.uuid4())},
+    )
+    assert unknown.status_code == 404
+
+    artifact = _setup_artifact(client, superuser_token_headers, site_ids, "Ẩn")
+    client.delete(f"{API}/artifacts/{artifact['id']}", headers=superuser_token_headers)
+    hidden = client.post(
+        f"{API}/favorites/",
+        headers=normal_user_token_headers,
+        json={"artifact_id": artifact["id"]},
+    )
+    assert hidden.status_code == 404
+
+    invalid = client.post(
+        f"{API}/favorites/",
+        headers=normal_user_token_headers,
+        json={"artifact_id": "not-a-uuid"},
+    )
+    assert invalid.status_code == 422
+
+
+def test_hidden_artifact_disappears_from_favorites_and_comes_back(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    site_ids: list[str],
+) -> None:
+    artifact = _setup_artifact(client, superuser_token_headers, site_ids, "Tượng")
+    client.post(
+        f"{API}/favorites/",
+        headers=normal_user_token_headers,
+        json={"artifact_id": artifact["id"]},
+    )
+    client.delete(f"{API}/artifacts/{artifact['id']}", headers=superuser_token_headers)
+    hidden = client.get(f"{API}/favorites/me", headers=normal_user_token_headers).json()
+    assert all(item["artifact_id"] != artifact["id"] for item in hidden["data"])
+
+    client.put(
+        f"{API}/artifacts/{artifact['id']}",
+        headers=superuser_token_headers,
+        json={"is_active": True},
+    )
+    back = client.get(f"{API}/favorites/me", headers=normal_user_token_headers).json()
+    assert any(item["artifact_id"] == artifact["id"] for item in back["data"])
+
+
+def test_favorites_are_private_between_users(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    other_user_headers: dict[str, str],
+    site_ids: list[str],
+) -> None:
+    artifact = _setup_artifact(client, superuser_token_headers, site_ids, "Riêng tư")
+    client.post(
+        f"{API}/favorites/",
+        headers=normal_user_token_headers,
+        json={"artifact_id": artifact["id"]},
+    )
+
+    # Người khác không thấy và không xóa được bản ghi của tôi
+    others = client.get(f"{API}/favorites/me", headers=other_user_headers).json()
+    assert all(item["artifact_id"] != artifact["id"] for item in others["data"])
+    stolen = client.delete(
+        f"{API}/favorites/{artifact['id']}", headers=other_user_headers
+    )
+    assert stolen.status_code == 404
+    mine = client.get(f"{API}/favorites/me", headers=normal_user_token_headers).json()
+    assert any(item["artifact_id"] == artifact["id"] for item in mine["data"])
+
+    # Người khác yêu thích cùng hiện vật vẫn tạo bản ghi riêng
+    theirs = client.post(
+        f"{API}/favorites/",
+        headers=other_user_headers,
+        json={"artifact_id": artifact["id"]},
+    )
+    assert theirs.status_code == 201
+
+
+def test_favorites_pagination_and_language(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    other_user_headers: dict[str, str],
+    site_ids: list[str],
+) -> None:
+    site = create_site(client, superuser_token_headers)
+    site_ids.append(site["id"])
+    vi_id = get_language_id(client, "vi")
+    for index in range(3):
+        artifact = create_artifact(client, superuser_token_headers, site["id"])
+        add_translation(
+            client, superuser_token_headers, artifact["id"], vi_id, f"Hiện vật {index}"
+        )
+        client.post(
+            f"{API}/favorites/",
+            headers=other_user_headers,
+            json={"artifact_id": artifact["id"]},
+        )
+
+    page = client.get(
+        f"{API}/favorites/me?skip=1&limit=1&lang=en", headers=other_user_headers
+    ).json()
+    assert page["count"] >= 3
+    assert len(page["data"]) == 1
+    # Chưa có bản dịch tiếng Anh -> dùng tiếng Việt và đánh dấu dự phòng
+    assert page["data"][0]["artifact"]["is_fallback"] is True
+    assert page["data"][0]["artifact"]["language_code"] == "vi"
+
+    assert (
+        client.get(
+            f"{API}/favorites/me?limit=0", headers=other_user_headers
+        ).status_code
+        == 422
+    )

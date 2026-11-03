@@ -1,23 +1,31 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_strings.dart';
+import '../../l10n/locale_controller.dart';
 import '../../shared/widgets/heritage_widgets.dart';
 import '../../theme/app_theme.dart';
-import '../auth/auth_config.dart';
 import '../auth/auth_service.dart';
 import '../auth/login_page.dart';
 
 class WelcomePage extends StatefulWidget {
-  const WelcomePage({super.key, this.onDemoContinue, this.onLocaleChanged});
+  const WelcomePage({
+    super.key,
+    this.onDemoContinue,
+    this.onLocaleChanged,
+    this.onAuthenticated,
+    this.authService,
+  });
 
   final VoidCallback? onDemoContinue;
   final ValueChanged<Locale>? onLocaleChanged;
+  final ValueChanged<AuthToken>? onAuthenticated;
+  final AuthService? authService;
 
   @override
   State<WelcomePage> createState() => _WelcomePageState();
 }
 
 class _WelcomePageState extends State<WelcomePage> {
-  // Cập nhật đường dẫn ảnh lấy trực tiếp từ thư mục assets/images/onboarding/
   static const _stories = [
     _HeritageStory(
       titleVi: 'Nơi lưu giữ tinh hoa hiếu học Việt Nam',
@@ -56,11 +64,8 @@ class _WelcomePageState extends State<WelcomePage> {
       MaterialPageRoute<void>(
         builder: (_) => LoginPage(
           onDemoContinue: widget.onDemoContinue,
-          onLoginSuccess: widget.onDemoContinue,
-          authService: AuthService(
-            baseUrl: AuthConfig.apiBaseUrl,
-            client: IoAuthHttpClient(),
-          ),
+          onAuthenticated: widget.onAuthenticated,
+          authService: widget.authService,
         ),
       ),
     );
@@ -73,10 +78,12 @@ class _WelcomePageState extends State<WelcomePage> {
     }
 
     final nextPage = _currentPage + 1;
+
     if (MediaQuery.disableAnimationsOf(context)) {
       _pageController.jumpToPage(nextPage);
       return;
     }
+
     await _pageController.animateToPage(
       nextPage,
       duration: const Duration(milliseconds: 320),
@@ -136,6 +143,7 @@ class _WelcomeSlide extends StatelessWidget {
     final size = MediaQuery.sizeOf(context);
     final compact = size.height <= 720;
     final horizontalPadding = size.width < 360 ? 20.0 : 24.0;
+    final strings = AppStrings.of(context);
 
     return Stack(
       fit: StackFit.expand,
@@ -210,7 +218,7 @@ class _WelcomeSlide extends StatelessWidget {
                   ),
                   Semantics(
                     container: true,
-                    label: 'Trang ${index + 1} trên $pageCount',
+                    label: strings.welcomePage(index + 1, pageCount),
                     child: Row(
                       key: const Key('welcome-page-indicator'),
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -247,8 +255,8 @@ class _WelcomeSlide extends StatelessWidget {
                       ),
                       child: Text(
                         index == pageCount - 1
-                            ? 'Bắt đầu khám phá'
-                            : 'Tiếp tục',
+                            ? strings.welcomeStart
+                            : strings.next,
                       ),
                     ),
                   ),
@@ -270,13 +278,21 @@ class _WelcomeTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final isEn = strings.isEnglish;
+
     return Row(
       children: [
         Tooltip(
-          message: 'Đổi ngôn ngữ',
+          message: strings.languageTooltip,
           child: OutlinedButton(
             key: const Key('welcome-language-toggle'),
-            onPressed: () => onLocaleChanged?.call(const Locale('en')),
+            onPressed: () {
+              final nextLocale =
+                  isEn ? const Locale('vi') : const Locale('en');
+              onLocaleChanged?.call(nextLocale);
+              LocaleController.instance.setLocale(nextLocale);
+            },
             style: OutlinedButton.styleFrom(
               minimumSize: const Size(48, 38),
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.small),
@@ -284,7 +300,7 @@ class _WelcomeTopBar extends StatelessWidget {
               side: const BorderSide(color: Colors.white54),
               shape: const StadiumBorder(),
             ),
-            child: const Text('VI'),
+            child: Text(isEn ? 'EN' : 'VI'),
           ),
         ),
         const Spacer(),
@@ -296,7 +312,7 @@ class _WelcomeTopBar extends StatelessWidget {
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.small),
           ),
-          child: const Text('Bỏ qua'),
+          child: Text(strings.welcomeSkip),
         ),
       ],
     );
@@ -311,6 +327,7 @@ class _WelcomeBrand extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final strings = AppStrings.of(context);
 
     return Center(
       child: Padding(
@@ -333,7 +350,7 @@ class _WelcomeBrand extends StatelessWidget {
             ),
             const SizedBox(height: 5),
             Text(
-              'Di sản sống trong từng hành trình',
+              strings.welcomeTagline,
               textAlign: TextAlign.center,
               maxLines: 2,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -364,6 +381,7 @@ class _WelcomeStoryCopy extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final strings = AppStrings.of(context);
 
     return InkWell(
       key: Key('welcome-page-content-$index'),
@@ -377,7 +395,7 @@ class _WelcomeStoryCopy extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                story.titleVi,
+                strings.welcomeTitle(index),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -390,7 +408,7 @@ class _WelcomeStoryCopy extends StatelessWidget {
               ),
               SizedBox(height: compact ? 7 : 10),
               Text(
-                story.descVi,
+                strings.welcomeDescription(index),
                 textAlign: TextAlign.center,
                 maxLines: compact ? 3 : 4,
                 overflow: TextOverflow.ellipsis,

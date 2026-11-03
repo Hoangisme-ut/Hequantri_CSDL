@@ -1,4 +1,5 @@
 import uuid
+from datetime import timedelta
 from typing import Any
 
 from sqlmodel import Session, col, select
@@ -7,6 +8,7 @@ from app.core.security import get_password_hash, verify_password
 from app.models import (
     Artifact,
     ArtifactContentPublic,
+    ArtifactSummary,
     ArtifactTranslation,
     Item,
     ItemCreate,
@@ -18,6 +20,7 @@ from app.models import (
     User,
     UserCreate,
     UserUpdate,
+    VisitLog,
     get_datetime_utc,
 )
 
@@ -25,6 +28,7 @@ ROLE_ADMIN = "admin"
 ROLE_VISITOR = "visitor"
 
 
+# ------------------------------ Role ------------------------------
 def get_role_by_name(*, session: Session, name: str) -> Role | None:
     return session.exec(select(Role).where(Role.name == name)).first()
 
@@ -55,7 +59,7 @@ def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any:
         password = user_data["password"]
         hashed_password = get_password_hash(password)
         extra_data["hashed_password"] = hashed_password
-   
+    # [Smart Heritage] đổi is_superuser mà không chỉ định role_id -> đổi role theo
     if "is_superuser" in user_data and "role_id" not in user_data:
         role = get_role_by_name(
             session=session,
@@ -76,6 +80,8 @@ def get_user_by_email(*, session: Session, email: str) -> User | None:
     return session_user
 
 
+# Dummy hash to use for timing attack prevention when user is not found
+# This is an Argon2 hash of a random password, used to ensure constant-time comparison
 DUMMY_HASH = "$argon2id$v=19$m=65536,t=3,p=4$MjQyZWE1MzBjYjJlZTI0Yw$YTU4NGM5ZTZmYjE2NzZlZjY0ZWY3ZGRkY2U2OWFjNjk"
 
 
@@ -197,6 +203,13 @@ def touch_updated_at(obj: Artifact | ArtifactTranslation) -> None:
     obj.updated_at = get_datetime_utc()
 
 
+# =============================================================================
+# [Smart Heritage] Quy tắc nhất quán Site - Artifact - Beacon
+#  - Site bị ẩn  -> hiện vật/beacon của Site đó KHÔNG được trả cho khách
+#    (chỉ ẩn khi đọc, không sửa dữ liệu; bật lại Site là mọi thứ hiện lại).
+#  - Không tạo/chuyển hiện vật hoặc beacon vào Site đang bị ẩn.
+#  - Không đổi Site của hiện vật đang gắn Beacon (phải gỡ Beacon trước).
+# =============================================================================
 def is_site_active(*, session: Session, site_id: uuid.UUID) -> bool:
     site = session.get(Site, site_id)
     return site is not None and site.is_active
@@ -212,3 +225,50 @@ def get_visible_artifact(
     if not is_site_active(session=session, site_id=artifact.site_id):
         return None
     return artifact
+
+
+def build_artifact_summary(
+    *, session: Session, artifact: Artifact, language: Language | None
+) -> ArtifactSummary:
+    """Tóm tắt hiện vật (tiêu đề theo ngôn ngữ, có dự phòng) dùng cho danh sách."""
+    translation, used_lang = pick_translation(
+        session=session, artifact_id=artifact.id, language=language
+    )
+    return ArtifactSummary.model_validate(
+        artifact,
+        update={
+            "title": translation.title if translation else None,
+            "language_code": used_lang.code if used_lang else None,
+            "is_fallback": bool(
+                translation
+                and language is not None
+                and translation.language_id != language.id
+            ),
+        },
+    )
+
+
+# =============================================================================
+# [Smart Heritage] Lượt xem / lịch sử tham quan
+# Quy tắc ghi lượt xem (thống nhất với app - P4, BR-05):
+#  - App chỉ gọi POST /visits/ khi TriggerManager hiện nội dung hiện vật
+#    (vào vùng beacon mới), KHÔNG gọi mỗi lần nhận tín hiệu BLE.
+#  - Server chặn thêm một lớp: cùng người dùng + cùng hiện vật trong
+#    VISIT_DEDUP_SECONDS giây chỉ tính 1 lượt xem.
+# =============================================================================
+VISIT_DEDUP_SECONDS = 300
+
+
+def find_recent_visit(
+    *, session: Session, user_id: uuid.UUID, artifact_id: uuid.UUID
+) -> VisitLog | None:
+    cutoff = get_datetime_utc() - timedelta(seconds=VISIT_DEDUP_SECONDS)
+    return session.exec(
+        select(VisitLog)
+        .where(
+            col(VisitLog.user_id) == user_id,
+            col(VisitLog.artifact_id) == artifact_id,
+            col(VisitLog.visited_at) >= cutoff,
+        )
+        .order_by(col(VisitLog.visited_at).desc())
+    ).first()
