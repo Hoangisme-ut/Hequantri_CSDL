@@ -2,7 +2,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import ColumnElement
+from sqlalchemy import ColumnElement, true
 from sqlmodel import col, func, select
 
 from app import crud
@@ -84,8 +84,8 @@ def read_artifacts(
     conditions: list[ColumnElement[bool]] = []
     if not (include_inactive and is_admin(current_user)):
         # chỉ hiện vật đang bật VÀ thuộc Site đang bật
-        conditions.append(col(Artifact.is_active).is_(True))
-        conditions.append(col(Site.is_active).is_(True))
+        conditions.append(col(Artifact.is_active) == true())
+        conditions.append(col(Site.is_active) == true())
     if site_id:
         conditions.append(col(Artifact.site_id) == site_id)
     if q:
