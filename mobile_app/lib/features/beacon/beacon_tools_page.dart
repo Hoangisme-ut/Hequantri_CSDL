@@ -27,6 +27,7 @@ class AppShell extends StatefulWidget {
     this.stopScanning,
     this.readToken,
     this.visitorApi,
+    this.siteApi,
   });
 
   final ArtifactCatalog? catalog;
@@ -34,6 +35,7 @@ class AppShell extends StatefulWidget {
   final Future<bool> Function()? stopScanning;
   final AuthToken? Function()? readToken;
   final VisitorApi? visitorApi;
+  final SiteApi? siteApi;
   final bool isDemoSession;
 
   @override
@@ -89,6 +91,7 @@ class _AppShellState extends State<AppShell> {
             readToken: readToken,
             languageCode: languageCode,
             visitorApi: widget.visitorApi,
+            siteApi: widget.siteApi,
           ),
           BeaconSimulationPage(
             isActive: _selectedIndex == 1,
@@ -123,6 +126,7 @@ class BeaconTestPage extends StatefulWidget {
     this.isActive = true,
     @visibleForTesting this.visitLogService,
     @visibleForTesting this.visitorApi,
+    @visibleForTesting this.siteApi,
     @visibleForTesting this.contentService,
     @visibleForTesting this.beaconStream,
     @visibleForTesting this.scanner,
@@ -134,6 +138,7 @@ class BeaconTestPage extends StatefulWidget {
   final bool isActive;
   final VisitLogService? visitLogService;
   final VisitorApi? visitorApi;
+  final SiteApi? siteApi;
 
   final BeaconContentService? contentService;
   final Stream<List<Beacon>>? beaconStream;
@@ -163,6 +168,7 @@ class BeaconTestPageState extends State<BeaconTestPage>
   VisitLogService? _visitService;
   bool _ownsVisitService = false;
   VisitorApi? _visitorApi;
+  SiteApi? _siteApi;
   bool _ownsVisitorApi = false;
   BeaconContent? _scheduledVisitContent;
   String? _configurationError;
@@ -215,8 +221,14 @@ class BeaconTestPageState extends State<BeaconTestPage>
         readToken: () => widget.readToken?.call(),
       );
       _visitorApi = widget.visitorApi;
+      _siteApi = widget.siteApi;
+      if (widget.visitorApi case final SiteApi injectedSiteApi) {
+        _siteApi ??= injectedSiteApi;
+      }
       if (_visitorApi == null && widget.contentService == null) {
-        _visitorApi = HttpVisitorApi(baseUrl: ApiConfig.baseUrl);
+        final api = HttpVisitorApi(baseUrl: ApiConfig.baseUrl);
+        _visitorApi = api;
+        _siteApi ??= api;
         _ownsVisitorApi = true;
       }
     } on StateError catch (error) {
@@ -692,11 +704,11 @@ class BeaconTestPageState extends State<BeaconTestPage>
   }
 
   Future<void> _openSite(BeaconContent content) async {
-    final api = _visitorApi;
+    final api = _siteApi;
     final strings = AppStrings.of(context);
     final resolvedToken = _contentController?.contentToken;
     final languageCode = strings.locale.languageCode;
-    if (api is! SiteApi || resolvedToken == null) {
+    if (api == null || resolvedToken == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
