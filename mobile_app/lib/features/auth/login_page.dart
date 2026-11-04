@@ -11,13 +11,11 @@ import 'signup_page.dart';
 class LoginPage extends StatefulWidget {
   const LoginPage({
     super.key,
-    this.onDemoContinue,
     this.onLoginSuccess,
     this.onAuthenticated,
     this.authService,
   });
 
-  final VoidCallback? onDemoContinue;
   final VoidCallback? onLoginSuccess;
 
   /// Receives the token after successful backend authentication.
@@ -31,6 +29,8 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  static const _accentColor = HeritagePalette.actionBlue;
+
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -60,8 +60,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       if (widget.authService == null &&
           widget.onAuthenticated == null &&
-          widget.onLoginSuccess == null &&
-          widget.onDemoContinue == null) {
+          widget.onLoginSuccess == null) {
         await Future<void>.delayed(const Duration(milliseconds: 300));
         if (!mounted) return;
 
@@ -99,8 +98,6 @@ class _LoginPageState extends State<LoginPage> {
         onAuthenticated(token);
       } else if (widget.onLoginSuccess != null) {
         widget.onLoginSuccess!();
-      } else if (widget.onDemoContinue != null) {
-        widget.onDemoContinue!();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -214,6 +211,7 @@ class _LoginPageState extends State<LoginPage> {
 
     return AuthPageScaffold(
       heritageBackground: true,
+      accentColor: _accentColor,
       child: Form(
         key: _formKey,
         child: Column(
@@ -287,31 +285,9 @@ class _LoginPageState extends State<LoginPage> {
               buttonKey: const Key('login-submit'),
               label: strings.loginSubmit,
               isLoading: _isLoading,
+              backgroundColor: _accentColor,
               onPressed: _isLoading ? null : _submit,
             ),
-
-            if (widget.onDemoContinue != null) ...[
-              SizedBox(height: mediumGap),
-              OutlinedButton.icon(
-                key: const Key('login-demo-preview'),
-                onPressed: _isLoading ? null : widget.onDemoContinue,
-                icon: const Icon(Icons.visibility_outlined),
-                label: Text(
-                  strings.demoContinue,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              SizedBox(height: smallGap),
-              Text(
-                strings.demoSessionDescription,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: HeritagePalette.secondaryText,
-                ),
-              ),
-            ],
 
             SizedBox(height: largeGap),
 
@@ -370,16 +346,26 @@ class _LoginPageState extends State<LoginPage> {
                   vertical: AppSpacing.small,
                 ),
                 foregroundColor: HeritagePalette.primaryNavy,
-                backgroundColor: Colors.white.withValues(alpha: 0.88),
-                side: const BorderSide(color: HeritagePalette.border),
+                disabledForegroundColor: HeritagePalette.secondaryText,
+                backgroundColor: Colors.white,
+                disabledBackgroundColor: Colors.white,
+                overlayColor: HeritagePalette.primaryNavy.withValues(
+                  alpha: 0.08,
+                ),
+                side: const BorderSide(color: Color(0xFF747775)),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(AppRadii.small),
                 ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const _GoogleMark(),
+                  Image.asset(
+                    'assets/images/google/g-logo.png',
+                    key: const Key('login-google-mark'),
+                    width: 20,
+                    height: 20,
+                  ),
                   const SizedBox(width: AppSpacing.small),
                   Flexible(
                     child: Text(
@@ -401,6 +387,7 @@ class _LoginPageState extends State<LoginPage> {
             SizedBox(height: mediumGap),
 
             TextButton(
+              key: const Key('login-signup'),
               onPressed: _isLoading ? null : _openSignup,
               style: TextButton.styleFrom(
                 minimumSize: const Size(48, 36),
@@ -408,6 +395,9 @@ class _LoginPageState extends State<LoginPage> {
                   horizontal: AppSpacing.xSmall,
                   vertical: AppSpacing.xSmall,
                 ),
+                foregroundColor: _accentColor,
+                disabledForegroundColor: _accentColor.withValues(alpha: 0.45),
+                overlayColor: _accentColor.withValues(alpha: 0.08),
                 visualDensity: VisualDensity.compact,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
@@ -446,7 +436,14 @@ class _LoginPageState extends State<LoginPage> {
                         _rememberMe = value ?? false;
                       });
                     },
-              activeColor: HeritagePalette.primaryNavy,
+              activeColor: _accentColor,
+              overlayColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.pressed) ||
+                    states.contains(WidgetState.focused)) {
+                  return _accentColor.withValues(alpha: 0.12);
+                }
+                return null;
+              }),
               visualDensity: VisualDensity.compact,
             ),
             Expanded(
@@ -472,35 +469,18 @@ class _LoginPageState extends State<LoginPage> {
       style: TextButton.styleFrom(
         minimumSize: const Size(48, 36),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xSmall),
-        foregroundColor: HeritagePalette.primaryNavy,
+        foregroundColor: _accentColor,
+        disabledForegroundColor: _accentColor.withValues(alpha: 0.45),
+        overlayColor: _accentColor.withValues(alpha: 0.08),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
       child: Text(
         strings.loginForgotPassword,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-}
-
-class _GoogleMark extends StatelessWidget {
-  const _GoogleMark();
-
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox(
-      width: 22,
-      height: 22,
-      child: Center(
-        child: Text(
-          'G',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF4285F4),
-          ),
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: _accentColor,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

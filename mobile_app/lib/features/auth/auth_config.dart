@@ -7,12 +7,5 @@ import '../../shared/config/api_config.dart';
 ///
 /// SMART_HERITAGE_API_BASE_URL remains supported for existing launch commands.
 abstract final class AuthConfig {
-  static Uri get apiBaseUrl {
-    if (ApiConfig.isConfigured) {
-      return ApiConfig.baseUrl;
-    }
-
-    // Preserve the existing authentication default when no URL is configured.
-    return Uri.parse('http://localhost:8000');
-  }
+  static Uri get apiBaseUrl => ApiConfig.baseUrl;
 }

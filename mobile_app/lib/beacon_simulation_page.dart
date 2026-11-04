@@ -65,7 +65,6 @@ class _BeaconSimulationPageState extends State<BeaconSimulationPage> {
 
   BeaconContentService? _service;
   VisitLogService? _visitService;
-  bool _ownsVisitService = false;
   BeaconContentController? _controller;
   String? _configurationError;
 
@@ -87,15 +86,11 @@ class _BeaconSimulationPageState extends State<BeaconSimulationPage> {
           BeaconContentService(baseUrl: ApiConfig.baseUrl);
 
       _service = service;
-      _visitService =
-          widget.visitLogService ??
-          (widget.contentService == null
-              ? VisitLogService(baseUrl: ApiConfig.baseUrl)
-              : null);
-      _ownsVisitService =
-          widget.visitLogService == null && _visitService != null;
+      // Simulation may resolve backend content, but must never create real visits.
+      _visitService = widget.visitLogService;
       _controller = BeaconContentController(
         visitLogService: _visitService,
+        allowVisitLogging: false,
         service: service,
         readToken: () => widget.readToken?.call(),
       );
@@ -201,7 +196,6 @@ class _BeaconSimulationPageState extends State<BeaconSimulationPage> {
   void dispose() {
     _controller?.dispose();
     if (widget.contentService == null) _service?.close();
-    if (_ownsVisitService) _visitService?.close();
     super.dispose();
   }
 

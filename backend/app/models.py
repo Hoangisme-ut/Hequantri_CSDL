@@ -292,11 +292,61 @@ class SitePublic(SiteBase):
     id: uuid.UUID
     created_at: datetime | None = None
     updated_at: datetime | None = None
+    language_code: str | None = None
+    is_fallback: bool = False
 
 
 class SitesPublic(SQLModel):
     data: list[SitePublic]
     count: int
+
+
+class SiteTranslationInput(SQLModel):
+    name: str = Field(min_length=1, max_length=255, sa_type=Unicode(255))
+    description: str | None = Field(
+        default=None, max_length=2000, sa_type=Unicode(2000)
+    )
+    address: str | None = Field(default=None, max_length=500, sa_type=Unicode(500))
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Translation name must not be blank")
+        return value
+
+
+class SiteTranslation(SiteTranslationInput, table=True):
+    __tablename__ = "sitetranslation"
+    __table_args__ = (
+        UniqueConstraint("site_id", "language_id", name="uq_site_language"),
+    )
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    site_id: uuid.UUID = Field(
+        foreign_key="site.id", nullable=False, ondelete="CASCADE"
+    )
+    language_id: uuid.UUID = Field(
+        foreign_key="language.id", nullable=False, ondelete="CASCADE"
+    )
+    source_hash: str = Field(max_length=64)
+    translation_source: str = Field(default="manual", max_length=40)
+    is_confirmed: bool = False
+    created_at: datetime | None = Field(default_factory=get_datetime_utc)
+    updated_at: datetime | None = None
+
+
+class SiteTranslationPublic(SiteTranslationInput):
+    id: uuid.UUID
+    site_id: uuid.UUID
+    language_id: uuid.UUID
+    source_hash: str
+    translation_source: str
+    is_confirmed: bool
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    language_code: str
+    is_stale: bool = False
 
 
 # --------------------------------- Artifact ----------------------------------

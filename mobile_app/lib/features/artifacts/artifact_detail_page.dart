@@ -2,13 +2,26 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_strings.dart';
+import '../auth/auth_session.dart';
+import '../auth/auth_service.dart';
+import '../data/visitor_api_service.dart';
 import '../../theme/app_theme.dart';
 import 'artifact.dart';
 
 class ArtifactDetailPage extends StatefulWidget {
-  const ArtifactDetailPage({super.key, required this.artifact});
+  const ArtifactDetailPage({
+    super.key,
+    required this.artifact,
+    this.visitorApi,
+    this.initialIsFavorite,
+    this.onFavoriteChanged,
+  });
 
   final Artifact artifact;
+  final VisitorApi? visitorApi;
+  final bool? initialIsFavorite;
+  final VoidCallback? onFavoriteChanged;
 
   @override
   State<ArtifactDetailPage> createState() => _ArtifactDetailPageState();
@@ -16,6 +29,20 @@ class ArtifactDetailPage extends StatefulWidget {
 
 class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
   late bool _isFav;
+  bool _favoriteRequestRunning = false;
+  bool _favoriteInitialized = false;
+  VisitorApi? _visitorApi;
+  AuthToken? _token;
+  AuthToken? _observedSessionToken;
+  bool _didObserveSession = false;
+  int _favoriteStateGeneration = 0;
+  String? _favoriteError;
+  VisitorArtifactContent? _remoteContent;
+  bool _contentLoading = false;
+  String? _contentError;
+  String? _loadedContentLanguage;
+  String? _loadedContentArtifactId;
+  int _contentRequestGeneration = 0;
   bool _isPlayingAudio = false;
   double _audioProgress = 0.0;
   Timer? _audioTimer;
@@ -23,8 +50,214 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
   @override
   void initState() {
     super.initState();
-    _isFav = widget.artifact.isFavorite;
+    _isFav = widget.initialIsFavorite ?? widget.artifact.isFavorite;
+    _visitorApi = widget.visitorApi;
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final currentToken = AuthSessionScope.maybeOf(context)?.readToken();
+    final sessionChanged =
+        _didObserveSession &&
+        !_sameAuthToken(_observedSessionToken, currentToken);
+    _token = currentToken;
+    _observedSessionToken = currentToken;
+    _didObserveSession = true;
+    _visitorApi ??= widget.visitorApi;
+    final language = AppStrings.of(context).locale.languageCode;
+    if (_visitorApi != null &&
+        _hasBackendId &&
+        (language != _loadedContentLanguage ||
+            widget.artifact.id != _loadedContentArtifactId)) {
+      _loadedContentLanguage = language;
+      _loadedContentArtifactId = widget.artifact.id;
+      _loadRemoteContent(language, artifactId: widget.artifact.id);
+    }
+    if (sessionChanged) {
+      _favoriteStateGeneration++;
+      _favoriteInitialized = true;
+      _isFav = false;
+      _favoriteError = null;
+      if (currentToken != null && _hasBackendId) {
+        _loadFavoriteState(currentToken);
+      }
+    } else if (!_favoriteInitialized) {
+      _favoriteInitialized = true;
+      if (widget.initialIsFavorite == null &&
+          currentToken != null &&
+          _hasBackendId) {
+        _loadFavoriteState(currentToken);
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ArtifactDetailPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.artifact.id == widget.artifact.id) return;
+
+    _contentRequestGeneration++;
+    _loadedContentArtifactId = null;
+    _loadedContentLanguage = null;
+    _remoteContent = null;
+    _contentError = null;
+    _favoriteInitialized = widget.initialIsFavorite != null;
+    _isFav = widget.initialIsFavorite ?? widget.artifact.isFavorite;
+    _favoriteError = null;
+    _favoriteStateGeneration++;
+    final language = AppStrings.of(context).locale.languageCode;
+    if (_visitorApi != null && _hasBackendId) {
+      _loadedContentLanguage = language;
+      _loadedContentArtifactId = widget.artifact.id;
+      _loadRemoteContent(language, artifactId: widget.artifact.id);
+    }
+    if (!_favoriteInitialized && _token != null && _hasBackendId) {
+      _favoriteInitialized = true;
+      _loadFavoriteState(_token!);
+    }
+  }
+
+  bool get _hasBackendId => RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+  ).hasMatch(widget.artifact.id);
+
+  Future<void> _loadFavoriteState(AuthToken token) async {
+    final api = _visitorApi;
+    if (api == null) return;
+    final session = AuthSessionScope.maybeOf(context);
+    final generation = ++_favoriteStateGeneration;
+    final artifactId = widget.artifact.id;
+    final languageCode = AppStrings.of(context).locale.languageCode;
+    try {
+      var skip = 0;
+      var count = 0;
+      var isFavorite = false;
+      do {
+        final page = await api.loadFavorites(
+          token: token,
+          languageCode: languageCode,
+          skip: skip,
+          limit: 100,
+        );
+        if (!_isCurrentFavoriteStateRequest(
+          generation,
+          token,
+          artifactId,
+          session,
+        )) {
+          return;
+        }
+        count = page.count;
+        if (page.items.any((item) => item.artifactId == artifactId)) {
+          isFavorite = true;
+          break;
+        }
+        if (page.items.isEmpty) break;
+        skip += page.items.length;
+      } while (skip < count);
+      if (!_isCurrentFavoriteStateRequest(
+        generation,
+        token,
+        artifactId,
+        session,
+      )) {
+        return;
+      }
+      setState(() => _isFav = isFavorite);
+    } on VisitorApiException catch (error) {
+      if (_isCurrentFavoriteStateRequest(
+        generation,
+        token,
+        artifactId,
+        session,
+      )) {
+        setState(
+          () =>
+              _favoriteError = AppStrings.of(context)
+                  .visitorApiError(error.statusCode),
+        );
+      }
+    } catch (_) {
+      if (_isCurrentFavoriteStateRequest(
+        generation,
+        token,
+        artifactId,
+        session,
+      )) {
+        setState(
+          () => _favoriteError = AppStrings.of(context).favoriteStatusLoadError,
+        );
+      }
+    }
+  }
+
+  bool _isCurrentFavoriteStateRequest(
+    int generation,
+    AuthToken token,
+    String artifactId,
+    AuthSession? session,
+  ) =>
+      mounted &&
+      generation == _favoriteStateGeneration &&
+      artifactId == widget.artifact.id &&
+      _sameAuthToken(session?.readToken(), token);
+
+  bool _sameAuthToken(AuthToken? first, AuthToken? second) {
+    if (first == null || second == null) return first == second;
+    return first.accessToken == second.accessToken &&
+        first.tokenType.toLowerCase() == second.tokenType.toLowerCase();
+  }
+
+  Future<void> _loadRemoteContent(
+    String languageCode, {
+    required String artifactId,
+  }) async {
+    final api = _visitorApi;
+    if (api == null) return;
+    final generation = ++_contentRequestGeneration;
+    setState(() {
+      _contentLoading = true;
+      _contentError = null;
+    });
+    try {
+      final content = await api.loadArtifact(
+        artifactId: artifactId,
+        languageCode: languageCode,
+      );
+      if (_isCurrentContentRequest(generation, artifactId, languageCode)) {
+        setState(() {
+          _remoteContent = content;
+          _contentLoading = false;
+        });
+      }
+    } on VisitorApiException catch (error) {
+      if (_isCurrentContentRequest(generation, artifactId, languageCode)) {
+        setState(() {
+          _contentError = AppStrings.of(context)
+              .visitorApiError(error.statusCode);
+          _contentLoading = false;
+        });
+      }
+    } catch (_) {
+      if (_isCurrentContentRequest(generation, artifactId, languageCode)) {
+        setState(() {
+          _contentError = AppStrings.of(context).artifactDetailsLoadError;
+          _contentLoading = false;
+        });
+      }
+    }
+  }
+
+  bool _isCurrentContentRequest(
+    int generation,
+    String artifactId,
+    String languageCode,
+  ) =>
+      mounted &&
+      generation == _contentRequestGeneration &&
+      artifactId == widget.artifact.id &&
+      languageCode == AppStrings.of(context).locale.languageCode;
 
   @override
   void dispose() {
@@ -52,13 +285,91 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
     }
   }
 
+  Future<void> _toggleFavorite(bool isEn) async {
+    final token = _token;
+    final api = _visitorApi;
+    final session = AuthSessionScope.maybeOf(context);
+    if (!_hasBackendId || api == null || token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _hasBackendId
+                ? (isEn
+                      ? 'Sign in and configure the backend to save favorites.'
+                      : 'Hãy đăng nhập và cấu hình backend để lưu yêu thích.')
+                : (isEn
+                      ? 'This sample item is not linked to a backend record.'
+                      : 'Hiện vật mẫu này chưa liên kết với dữ liệu backend.'),
+          ),
+        ),
+      );
+      return;
+    }
+    if (_favoriteRequestRunning) return;
+    final nextValue = !_isFav;
+    setState(() {
+      _favoriteRequestRunning = true;
+      _favoriteError = null;
+    });
+    try {
+      if (nextValue) {
+        await api.addFavorite(token: token, artifactId: widget.artifact.id);
+      } else {
+        await api.removeFavorite(token: token, artifactId: widget.artifact.id);
+      }
+      if (!mounted || !_sameAuthToken(session?.readToken(), token)) return;
+      setState(() => _isFav = nextValue);
+      widget.onFavoriteChanged?.call();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            nextValue
+                ? (isEn
+                      ? 'Saved to favorites'
+                      : 'Đã lưu hiện vật vào danh sách yêu thích')
+                : (isEn
+                      ? 'Removed from favorites'
+                      : 'Đã xóa khỏi danh sách yêu thích'),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } on VisitorApiException catch (error) {
+      if (mounted && _sameAuthToken(session?.readToken(), token)) {
+        final message = AppStrings.of(context)
+            .visitorApiError(error.statusCode);
+        setState(() => _favoriteError = message);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
+      }
+    } catch (_) {
+      if (mounted && _sameAuthToken(session?.readToken(), token)) {
+        final message = AppStrings.of(context).favoriteUpdateError;
+        setState(() => _favoriteError = message);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isEn
+                  ? 'Could not update favorite. Please retry.'
+                  : 'Không thể cập nhật yêu thích. Hãy thử lại.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _favoriteRequestRunning = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isEn = Localizations.localeOf(context).languageCode == 'en';
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final strings = AppStrings.of(context);
+    final isEn = strings.isEnglish;
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: HeritagePalette.background,
       body: Stack(
         children: [
           SingleChildScrollView(
@@ -66,27 +377,48 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Hero image with back and favorite overlaid
+                // Hero Image with Overlaid Top Actions
                 Stack(
                   children: [
                     ClipRRect(
                       borderRadius: const BorderRadius.vertical(
-                        bottom: Radius.circular(20),
+                        bottom: Radius.circular(AppRadii.large),
                       ),
                       child: Image.network(
-                        widget.artifact.imageUrl,
+                        _remoteContent?.coverImageUrl?.isNotEmpty == true
+                            ? _remoteContent!.coverImageUrl!
+                            : widget.artifact.imageUrl,
                         width: double.infinity,
-                        height: 280,
+                        height: 300,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) => Container(
-                          height: 280,
-                          color: HeritagePalette.background,
+                          height: 300,
+                          color: HeritagePalette.primaryNavy,
                           child: const Center(
                             child: Icon(
-                              Icons.account_balance_outlined,
+                              Icons.museum_outlined,
                               size: 64,
-                              color: HeritagePalette.secondaryText,
+                              color: Colors.white70,
                             ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Gradient scrim on top for icons contrast
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 100,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.55),
+                              Colors.transparent,
+                            ],
                           ),
                         ),
                       ),
@@ -101,26 +433,35 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             CircleAvatar(
-                              backgroundColor: Colors.black38,
+                              backgroundColor: Colors.black.withValues(
+                                alpha: 0.4,
+                              ),
                               child: IconButton(
                                 icon: const Icon(
-                                  Icons.arrow_back,
+                                  Icons.arrow_back_rounded,
                                   color: Colors.white,
                                 ),
+                                tooltip: isEn ? 'Back' : 'Quay lại',
                                 onPressed: () => Navigator.pop(context),
                               ),
                             ),
                             CircleAvatar(
-                              backgroundColor: Colors.black38,
+                              backgroundColor: Colors.black.withValues(
+                                alpha: 0.4,
+                              ),
                               child: IconButton(
                                 icon: Icon(
                                   _isFav
                                       ? Icons.favorite
                                       : Icons.favorite_border,
-                                  color: Colors.white,
+                                  color: _isFav
+                                      ? const Color(0xFFEF4444)
+                                      : Colors.white,
                                 ),
-                                onPressed: () =>
-                                    setState(() => _isFav = !_isFav),
+                                tooltip: isEn ? 'Favorite' : 'Yêu thích',
+                                onPressed: _favoriteRequestRunning
+                                    ? null
+                                    : () => _toggleFavorite(isEn),
                               ),
                             ),
                           ],
@@ -132,6 +473,7 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
 
                 const SizedBox(height: AppSpacing.medium),
 
+                // Main Content Sheet
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.large,
@@ -139,45 +481,101 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Title
-                      Text(
-                        widget.artifact.getTitle(isEn ? 'en' : 'vi'),
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          color: HeritagePalette.primaryNavy,
-                          fontWeight: FontWeight.bold,
+                      // Category Badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        widget.artifact.period,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: HeritagePalette.secondaryText,
+                        decoration: BoxDecoration(
+                          color: HeritagePalette.background,
+                          borderRadius: BorderRadius.circular(AppRadii.pill),
+                          border: Border.all(color: HeritagePalette.border),
+                        ),
+                        child: Text(
+                          strings.artifactCategory(widget.artifact.category),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: HeritagePalette.actionBlue,
+                          ),
                         ),
                       ),
                       const SizedBox(height: AppSpacing.small),
 
+                      // Title
+                      Text(
+                        _remoteContent?.title ??
+                            widget.artifact.getTitle(isEn ? 'en' : 'vi'),
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          color: HeritagePalette.primaryNavy,
+                          fontWeight: FontWeight.bold,
+                          height: 1.25,
+                        ),
+                      ),
+                      if (_favoriteError != null)
+                        Text(
+                          _favoriteError!,
+                          style: TextStyle(color: colorScheme.error),
+                        ),
+                      const SizedBox(height: 6),
+
+                      // Period
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.schedule_rounded,
+                            size: 15,
+                            color: HeritagePalette.secondaryText,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              _remoteContent?.era ?? widget.artifact.period,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: HeritagePalette.secondaryText,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.large),
+
                       // Audio Guide Player Widget
                       Container(
-                        padding: const EdgeInsets.all(AppSpacing.small),
+                        padding: const EdgeInsets.all(AppSpacing.medium),
                         decoration: BoxDecoration(
-                          color: HeritagePalette.background,
+                          color: colorScheme.surface,
                           borderRadius: BorderRadius.circular(AppRadii.medium),
                           border: Border.all(color: HeritagePalette.border),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x06000000),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Column(
                           children: [
                             Row(
                               children: [
-                                CircleAvatar(
-                                  backgroundColor: HeritagePalette.primaryNavy,
-                                  child: IconButton(
-                                    icon: Icon(
-                                      _isPlayingAudio
-                                          ? Icons.pause
-                                          : Icons.play_arrow,
-                                      color: Colors.white,
+                                Material(
+                                  color: HeritagePalette.primaryNavy,
+                                  shape: const CircleBorder(),
+                                  child: InkWell(
+                                    customBorder: const CircleBorder(),
+                                    onTap: _toggleAudio,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(10),
+                                      child: Icon(
+                                        _isPlayingAudio
+                                            ? Icons.pause_rounded
+                                            : Icons.play_arrow_rounded,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
                                     ),
-                                    onPressed: _toggleAudio,
                                   ),
                                 ),
                                 const SizedBox(width: AppSpacing.small),
@@ -186,28 +584,55 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        isEn ? 'Audio Guide (AI Voice)' : 'Thuyết minh tự động (iBeacon Audio)',
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              color:
-                                                  HeritagePalette.primaryNavy,
+                                      Row(
+                                        children: [
+                                          Text(
+                                            isEn
+                                                ? 'iBeacon Audio Guide'
+                                                : 'Thuyết minh tự động',
+                                            style: theme.textTheme.bodyMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: HeritagePalette
+                                                      .primaryNavy,
+                                                ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 1.5,
                                             ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFDCFCE7),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: const Text(
+                                              'HD Audio',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF166534),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
+                                      const SizedBox(height: 2),
                                       Text(
                                         _isPlayingAudio
                                             ? (isEn
-                                                  ? 'Playing audio...'
+                                                  ? 'Playing audio guide...'
                                                   : 'Đang phát thuyết minh...')
                                             : (isEn
-                                                  ? 'Tap to listen'
+                                                  ? 'Tap to play audio guide'
                                                   : 'Nhấn để nghe thuyết minh'),
                                         style: theme.textTheme.bodySmall
                                             ?.copyWith(
                                               color:
                                                   HeritagePalette.secondaryText,
-                                              fontSize: 11,
+                                              fontSize: 11.5,
                                             ),
                                       ),
                                     ],
@@ -215,14 +640,16 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: AppSpacing.xSmall),
-                            LinearProgressIndicator(
-                              value: _audioProgress,
-                              backgroundColor: HeritagePalette.border,
-                              color: HeritagePalette.primaryNavy,
-                              minHeight: 4,
+                            const SizedBox(height: AppSpacing.small),
+                            ClipRRect(
                               borderRadius: BorderRadius.circular(
                                 AppRadii.pill,
+                              ),
+                              child: LinearProgressIndicator(
+                                value: _audioProgress,
+                                backgroundColor: HeritagePalette.background,
+                                color: HeritagePalette.actionBlue,
+                                minHeight: 5,
                               ),
                             ),
                           ],
@@ -230,36 +657,121 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                       ),
 
                       const SizedBox(height: AppSpacing.large),
-                      _buildSpecRow(
-                        icon: Icons.account_balance_outlined,
-                        title: isEn ? 'Location' : 'Địa điểm',
-                        value: widget.artifact.location,
-                        theme: theme,
-                      ),
-                      const SizedBox(height: AppSpacing.medium),
-                      _buildSpecRow(
-                        icon: Icons.calendar_today_outlined,
-                        title: isEn ? 'Period' : 'Niên đại',
-                        value: widget.artifact.period,
-                        theme: theme,
-                      ),
-                      const SizedBox(height: AppSpacing.medium),
 
-                      // Description section
+                      // Structured Specs Section
+                      Container(
+                        padding: const EdgeInsets.all(AppSpacing.medium),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surface,
+                          borderRadius: BorderRadius.circular(AppRadii.medium),
+                          border: Border.all(color: HeritagePalette.border),
+                        ),
+                        child: Column(
+                          children: [
+                            _buildSpecRow(
+                              icon: Icons.account_balance_outlined,
+                              title: isEn ? 'Location' : 'Địa điểm lưu giữ',
+                              value: widget.artifact.location,
+                              theme: theme,
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(
+                                vertical: AppSpacing.xSmall,
+                              ),
+                              child: Divider(
+                                color: HeritagePalette.border,
+                                height: 1,
+                              ),
+                            ),
+                            _buildSpecRow(
+                              icon: Icons.history_edu_outlined,
+                              title: isEn ? 'Period' : 'Thời kỳ lịch sử',
+                              value:
+                                  _remoteContent?.era ?? widget.artifact.period,
+                              theme: theme,
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(
+                                vertical: AppSpacing.xSmall,
+                              ),
+                              child: Divider(
+                                color: HeritagePalette.border,
+                                height: 1,
+                              ),
+                            ),
+                            _buildSpecRow(
+                              icon: Icons.category_outlined,
+                              title: isEn ? 'Category' : 'Phân loại hiện vật',
+                              value: strings.artifactCategory(
+                                widget.artifact.category,
+                              ),
+                              theme: theme,
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: AppSpacing.large),
+
+                      // Description Section
                       Text(
-                        isEn ? 'Description' : 'Mô tả',
+                        isEn ? 'Description' : 'Mô tả chi tiết',
                         style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
                           color: HeritagePalette.primaryNavy,
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.xSmall),
+                      const SizedBox(height: AppSpacing.small),
                       Text(
-                        widget.artifact.getDescription(isEn ? 'en' : 'vi'),
+                        _contentLoading
+                            ? (isEn
+                                  ? 'Loading artifact details…'
+                                  : 'Đang tải nội dung hiện vật…')
+                            : _contentError ??
+                                  _remoteContent?.description ??
+                                  widget.artifact.getDescription(
+                                    isEn ? 'en' : 'vi',
+                                  ),
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          height: 1.6,
+                          fontSize: 14.5,
+                          height: 1.65,
                           color: HeritagePalette.bodyText,
                         ),
                       ),
+                      if (_contentError != null)
+                        TextButton.icon(
+                          onPressed: () => _loadRemoteContent(
+                            isEn ? 'en' : 'vi',
+                            artifactId: widget.artifact.id,
+                          ),
+                          icon: const Icon(Icons.refresh),
+                          label: Text(isEn ? 'Retry' : 'Thử lại'),
+                        ),
+                      if (_remoteContent?.isFallback == true)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            isEn
+                                ? 'Fallback language content'
+                                : 'Nội dung đang dùng ngôn ngữ dự phòng',
+                          ),
+                        ),
+                      if (_remoteContent?.historyContent?.trim().isNotEmpty ==
+                          true) ...[
+                        const SizedBox(height: AppSpacing.medium),
+                        Text(
+                          isEn ? 'History' : 'Lịch sử',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: HeritagePalette.primaryNavy,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.small),
+                        Text(
+                          _remoteContent!.historyContent!,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -267,37 +779,59 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
             ),
           ),
 
-          // Bottom save button
+          // Pinned Bottom Favorite Action Bar
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
-              padding: const EdgeInsets.all(AppSpacing.medium),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                border: Border(top: BorderSide(color: HeritagePalette.border)),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.medium,
+                vertical: AppSpacing.small,
               ),
-              child: SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: FilledButton.icon(
-                  onPressed: () => setState(() => _isFav = !_isFav),
-                  icon: Icon(
-                    _isFav ? Icons.favorite : Icons.favorite_border,
-                    color: Colors.white,
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                border: const Border(
+                  top: BorderSide(color: HeritagePalette.border),
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0A000000),
+                    blurRadius: 8,
+                    offset: Offset(0, -2),
                   ),
-                  label: Text(
-                    _isFav
-                        ? (isEn ? 'Saved' : 'Đã lưu vào yêu thích')
-                        : (isEn ? 'Save to Favorites' : 'Lưu vào yêu thích'),
-                    style: const TextStyle(
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: FilledButton.icon(
+                    onPressed: _favoriteRequestRunning
+                        ? null
+                        : () => _toggleFavorite(isEn),
+                    icon: Icon(
+                      _isFav ? Icons.favorite : Icons.favorite_border,
                       color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                      size: 20,
                     ),
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: HeritagePalette.primaryNavy,
-                    shape: const StadiumBorder(),
+                    label: Text(
+                      _isFav
+                          ? (isEn
+                                ? 'Saved to Favorites'
+                                : 'Đã lưu vào yêu thích')
+                          : (isEn ? 'Save to Favorites' : 'Lưu vào yêu thích'),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _isFav
+                          ? HeritagePalette.actionBlue
+                          : HeritagePalette.primaryNavy,
+                      shape: const StadiumBorder(),
+                    ),
                   ),
                 ),
               ),
@@ -315,9 +849,16 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
     required ThemeData theme,
   }) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Icon(icon, color: HeritagePalette.secondaryText, size: 20),
+        Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: HeritagePalette.background,
+            borderRadius: BorderRadius.circular(AppRadii.small),
+          ),
+          child: Icon(icon, color: HeritagePalette.primaryNavy, size: 18),
+        ),
         const SizedBox(width: AppSpacing.small),
         Expanded(
           child: Column(
@@ -327,8 +868,10 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                 title,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: HeritagePalette.secondaryText,
+                  fontSize: 11.5,
                 ),
               ),
+              const SizedBox(height: 1),
               Text(
                 value,
                 style: theme.textTheme.bodyMedium?.copyWith(

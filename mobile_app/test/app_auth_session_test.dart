@@ -64,7 +64,7 @@ void main() {
     expect(session.readToken(), isNull);
   });
 
-  testWidgets('welcome login logout and demo share the correct session', (
+  testWidgets('welcome login and logout preserve the correct session', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -120,16 +120,7 @@ void main() {
       expect(find.byType(LoginPage), findsOneWidget);
       expect(session.readToken(), isNull);
       expect(session.isDemoSession, isFalse);
-
-      final demo = find.byKey(const Key('login-demo-preview'));
-      await tester.ensureVisible(demo);
-      await tester.pumpAndSettle();
-      await tester.tap(demo);
-      await tester.pumpAndSettle();
-
-      expect(find.byType(MainNavigationScaffold), findsOneWidget);
-      expect(session.readToken(), isNull);
-      expect(session.isDemoSession, isTrue);
+      expect(find.byKey(const Key('login-demo-preview')), findsNothing);
       expect(client.calls, 1);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());

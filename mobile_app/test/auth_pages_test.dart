@@ -1,17 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'package:flutter_application_1/features/auth/auth_widgets.dart';
 import 'package:flutter_application_1/features/auth/login_page.dart';
+import 'package:flutter_application_1/features/auth/signup_page.dart';
+import 'package:flutter_application_1/l10n/app_strings.dart';
 import 'package:flutter_application_1/theme/app_theme.dart';
+
+const _loginAccent = HeritagePalette.actionBlue;
 
 void main() {
   Future<void> pumpLoginPage(WidgetTester tester) {
     return tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('vi'),
+        supportedLocales: const [Locale('vi'), Locale('en')],
+        localizationsDelegates: const [
+          AppStrings.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         theme: AppTheme.light(),
         darkTheme: AppTheme.dark(),
         home: const LoginPage(),
+      ),
+    );
+  }
+
+  Future<void> pumpSignupPage(
+    WidgetTester tester, {
+    Locale locale = const Locale('vi'),
+  }) {
+    return tester.pumpWidget(
+      MaterialApp(
+        locale: locale,
+        supportedLocales: const [Locale('vi'), Locale('en')],
+        localizationsDelegates: const [
+          AppStrings.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        home: const SignupPage(),
       ),
     );
   }
@@ -48,6 +82,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await pumpLoginPage(tester);
+    await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('login-email')), findsOneWidget);
     expect(find.byKey(const Key('login-password')), findsOneWidget);
@@ -68,6 +103,7 @@ void main() {
       tester.view.devicePixelRatio = 1;
       await tester.pumpWidget(const SizedBox.shrink());
       await pumpLoginPage(tester);
+      await tester.pumpAndSettle();
 
       final headerCenter = tester.getCenter(find.byType(AuthBrandHeader));
       final markCenter = tester.getCenter(find.byType(HeritageMark));
@@ -87,6 +123,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await pumpLoginPage(tester);
+    await tester.pumpAndSettle();
 
     await tapVisible(tester, find.text('Đăng nhập'));
     expect(find.text('Vui lòng nhập email.'), findsOneWidget);
@@ -112,17 +149,18 @@ void main() {
     WidgetTester tester,
   ) async {
     await pumpLoginPage(tester);
+    await tester.pumpAndSettle();
 
     final theme = Theme.of(
       tester.element(find.byKey(const Key('login-email'))),
     );
     expect(theme.useMaterial3, isTrue);
-    expect(theme.colorScheme.primary, HeritagePalette.authGold);
-    expect(theme.colorScheme.secondary, HeritagePalette.authCta);
+    expect(theme.colorScheme.primary, _loginAccent);
+    expect(theme.colorScheme.secondary, _loginAccent);
     expect(theme.scaffoldBackgroundColor, HeritagePalette.authNavy);
     final focusedBorder =
         theme.inputDecorationTheme.focusedBorder! as OutlineInputBorder;
-    expect(focusedBorder.borderSide.color, HeritagePalette.authGold);
+    expect(focusedBorder.borderSide.color, _loginAccent);
 
     await tapVisible(tester, find.text('Đăng nhập'));
 
@@ -140,12 +178,13 @@ void main() {
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
     await pumpLoginPage(tester);
+    await tester.pumpAndSettle();
 
     final theme = Theme.of(
       tester.element(find.byKey(const Key('login-email'))),
     );
     expect(theme.brightness, Brightness.dark);
-    expect(theme.colorScheme.secondary, HeritagePalette.authCta);
+    expect(theme.colorScheme.secondary, _loginAccent);
     expect(theme.scaffoldBackgroundColor, HeritagePalette.authNavy);
   });
 
@@ -160,6 +199,7 @@ void main() {
             label: 'Continue',
             onPressed: () {},
             isLoading: true,
+            backgroundColor: _loginAccent,
           ),
         ),
       ),
@@ -167,13 +207,22 @@ void main() {
 
     final button = tester.widget<FilledButton>(find.byType(FilledButton));
     expect(button.onPressed, isNull);
+    expect(
+      button.style!.backgroundColor!.resolve(const {WidgetState.disabled}),
+      _loginAccent.withValues(alpha: 0.5),
+    );
+    expect(
+      button.style!.foregroundColor!.resolve(const {WidgetState.disabled}),
+      HeritagePalette.surface.withValues(alpha: 0.7),
+    );
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 
-  testWidgets('gold primary action uses a high-contrast label', (
+  testWidgets('blue primary action uses a high-contrast label', (
     WidgetTester tester,
   ) async {
     await pumpLoginPage(tester);
+    await tester.pumpAndSettle();
 
     final button = tester.widget<FilledButton>(
       find.ancestor(
@@ -184,17 +233,90 @@ void main() {
     final style = button.style!;
     expect(
       style.backgroundColor!.resolve(const {WidgetState.selected}),
-      HeritagePalette.authCta,
+      _loginAccent,
     );
     expect(
       style.foregroundColor!.resolve(const {WidgetState.selected}),
-      HeritagePalette.authNavy,
+      HeritagePalette.surface,
     );
     expect(
       style.shape!.resolve(const {WidgetState.selected}),
       isA<StadiumBorder>(),
     );
     expect(find.byIcon(Icons.arrow_forward_rounded), findsOneWidget);
+  });
+
+  testWidgets('login buttons keep distinct colors across UI states', (
+    WidgetTester tester,
+  ) async {
+    await pumpLoginPage(tester);
+    await tester.pumpAndSettle();
+
+    const normal = <WidgetState>{};
+    const disabled = <WidgetState>{WidgetState.disabled};
+    const focused = <WidgetState>{WidgetState.focused};
+
+    final login = tester.widget<FilledButton>(
+      find.byKey(const Key('login-submit')),
+    );
+    expect(login.style!.backgroundColor!.resolve(normal), _loginAccent);
+    expect(
+      login.style!.backgroundColor!.resolve(disabled),
+      _loginAccent.withValues(alpha: 0.5),
+    );
+    expect(
+      login.style!.foregroundColor!.resolve(normal),
+      HeritagePalette.surface,
+    );
+    final loginPressedOverlay = login.style!.overlayColor!.resolve(const {
+      WidgetState.pressed,
+    });
+    expect(loginPressedOverlay, isNotNull);
+    expect(loginPressedOverlay!.r, 1);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    final google = tester.widget<OutlinedButton>(
+      find.byKey(const Key('login-google')),
+    );
+    final googleStyle = google.style!;
+    expect(googleStyle.backgroundColor!.resolve(normal), Colors.white);
+    expect(googleStyle.backgroundColor!.resolve(disabled), Colors.white);
+    expect(
+      googleStyle.foregroundColor!.resolve(normal),
+      HeritagePalette.primaryNavy,
+    );
+    expect(
+      googleStyle.side!.resolve(focused),
+      const BorderSide(color: Color(0xFF747775)),
+    );
+    final googlePressedOverlay = googleStyle.overlayColor!.resolve(const {
+      WidgetState.pressed,
+    });
+    expect(googlePressedOverlay, isNotNull);
+    expect(googlePressedOverlay!.r, HeritagePalette.primaryNavy.r);
+    expect(googlePressedOverlay.g, HeritagePalette.primaryNavy.g);
+    expect(googlePressedOverlay.b, HeritagePalette.primaryNavy.b);
+    expect(find.byKey(const Key('login-google-mark')), findsOneWidget);
+
+    final rememberMe = tester.widget<Checkbox>(
+      find.descendant(
+        of: find.byKey(const Key('login-remember-me')),
+        matching: find.byType(Checkbox),
+      ),
+    );
+    expect(rememberMe.activeColor, _loginAccent);
+
+    for (final key in const [
+      Key('login-forgot-password'),
+      Key('login-signup'),
+    ]) {
+      final button = tester.widget<TextButton>(find.byKey(key));
+      expect(button.style!.foregroundColor!.resolve(normal), _loginAccent);
+    }
+    expect(
+      tester.widget<Text>(find.text('Quên mật khẩu?')).style!.color,
+      _loginAccent,
+    );
   });
 
   testWidgets('login and signup inputs and primary actions share sizing', (
@@ -206,6 +328,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await pumpLoginPage(tester);
+    await tester.pumpAndSettle();
     final loginEmailHeight = tester
         .getSize(find.byKey(const Key('login-email')))
         .height;
@@ -229,10 +352,26 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('signup primary button keeps its existing blue theme', (
+    WidgetTester tester,
+  ) async {
+    await pumpSignupPage(tester);
+    await tester.pumpAndSettle();
+
+    final signup = tester.widget<FilledButton>(
+      find.byKey(const Key('signup-submit')),
+    );
+    expect(
+      signup.style!.backgroundColor!.resolve(const {}),
+      HeritagePalette.authCta,
+    );
+  });
+
   testWidgets('valid login form does not claim authentication success', (
     WidgetTester tester,
   ) async {
     await pumpLoginPage(tester);
+    await tester.pumpAndSettle();
 
     await enterTextVisible(
       tester,
@@ -256,6 +395,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await pumpLoginPage(tester);
+    await tester.pumpAndSettle();
 
     await tapVisible(tester, find.text('Chưa có tài khoản? Đăng ký'));
     expect(find.byKey(const Key('signup-title')), findsOneWidget);
@@ -276,6 +416,7 @@ void main() {
 
   testWidgets('password can be shown and hidden', (WidgetTester tester) async {
     await pumpLoginPage(tester);
+    await tester.pumpAndSettle();
 
     const passwordKey = Key('login-password');
     expect(passwordIsObscured(tester, passwordKey), isTrue);
@@ -293,6 +434,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await pumpLoginPage(tester);
+    await tester.pumpAndSettle();
     await tapVisible(tester, find.text('Chưa có tài khoản? Đăng ký'));
 
     await enterTextVisible(
@@ -320,6 +462,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await pumpLoginPage(tester);
+    await tester.pumpAndSettle();
     await tapVisible(tester, find.text('Chưa có tài khoản? Đăng ký'));
 
     await enterTextVisible(
@@ -346,6 +489,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await pumpLoginPage(tester);
+    await tester.pumpAndSettle();
     await tapVisible(tester, find.text('Chưa có tài khoản? Đăng ký'));
 
     await enterTextVisible(
@@ -380,6 +524,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await pumpLoginPage(tester);
+    await tester.pumpAndSettle();
     expect(find.byType(SingleChildScrollView), findsOneWidget);
     expect(tester.takeException(), isNull);
 
@@ -412,6 +557,7 @@ void main() {
       tester.view.resetViewInsets();
 
       await pumpLoginPage(tester);
+      await tester.pumpAndSettle();
       final loginForm = find.byType(Form);
       final loginTop = tester.getTopLeft(loginForm).dy;
       final loginBottom = tester.getBottomRight(loginForm).dy;
@@ -451,6 +597,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await pumpLoginPage(tester);
+    await tester.pumpAndSettle();
     expect(find.byType(AuthHeritageAside), findsOneWidget);
     expect(find.text('Di sản sống\ntrong từng hành trình.'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -459,5 +606,84 @@ void main() {
     expect(find.byKey(const Key('signup-submit')), findsOneWidget);
     expect(find.byType(AuthHeritageAside), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'signup renders all localized labels in English and checks terms validation',
+    (WidgetTester tester) async {
+      await pumpSignupPage(tester, locale: const Locale('en'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('signup-title')), findsOneWidget);
+      expect(find.text('Account Information'), findsOneWidget);
+      expect(find.text('Register'), findsOneWidget);
+      expect(find.byKey(const Key('signup-full-name')), findsOneWidget);
+      expect(find.byKey(const Key('signup-email')), findsOneWidget);
+      expect(find.byKey(const Key('signup-password')), findsOneWidget);
+      expect(find.byKey(const Key('signup-confirm-password')), findsOneWidget);
+      expect(find.textContaining('Terms of Service'), findsOneWidget);
+      expect(find.textContaining('Privacy Policy'), findsOneWidget);
+
+      // Uncheck terms of service
+      await tapVisible(tester, find.byKey(const Key('signup-terms-agree')));
+      await enterTextVisible(
+        tester,
+        find.byKey(const Key('signup-email')),
+        'visitor@example.com',
+      );
+      await enterTextVisible(
+        tester,
+        find.byKey(const Key('signup-password')),
+        'password123',
+      );
+      await enterTextVisible(
+        tester,
+        find.byKey(const Key('signup-confirm-password')),
+        'password123',
+      );
+      await tapVisible(tester, find.byKey(const Key('signup-submit')));
+
+      expect(
+        find.text('Please agree to the Terms of Service and Privacy Policy.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('signup in Vietnamese checks terms checkbox validation', (
+    WidgetTester tester,
+  ) async {
+    await pumpSignupPage(tester, locale: const Locale('vi'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('signup-title')), findsOneWidget);
+    expect(find.text('Thông tin tài khoản'), findsOneWidget);
+    expect(find.text('Đăng ký'), findsOneWidget);
+
+    // Uncheck terms of service
+    await tapVisible(tester, find.byKey(const Key('signup-terms-agree')));
+    await enterTextVisible(
+      tester,
+      find.byKey(const Key('signup-email')),
+      'visitor@example.com',
+    );
+    await enterTextVisible(
+      tester,
+      find.byKey(const Key('signup-password')),
+      'password123',
+    );
+    await enterTextVisible(
+      tester,
+      find.byKey(const Key('signup-confirm-password')),
+      'password123',
+    );
+    await tapVisible(tester, find.byKey(const Key('signup-submit')));
+
+    expect(
+      find.text(
+        'Vui lòng đồng ý với Điều khoản sử dụng và Chính sách bảo mật.',
+      ),
+      findsOneWidget,
+    );
   });
 }

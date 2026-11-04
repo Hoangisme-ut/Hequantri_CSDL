@@ -10,6 +10,51 @@ const _uuid = '11111111-2222-3333-4444-555555555555';
 const _token = AuthToken(accessToken: 'test-token', tokenType: 'bearer');
 
 void main() {
+  test('Beacon resolve validates required and optional UUID fields', () {
+    final valid = _beaconResolvePayload();
+    final parsed = BeaconContent.fromJson(valid);
+    expect(parsed.beaconId, '30000000-0000-0000-0000-000000000001');
+    expect(parsed.artifactId, '20000000-0000-0000-0000-000000000001');
+
+    final invalidBeaconId = _beaconResolvePayload()
+      ..['beacon'] = {
+        ..._beaconResolvePayload()['beacon'] as Map<String, dynamic>,
+        'id': 'beacon-1',
+      };
+    expect(
+      () => BeaconContent.fromJson(invalidBeaconId),
+      throwsFormatException,
+    );
+
+    final invalidOptionalBeaconArtifact = _beaconResolvePayload()
+      ..['beacon'] = {
+        ..._beaconResolvePayload()['beacon'] as Map<String, dynamic>,
+        'artifact_id': 'artifact-1',
+      };
+    expect(
+      () => BeaconContent.fromJson(invalidOptionalBeaconArtifact),
+      throwsFormatException,
+    );
+
+    final invalidOptionalMediaLanguage = _beaconResolvePayload()
+      ..['artifact'] = {
+        ..._beaconResolvePayload()['artifact'] as Map<String, dynamic>,
+        'media': [
+          {
+            'id': '40000000-0000-0000-0000-000000000001',
+            'artifact_id': '20000000-0000-0000-0000-000000000001',
+            'language_id': 'language-1',
+            'media_type': 'image',
+            'url': 'https://example.test/image.jpg',
+          },
+        ],
+      };
+    expect(
+      () => BeaconContent.fromJson(invalidOptionalMediaLanguage),
+      throwsFormatException,
+    );
+  });
+
   testWidgets('Repeated beacon only requests content once', (tester) async {
     final service = _FakeBeaconService();
     final controller = BeaconContentController(
@@ -33,6 +78,7 @@ void main() {
       await tester.pump();
 
       expect(controller.content?.code, 'ART-1');
+      expect(controller.contentToken?.accessToken, 'test-token');
       expect(controller.isLoading, isFalse);
 
       await tester.pump(const Duration(seconds: 3));
@@ -163,6 +209,34 @@ void main() {
     }
   });
 }
+
+Map<String, dynamic> _beaconResolvePayload() => {
+  'beacon': {
+    'id': '30000000-0000-0000-0000-000000000001',
+    'site_id': '10000000-0000-0000-0000-000000000001',
+    'artifact_id': '20000000-0000-0000-0000-000000000001',
+    'proximity_uuid': _uuid,
+    'major': 1,
+    'minor': 1,
+    'is_active': true,
+  },
+  'artifact': {
+    'id': '20000000-0000-0000-0000-000000000001',
+    'site_id': '10000000-0000-0000-0000-000000000001',
+    'code': 'ART-1',
+    'era': null,
+    'latitude': null,
+    'longitude': null,
+    'cover_image_url': null,
+    'is_active': true,
+    'title': 'Artifact',
+    'description': null,
+    'history_content': null,
+    'language_code': 'vi',
+    'is_fallback': false,
+    'media': const <Object>[],
+  },
+};
 
 /// Provides controlled API responses for controller tests.
 class _FakeBeaconService extends BeaconContentService {
