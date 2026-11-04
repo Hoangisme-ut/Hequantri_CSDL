@@ -66,6 +66,9 @@ class AppStrings {
   String get next => isEnglish ? 'Next' : 'Tiếp tục';
   String get start => welcomeStart;
   String get languageTooltip => isEnglish ? 'Switch language' : 'Đổi ngôn ngữ';
+  String get siteTranslationFallback => isEnglish
+      ? 'English translation is not available; showing Vietnamese content.'
+      : 'Chưa có bản dịch tiếng Anh; đang hiển thị tiếng Việt.';
 
   String welcomePage(int current, int total) =>
       isEnglish ? 'Page $current of $total' : 'Trang $current trên $total';
@@ -131,8 +134,7 @@ class AppStrings {
       isEnglish ? 'Account Information' : 'Thông tin tài khoản';
   String get signupNameLabel =>
       isEnglish ? 'Full Name (Optional)' : 'Họ và tên (Không bắt buộc)';
-  String get signupFullNameLabel =>
-      isEnglish ? 'Full Name' : 'Họ và tên';
+  String get signupFullNameLabel => isEnglish ? 'Full Name' : 'Họ và tên';
   String get signupEmailLabel => isEnglish ? 'Email' : 'Email';
   String get signupEmailRequired =>
       isEnglish ? 'Please enter your email.' : 'Vui lòng nhập email.';
@@ -219,6 +221,13 @@ class AppStrings {
 
   String artifactCategory(String category) {
     switch (category) {
+      case 'Artifacts':
+      case 'Artifact':
+        return isEnglish ? 'Artifact' : 'Hiện vật';
+      case 'Favorites':
+        return navFavorites;
+      case 'Artifact details':
+        return isEnglish ? 'Artifact details' : 'Chi tiết hiện vật';
       case 'Tất cả':
         return categoryAll;
       case 'Đồ gốm':
@@ -232,6 +241,81 @@ class AppStrings {
       default:
         return category;
     }
+  }
+
+  String get apiConfigurationMissing => isEnglish
+      ? 'Configure API_BASE_URL to connect to the backend.'
+      : 'Chưa cấu hình địa chỉ API để kết nối máy chủ.';
+
+  String get favoritesSignInRequired => isEnglish
+      ? 'Sign in to load your favorites.'
+      : 'Vui lòng đăng nhập để tải danh sách yêu thích.';
+
+  String get historySignInRequired => isEnglish
+      ? 'Sign in to load your visit history.'
+      : 'Vui lòng đăng nhập để tải lịch sử tham quan.';
+
+  String get favoritesLoadError => isEnglish
+      ? 'Could not load favorites. Please retry.'
+      : 'Không tải được danh sách yêu thích. Vui lòng thử lại.';
+
+  String get historyLoadError => isEnglish
+      ? 'Could not load visit history. Please retry.'
+      : 'Không tải được lịch sử tham quan. Vui lòng thử lại.';
+
+  String get artifactLoadError => isEnglish
+      ? 'Could not load artifacts. Please retry.'
+      : 'Không tải được hiện vật. Vui lòng thử lại.';
+
+  String get artifactDetailsLoadError => isEnglish
+      ? 'Could not load artifact details.'
+      : 'Không tải được chi tiết hiện vật.';
+
+  String get favoriteStatusLoadError => isEnglish
+      ? 'Could not load favorite status.'
+      : 'Không tải được trạng thái yêu thích.';
+
+  String get favoriteUpdateError => isEnglish
+      ? 'Could not update favorite. Please retry.'
+      : 'Không cập nhật được trạng thái yêu thích. Vui lòng thử lại.';
+
+  String get beaconContentLoadError => isEnglish
+      ? 'Could not load beacon content. Please retry.'
+      : 'Không tải được nội dung beacon. Vui lòng thử lại.';
+
+  String get beaconSignInRequired => isEnglish
+      ? 'Sign in to load beacon content.'
+      : 'Cần đăng nhập để tải nội dung beacon.';
+
+  String visitorApiError(int? statusCode) {
+    if (statusCode == 401) {
+      return isEnglish
+          ? 'Your session has expired. Please sign in again.'
+          : 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+    }
+    if (statusCode == 403) {
+      return isEnglish
+          ? 'Your account cannot access this data.'
+          : 'Tài khoản của bạn không được phép truy cập dữ liệu này.';
+    }
+    if (statusCode == 404) {
+      return isEnglish
+          ? 'The requested heritage record was not found.'
+          : 'Không tìm thấy dữ liệu di sản được yêu cầu.';
+    }
+    if (statusCode != null && statusCode >= 500) {
+      return isEnglish
+          ? 'The server is unavailable. Please try again.'
+          : 'Máy chủ hiện không khả dụng. Vui lòng thử lại.';
+    }
+    if (statusCode == null) {
+      return isEnglish
+          ? 'Could not connect to the server. Please retry.'
+          : 'Không thể kết nối máy chủ. Vui lòng thử lại.';
+    }
+    return isEnglish
+        ? 'The request failed ($statusCode).'
+        : 'Yêu cầu thất bại ($statusCode).';
   }
 
   // ==================== NAVIGATION & SHELL ====================

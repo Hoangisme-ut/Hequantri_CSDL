@@ -38,6 +38,7 @@ class AuthSubmitButton extends StatelessWidget {
     required this.onPressed,
     this.isLoading = false,
     this.buttonKey,
+    this.backgroundColor,
     super.key,
   });
 
@@ -45,9 +46,11 @@ class AuthSubmitButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool isLoading;
   final Key? buttonKey;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
+    final color = backgroundColor ?? HeritagePalette.authCta;
     return SizedBox(
       height: 56,
       width: double.infinity,
@@ -55,19 +58,15 @@ class AuthSubmitButton extends StatelessWidget {
         key: buttonKey,
         onPressed: isLoading ? null : onPressed,
         style: FilledButton.styleFrom(
-          backgroundColor: HeritagePalette.authCta,
+          backgroundColor: color,
           foregroundColor: HeritagePalette.surface,
-          disabledBackgroundColor: HeritagePalette.authCta.withValues(
-            alpha: 0.5,
-          ),
+          disabledBackgroundColor: color.withValues(alpha: 0.5),
           disabledForegroundColor: HeritagePalette.surface.withValues(
             alpha: 0.7,
           ),
+          overlayColor: HeritagePalette.surface.withValues(alpha: 0.12),
           shape: const StadiumBorder(),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         child: isLoading
             ? const SizedBox(

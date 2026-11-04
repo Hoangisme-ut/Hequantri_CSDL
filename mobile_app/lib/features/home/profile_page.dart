@@ -4,15 +4,21 @@ import '../../l10n/app_strings.dart';
 import '../../l10n/locale_controller.dart';
 import '../../theme/app_theme.dart';
 import '../auth/login_page.dart';
+import '../data/visitor_api_service.dart';
 import '../heritage/beacon_simulation_page.dart';
 import 'history_page.dart';
-import 'main_navigation_scaffold.dart';
 
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key, required this.onLocaleChanged, this.onLogout});
+  const ProfilePage({
+    super.key,
+    required this.onLocaleChanged,
+    this.onLogout,
+    this.visitorApi,
+  });
 
   final ValueChanged<Locale> onLocaleChanged;
   final VoidCallback? onLogout;
+  final VisitorApi? visitorApi;
 
   void _showLanguageSelector(BuildContext context, bool isEn) {
     showModalBottomSheet<void>(
@@ -179,20 +185,7 @@ class ProfilePage extends StatelessWidget {
                   onLogout!();
                 } else {
                   Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (_) => LoginPage(
-                        onDemoContinue: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => MainNavigationScaffold(
-                                onLocaleChanged: onLocaleChanged,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
                     (route) => false,
                   );
                 }
@@ -327,7 +320,9 @@ class ProfilePage extends StatelessWidget {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const HistoryPage()),
+                      MaterialPageRoute(
+                        builder: (_) => HistoryPage(api: visitorApi),
+                      ),
                     );
                   },
                   theme: theme,
@@ -500,9 +495,7 @@ class ProfilePage extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.medium),
         side: const BorderSide(color: HeritagePalette.border),
       ),
-      child: Column(
-        children: tiles,
-      ),
+      child: Column(children: tiles),
     );
   }
 
@@ -525,11 +518,7 @@ class ProfilePage extends StatelessWidget {
           color: HeritagePalette.background,
           borderRadius: BorderRadius.circular(AppRadii.small),
         ),
-        child: Icon(
-          icon,
-          color: HeritagePalette.primaryNavy,
-          size: 19,
-        ),
+        child: Icon(icon, color: HeritagePalette.primaryNavy, size: 19),
       ),
       title: Text(
         title,

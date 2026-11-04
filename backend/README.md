@@ -31,12 +31,54 @@ The API is available at `http://localhost:8000`, with automatic interactive docs
 After running the migrations, create the development sample data from `./backend/`:
 
 ```console
-$ uv run python app/seed_sample_data.py
+$ uv run alembic upgrade head
+$ uv run python -m app.seed_sample_data
 ```
 
 The script creates two sites, five artifacts with Vietnamese and English
-translations, and three beacons. It uses stable IDs and can be run repeatedly
-without creating duplicate records.
+translations (10 total), three beacons, and 20 Media records. Each artifact has
+a shared image, a shared video, and separate Vietnamese/English audio metadata.
+Vietnamese is the default language; all demo sites, artifacts and beacons are active.
+It uses stable IDs and can be run repeatedly without creating duplicate records.
+Rerunning restores demo fields and missing demo records, while preserving unrelated
+records. Run this against a development database: it refreshes demo content and
+sets the default language to Vietnamese. No accounts are created by this seed.
+
+Media URLs point to generic W3Schools playback samples. The image/video are not
+depictions of the artifacts; both audio language entries use the same sample
+sound, not translated narration. They require internet access and can be replaced
+with your own hosted files for realistic playback testing.
+
+### Shared Web / Mobile demo checks
+
+Point both clients at the same backend/database and sign in using an existing
+Admin or Visitor account (media management requires Admin). Web should list:
+
+| Site | Site ID | Artifact codes |
+| --- | --- | --- |
+| Hoàng thành Thăng Long | `10000000-0000-0000-0000-000000000001` | `HTTL-DOAN-MON`, `HTTL-KINH-THIEN`, `HTTL-HAU-LAU` |
+| Văn Miếu – Quốc Tử Giám | `10000000-0000-0000-0000-000000000002` | `VMQT-KHUE-VAN-CAC`, `VMQT-BIA-TIEN-SI` |
+
+All three demo beacons use UUID `FDA50693-A4E2-4FB1-AFCF-C6EB07647825`:
+
+| Major | Minor | Artifact |
+| --- | --- | --- |
+| 1 | 1 | Đoan Môn |
+| 1 | 2 | Điện Kính Thiên |
+| 2 | 1 | Khuê Văn Các |
+
+To simulate a Mobile scan without BLE hardware, call the following with an
+authenticated bearer token; repeat with `lang=en` and with each major/minor pair:
+
+```text
+GET /api/v1/beacons/resolve?proximity_uuid=FDA50693-A4E2-4FB1-AFCF-C6EB07647825&major=1&minor=1&lang=vi
+```
+
+Expect the matching artifact, translated title/description, `is_fallback=false`,
+and three ordered media entries: shared image, shared video, selected-language
+audio. The Admin media list contains all four entries per artifact. Run the seed
+again and verify the counts remain 2 sites, 5 artifacts, 10 translations,
+3 beacons, 2 languages and 20 media on a fresh database.
 
 ## General Workflow
 

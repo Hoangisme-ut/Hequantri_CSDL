@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/app_strings.dart';
 import '../../theme/app_theme.dart';
+import '../data/visitor_api_service.dart';
 import 'artifact.dart';
 import 'artifact_detail_page.dart';
 
@@ -10,17 +11,19 @@ class ArtifactListPage extends StatefulWidget {
     super.key,
     required this.catalog,
     required this.onLocaleChanged,
+    this.visitorApi,
   });
 
   final ArtifactCatalog catalog;
   final ValueChanged<Locale> onLocaleChanged;
+  final VisitorApi? visitorApi;
 
   @override
   State<ArtifactListPage> createState() => _ArtifactListPageState();
 }
 
 class _ArtifactListPageState extends State<ArtifactListPage> {
-  String _selectedCategory = 'Tất cả';
+  int _selectedCategoryIndex = 0;
   String _searchQuery = '';
   final List<String> _categories = [
     'Tất cả',
@@ -30,6 +33,96 @@ class _ArtifactListPageState extends State<ArtifactListPage> {
     'Tượng điêu khắc',
   ];
   final TextEditingController _searchController = TextEditingController();
+  List<Artifact> _remoteArtifacts = const [];
+  String? _languageCode;
+  String? _loadError;
+  bool _loading = false;
+  int _requestGeneration = 0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final api = widget.visitorApi;
+    if (api == null) return;
+    final languageCode = AppStrings.of(context).locale.languageCode;
+    if (_languageCode == languageCode) return;
+    _languageCode = languageCode;
+    _loadArtifacts(api, languageCode);
+  }
+
+  @override
+  void didUpdateWidget(covariant ArtifactListPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.visitorApi != widget.visitorApi &&
+        widget.visitorApi != null) {
+      final languageCode = AppStrings.of(context).locale.languageCode;
+      _languageCode = languageCode;
+      _loadArtifacts(widget.visitorApi!, languageCode);
+    }
+  }
+
+  Future<void> _loadArtifacts(VisitorApi api, String languageCode) async {
+    final generation = ++_requestGeneration;
+    setState(() {
+      _loading = true;
+      _loadError = null;
+      _remoteArtifacts = const [];
+    });
+    try {
+      final itemsById = <String, Artifact>{};
+      var skip = 0;
+      var count = 0;
+      do {
+        final page = await api.loadArtifacts(
+          languageCode: languageCode,
+          skip: skip,
+          limit: 100,
+        );
+        if (!mounted || generation != _requestGeneration) return;
+        count = page.count;
+        for (final item in page.items) {
+          itemsById.putIfAbsent(
+            item.id,
+            () => Artifact(
+              id: item.id,
+              titleVi: languageCode == 'vi'
+                  ? item.title ?? item.code
+                  : item.code,
+              titleEn: languageCode == 'en'
+                  ? item.title ?? item.code
+                  : item.code,
+              period: item.era ?? '',
+              category: 'Artifacts',
+              location: item.siteId,
+              descriptionVi: '',
+              descriptionEn: '',
+              imageUrl: item.coverImageUrl ?? '',
+              isFavorite: false,
+            ),
+          );
+        }
+        if (page.items.isEmpty) break;
+        skip += page.items.length;
+      } while (skip < count);
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() {
+        _remoteArtifacts = itemsById.values.toList(growable: false);
+        _loading = false;
+      });
+    } on VisitorApiException catch (error) {
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() {
+        _loadError = AppStrings.of(context).visitorApiError(error.statusCode);
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() {
+        _loadError = AppStrings.of(context).artifactLoadError;
+        _loading = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -44,13 +137,21 @@ class _ArtifactListPageState extends State<ArtifactListPage> {
     final strings = AppStrings.of(context);
     final isEn = strings.isEnglish;
 
-    final filteredItems = widget.catalog.items.where((item) {
+    final isRemote = widget.visitorApi != null;
+    final categories = isRemote
+        ? [strings.categoryAll, isEn ? 'Artifacts' : 'Hiện vật']
+        : _categories;
+    final sourceItems = isRemote ? _remoteArtifacts : widget.catalog.items;
+    final filteredItems = sourceItems.where((item) {
       final matchesCategory =
-          _selectedCategory == 'Tất cả' || item.category == _selectedCategory;
+          isRemote ||
+          _selectedCategoryIndex == 0 ||
+          item.category == _categories[_selectedCategoryIndex];
       final title = item.getTitle(isEn ? 'en' : 'vi').toLowerCase();
       final period = item.period.toLowerCase();
       final location = item.location.toLowerCase();
-      final matchesSearch = _searchQuery.isEmpty ||
+      final matchesSearch =
+          _searchQuery.isEmpty ||
           title.contains(_searchQuery.toLowerCase()) ||
           period.contains(_searchQuery.toLowerCase()) ||
           location.contains(_searchQuery.toLowerCase());
@@ -75,8 +176,9 @@ class _ArtifactListPageState extends State<ArtifactListPage> {
             padding: const EdgeInsets.only(right: 8),
             child: InkWell(
               onTap: () {
-                final newLocale =
-                    isEn ? const Locale('vi') : const Locale('en');
+                final newLocale = isEn
+                    ? const Locale('vi')
+                    : const Locale('en');
                 widget.onLocaleChanged(newLocale);
               },
               borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -207,11 +309,12 @@ class _ArtifactListPageState extends State<ArtifactListPage> {
                 horizontal: AppSpacing.medium,
                 vertical: 6,
               ),
-              itemCount: _categories.length,
+              itemCount: categories.length,
               itemBuilder: (context, index) {
-                final cat = _categories[index];
-                final isSelected = cat == _selectedCategory;
-                final localizedLabel = strings.artifactCategory(cat);
+                final localizedLabel = isRemote
+                    ? categories[index]
+                    : strings.artifactCategory(categories[index]);
+                final isSelected = index == _selectedCategoryIndex;
 
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
@@ -219,7 +322,9 @@ class _ArtifactListPageState extends State<ArtifactListPage> {
                     label: Text(localizedLabel),
                     selected: isSelected,
                     onSelected: (selected) {
-                      if (selected) setState(() => _selectedCategory = cat);
+                      if (selected) {
+                        setState(() => _selectedCategoryIndex = index);
+                      }
                     },
                     selectedColor: HeritagePalette.primaryNavy,
                     backgroundColor: colorScheme.surface,
@@ -250,7 +355,11 @@ class _ArtifactListPageState extends State<ArtifactListPage> {
 
           // Artifacts List or Empty State
           Expanded(
-            child: filteredItems.isEmpty
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _loadError != null
+                ? _buildLoadError(theme, isEn)
+                : filteredItems.isEmpty
                 ? _buildEmptyState(theme, isEn)
                 : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(
@@ -276,6 +385,30 @@ class _ArtifactListPageState extends State<ArtifactListPage> {
       ),
     );
   }
+
+  Widget _buildLoadError(ThemeData theme, bool isEn) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(AppSpacing.large),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(_loadError!, textAlign: TextAlign.center),
+          const SizedBox(height: AppSpacing.medium),
+          FilledButton.icon(
+            onPressed: () {
+              final api = widget.visitorApi;
+              final languageCode = _languageCode;
+              if (api != null && languageCode != null) {
+                _loadArtifacts(api, languageCode);
+              }
+            },
+            icon: const Icon(Icons.refresh),
+            label: Text(isEn ? 'Retry' : 'Thử lại'),
+          ),
+        ],
+      ),
+    ),
+  );
 
   Widget _buildEmptyState(ThemeData theme, bool isEn) {
     return Center(
@@ -334,7 +467,7 @@ class _ArtifactListPageState extends State<ArtifactListPage> {
                   setState(() {
                     _searchController.clear();
                     _searchQuery = '';
-                    _selectedCategory = 'Tất cả';
+                    _selectedCategoryIndex = 0;
                   });
                 },
                 icon: const Icon(Icons.refresh_rounded, size: 16),
@@ -384,7 +517,10 @@ class _ArtifactListPageState extends State<ArtifactListPage> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => ArtifactDetailPage(artifact: item),
+                builder: (_) => ArtifactDetailPage(
+                  artifact: item,
+                  visitorApi: widget.visitorApi,
+                ),
               ),
             );
           },

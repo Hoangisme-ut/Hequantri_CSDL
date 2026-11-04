@@ -10,13 +10,11 @@ import '../auth/login_page.dart';
 class WelcomePage extends StatefulWidget {
   const WelcomePage({
     super.key,
-    this.onDemoContinue,
     this.onLocaleChanged,
     this.onAuthenticated,
     this.authService,
   });
 
-  final VoidCallback? onDemoContinue;
   final ValueChanged<Locale>? onLocaleChanged;
   final ValueChanged<AuthToken>? onAuthenticated;
   final AuthService? authService;
@@ -63,7 +61,6 @@ class _WelcomePageState extends State<WelcomePage> {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: (_) => LoginPage(
-          onDemoContinue: widget.onDemoContinue,
           onAuthenticated: widget.onAuthenticated,
           authService: widget.authService,
         ),
@@ -288,8 +285,7 @@ class _WelcomeTopBar extends StatelessWidget {
           child: OutlinedButton(
             key: const Key('welcome-language-toggle'),
             onPressed: () {
-              final nextLocale =
-                  isEn ? const Locale('vi') : const Locale('en');
+              final nextLocale = isEn ? const Locale('vi') : const Locale('en');
               onLocaleChanged?.call(nextLocale);
               LocaleController.instance.setLocale(nextLocale);
             },

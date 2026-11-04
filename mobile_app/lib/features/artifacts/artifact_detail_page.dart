@@ -3,13 +3,25 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_strings.dart';
+import '../auth/auth_session.dart';
+import '../auth/auth_service.dart';
+import '../data/visitor_api_service.dart';
 import '../../theme/app_theme.dart';
 import 'artifact.dart';
 
 class ArtifactDetailPage extends StatefulWidget {
-  const ArtifactDetailPage({super.key, required this.artifact});
+  const ArtifactDetailPage({
+    super.key,
+    required this.artifact,
+    this.visitorApi,
+    this.initialIsFavorite,
+    this.onFavoriteChanged,
+  });
 
   final Artifact artifact;
+  final VisitorApi? visitorApi;
+  final bool? initialIsFavorite;
+  final VoidCallback? onFavoriteChanged;
 
   @override
   State<ArtifactDetailPage> createState() => _ArtifactDetailPageState();
@@ -17,6 +29,20 @@ class ArtifactDetailPage extends StatefulWidget {
 
 class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
   late bool _isFav;
+  bool _favoriteRequestRunning = false;
+  bool _favoriteInitialized = false;
+  VisitorApi? _visitorApi;
+  AuthToken? _token;
+  AuthToken? _observedSessionToken;
+  bool _didObserveSession = false;
+  int _favoriteStateGeneration = 0;
+  String? _favoriteError;
+  VisitorArtifactContent? _remoteContent;
+  bool _contentLoading = false;
+  String? _contentError;
+  String? _loadedContentLanguage;
+  String? _loadedContentArtifactId;
+  int _contentRequestGeneration = 0;
   bool _isPlayingAudio = false;
   double _audioProgress = 0.0;
   Timer? _audioTimer;
@@ -24,8 +50,214 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
   @override
   void initState() {
     super.initState();
-    _isFav = widget.artifact.isFavorite;
+    _isFav = widget.initialIsFavorite ?? widget.artifact.isFavorite;
+    _visitorApi = widget.visitorApi;
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final currentToken = AuthSessionScope.maybeOf(context)?.readToken();
+    final sessionChanged =
+        _didObserveSession &&
+        !_sameAuthToken(_observedSessionToken, currentToken);
+    _token = currentToken;
+    _observedSessionToken = currentToken;
+    _didObserveSession = true;
+    _visitorApi ??= widget.visitorApi;
+    final language = AppStrings.of(context).locale.languageCode;
+    if (_visitorApi != null &&
+        _hasBackendId &&
+        (language != _loadedContentLanguage ||
+            widget.artifact.id != _loadedContentArtifactId)) {
+      _loadedContentLanguage = language;
+      _loadedContentArtifactId = widget.artifact.id;
+      _loadRemoteContent(language, artifactId: widget.artifact.id);
+    }
+    if (sessionChanged) {
+      _favoriteStateGeneration++;
+      _favoriteInitialized = true;
+      _isFav = false;
+      _favoriteError = null;
+      if (currentToken != null && _hasBackendId) {
+        _loadFavoriteState(currentToken);
+      }
+    } else if (!_favoriteInitialized) {
+      _favoriteInitialized = true;
+      if (widget.initialIsFavorite == null &&
+          currentToken != null &&
+          _hasBackendId) {
+        _loadFavoriteState(currentToken);
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ArtifactDetailPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.artifact.id == widget.artifact.id) return;
+
+    _contentRequestGeneration++;
+    _loadedContentArtifactId = null;
+    _loadedContentLanguage = null;
+    _remoteContent = null;
+    _contentError = null;
+    _favoriteInitialized = widget.initialIsFavorite != null;
+    _isFav = widget.initialIsFavorite ?? widget.artifact.isFavorite;
+    _favoriteError = null;
+    _favoriteStateGeneration++;
+    final language = AppStrings.of(context).locale.languageCode;
+    if (_visitorApi != null && _hasBackendId) {
+      _loadedContentLanguage = language;
+      _loadedContentArtifactId = widget.artifact.id;
+      _loadRemoteContent(language, artifactId: widget.artifact.id);
+    }
+    if (!_favoriteInitialized && _token != null && _hasBackendId) {
+      _favoriteInitialized = true;
+      _loadFavoriteState(_token!);
+    }
+  }
+
+  bool get _hasBackendId => RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+  ).hasMatch(widget.artifact.id);
+
+  Future<void> _loadFavoriteState(AuthToken token) async {
+    final api = _visitorApi;
+    if (api == null) return;
+    final session = AuthSessionScope.maybeOf(context);
+    final generation = ++_favoriteStateGeneration;
+    final artifactId = widget.artifact.id;
+    final languageCode = AppStrings.of(context).locale.languageCode;
+    try {
+      var skip = 0;
+      var count = 0;
+      var isFavorite = false;
+      do {
+        final page = await api.loadFavorites(
+          token: token,
+          languageCode: languageCode,
+          skip: skip,
+          limit: 100,
+        );
+        if (!_isCurrentFavoriteStateRequest(
+          generation,
+          token,
+          artifactId,
+          session,
+        )) {
+          return;
+        }
+        count = page.count;
+        if (page.items.any((item) => item.artifactId == artifactId)) {
+          isFavorite = true;
+          break;
+        }
+        if (page.items.isEmpty) break;
+        skip += page.items.length;
+      } while (skip < count);
+      if (!_isCurrentFavoriteStateRequest(
+        generation,
+        token,
+        artifactId,
+        session,
+      )) {
+        return;
+      }
+      setState(() => _isFav = isFavorite);
+    } on VisitorApiException catch (error) {
+      if (_isCurrentFavoriteStateRequest(
+        generation,
+        token,
+        artifactId,
+        session,
+      )) {
+        setState(
+          () =>
+              _favoriteError = AppStrings.of(context)
+                  .visitorApiError(error.statusCode),
+        );
+      }
+    } catch (_) {
+      if (_isCurrentFavoriteStateRequest(
+        generation,
+        token,
+        artifactId,
+        session,
+      )) {
+        setState(
+          () => _favoriteError = AppStrings.of(context).favoriteStatusLoadError,
+        );
+      }
+    }
+  }
+
+  bool _isCurrentFavoriteStateRequest(
+    int generation,
+    AuthToken token,
+    String artifactId,
+    AuthSession? session,
+  ) =>
+      mounted &&
+      generation == _favoriteStateGeneration &&
+      artifactId == widget.artifact.id &&
+      _sameAuthToken(session?.readToken(), token);
+
+  bool _sameAuthToken(AuthToken? first, AuthToken? second) {
+    if (first == null || second == null) return first == second;
+    return first.accessToken == second.accessToken &&
+        first.tokenType.toLowerCase() == second.tokenType.toLowerCase();
+  }
+
+  Future<void> _loadRemoteContent(
+    String languageCode, {
+    required String artifactId,
+  }) async {
+    final api = _visitorApi;
+    if (api == null) return;
+    final generation = ++_contentRequestGeneration;
+    setState(() {
+      _contentLoading = true;
+      _contentError = null;
+    });
+    try {
+      final content = await api.loadArtifact(
+        artifactId: artifactId,
+        languageCode: languageCode,
+      );
+      if (_isCurrentContentRequest(generation, artifactId, languageCode)) {
+        setState(() {
+          _remoteContent = content;
+          _contentLoading = false;
+        });
+      }
+    } on VisitorApiException catch (error) {
+      if (_isCurrentContentRequest(generation, artifactId, languageCode)) {
+        setState(() {
+          _contentError = AppStrings.of(context)
+              .visitorApiError(error.statusCode);
+          _contentLoading = false;
+        });
+      }
+    } catch (_) {
+      if (_isCurrentContentRequest(generation, artifactId, languageCode)) {
+        setState(() {
+          _contentError = AppStrings.of(context).artifactDetailsLoadError;
+          _contentLoading = false;
+        });
+      }
+    }
+  }
+
+  bool _isCurrentContentRequest(
+    int generation,
+    String artifactId,
+    String languageCode,
+  ) =>
+      mounted &&
+      generation == _contentRequestGeneration &&
+      artifactId == widget.artifact.id &&
+      languageCode == AppStrings.of(context).locale.languageCode;
 
   @override
   void dispose() {
@@ -53,22 +285,80 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
     }
   }
 
-  void _toggleFavorite(bool isEn) {
-    setState(() => _isFav = !_isFav);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _isFav
-              ? (isEn
-                  ? 'Saved to favorites'
-                  : 'Đã lưu hiện vật vào danh sách yêu thích')
-              : (isEn
-                  ? 'Removed from favorites'
-                  : 'Đã xóa khỏi danh sách yêu thích'),
+  Future<void> _toggleFavorite(bool isEn) async {
+    final token = _token;
+    final api = _visitorApi;
+    final session = AuthSessionScope.maybeOf(context);
+    if (!_hasBackendId || api == null || token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _hasBackendId
+                ? (isEn
+                      ? 'Sign in and configure the backend to save favorites.'
+                      : 'Hãy đăng nhập và cấu hình backend để lưu yêu thích.')
+                : (isEn
+                      ? 'This sample item is not linked to a backend record.'
+                      : 'Hiện vật mẫu này chưa liên kết với dữ liệu backend.'),
+          ),
         ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+      );
+      return;
+    }
+    if (_favoriteRequestRunning) return;
+    final nextValue = !_isFav;
+    setState(() {
+      _favoriteRequestRunning = true;
+      _favoriteError = null;
+    });
+    try {
+      if (nextValue) {
+        await api.addFavorite(token: token, artifactId: widget.artifact.id);
+      } else {
+        await api.removeFavorite(token: token, artifactId: widget.artifact.id);
+      }
+      if (!mounted || !_sameAuthToken(session?.readToken(), token)) return;
+      setState(() => _isFav = nextValue);
+      widget.onFavoriteChanged?.call();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            nextValue
+                ? (isEn
+                      ? 'Saved to favorites'
+                      : 'Đã lưu hiện vật vào danh sách yêu thích')
+                : (isEn
+                      ? 'Removed from favorites'
+                      : 'Đã xóa khỏi danh sách yêu thích'),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } on VisitorApiException catch (error) {
+      if (mounted && _sameAuthToken(session?.readToken(), token)) {
+        final message = AppStrings.of(context)
+            .visitorApiError(error.statusCode);
+        setState(() => _favoriteError = message);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
+      }
+    } catch (_) {
+      if (mounted && _sameAuthToken(session?.readToken(), token)) {
+        final message = AppStrings.of(context).favoriteUpdateError;
+        setState(() => _favoriteError = message);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isEn
+                  ? 'Could not update favorite. Please retry.'
+                  : 'Không thể cập nhật yêu thích. Hãy thử lại.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _favoriteRequestRunning = false);
+    }
   }
 
   @override
@@ -95,7 +385,9 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                         bottom: Radius.circular(AppRadii.large),
                       ),
                       child: Image.network(
-                        widget.artifact.imageUrl,
+                        _remoteContent?.coverImageUrl?.isNotEmpty == true
+                            ? _remoteContent!.coverImageUrl!
+                            : widget.artifact.imageUrl,
                         width: double.infinity,
                         height: 300,
                         fit: BoxFit.cover,
@@ -141,8 +433,9 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             CircleAvatar(
-                              backgroundColor:
-                                  Colors.black.withValues(alpha: 0.4),
+                              backgroundColor: Colors.black.withValues(
+                                alpha: 0.4,
+                              ),
                               child: IconButton(
                                 icon: const Icon(
                                   Icons.arrow_back_rounded,
@@ -153,8 +446,9 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                               ),
                             ),
                             CircleAvatar(
-                              backgroundColor:
-                                  Colors.black.withValues(alpha: 0.4),
+                              backgroundColor: Colors.black.withValues(
+                                alpha: 0.4,
+                              ),
                               child: IconButton(
                                 icon: Icon(
                                   _isFav
@@ -165,7 +459,9 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                                       : Colors.white,
                                 ),
                                 tooltip: isEn ? 'Favorite' : 'Yêu thích',
-                                onPressed: () => _toggleFavorite(isEn),
+                                onPressed: _favoriteRequestRunning
+                                    ? null
+                                    : () => _toggleFavorite(isEn),
                               ),
                             ),
                           ],
@@ -209,13 +505,19 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
 
                       // Title
                       Text(
-                        widget.artifact.getTitle(isEn ? 'en' : 'vi'),
+                        _remoteContent?.title ??
+                            widget.artifact.getTitle(isEn ? 'en' : 'vi'),
                         style: theme.textTheme.headlineSmall?.copyWith(
                           color: HeritagePalette.primaryNavy,
                           fontWeight: FontWeight.bold,
                           height: 1.25,
                         ),
                       ),
+                      if (_favoriteError != null)
+                        Text(
+                          _favoriteError!,
+                          style: TextStyle(color: colorScheme.error),
+                        ),
                       const SizedBox(height: 6),
 
                       // Period
@@ -229,7 +531,7 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              widget.artifact.period,
+                              _remoteContent?.era ?? widget.artifact.period,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: HeritagePalette.secondaryText,
                               ),
@@ -244,8 +546,7 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                         padding: const EdgeInsets.all(AppSpacing.medium),
                         decoration: BoxDecoration(
                           color: colorScheme.surface,
-                          borderRadius:
-                              BorderRadius.circular(AppRadii.medium),
+                          borderRadius: BorderRadius.circular(AppRadii.medium),
                           border: Border.all(color: HeritagePalette.border),
                           boxShadow: const [
                             BoxShadow(
@@ -291,15 +592,14 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                                                 : 'Thuyết minh tự động',
                                             style: theme.textTheme.bodyMedium
                                                 ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              color:
-                                                  HeritagePalette.primaryNavy,
-                                            ),
+                                                  fontWeight: FontWeight.bold,
+                                                  color: HeritagePalette
+                                                      .primaryNavy,
+                                                ),
                                           ),
                                           const SizedBox(width: 6),
                                           Container(
-                                            padding:
-                                                const EdgeInsets.symmetric(
+                                            padding: const EdgeInsets.symmetric(
                                               horizontal: 6,
                                               vertical: 1.5,
                                             ),
@@ -323,16 +623,17 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                                       Text(
                                         _isPlayingAudio
                                             ? (isEn
-                                                ? 'Playing audio guide...'
-                                                : 'Đang phát thuyết minh...')
+                                                  ? 'Playing audio guide...'
+                                                  : 'Đang phát thuyết minh...')
                                             : (isEn
-                                                ? 'Tap to play audio guide'
-                                                : 'Nhấn để nghe thuyết minh'),
+                                                  ? 'Tap to play audio guide'
+                                                  : 'Nhấn để nghe thuyết minh'),
                                         style: theme.textTheme.bodySmall
                                             ?.copyWith(
-                                          color: HeritagePalette.secondaryText,
-                                          fontSize: 11.5,
-                                        ),
+                                              color:
+                                                  HeritagePalette.secondaryText,
+                                              fontSize: 11.5,
+                                            ),
                                       ),
                                     ],
                                   ),
@@ -341,8 +642,9 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                             ),
                             const SizedBox(height: AppSpacing.small),
                             ClipRRect(
-                              borderRadius:
-                                  BorderRadius.circular(AppRadii.pill),
+                              borderRadius: BorderRadius.circular(
+                                AppRadii.pill,
+                              ),
                               child: LinearProgressIndicator(
                                 value: _audioProgress,
                                 backgroundColor: HeritagePalette.background,
@@ -361,8 +663,7 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                         padding: const EdgeInsets.all(AppSpacing.medium),
                         decoration: BoxDecoration(
                           color: colorScheme.surface,
-                          borderRadius:
-                              BorderRadius.circular(AppRadii.medium),
+                          borderRadius: BorderRadius.circular(AppRadii.medium),
                           border: Border.all(color: HeritagePalette.border),
                         ),
                         child: Column(
@@ -385,7 +686,8 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                             _buildSpecRow(
                               icon: Icons.history_edu_outlined,
                               title: isEn ? 'Period' : 'Thời kỳ lịch sử',
-                              value: widget.artifact.period,
+                              value:
+                                  _remoteContent?.era ?? widget.artifact.period,
                               theme: theme,
                             ),
                             const Padding(
@@ -400,8 +702,9 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                             _buildSpecRow(
                               icon: Icons.category_outlined,
                               title: isEn ? 'Category' : 'Phân loại hiện vật',
-                              value: strings
-                                  .artifactCategory(widget.artifact.category),
+                              value: strings.artifactCategory(
+                                widget.artifact.category,
+                              ),
                               theme: theme,
                             ),
                           ],
@@ -420,13 +723,55 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                       ),
                       const SizedBox(height: AppSpacing.small),
                       Text(
-                        widget.artifact.getDescription(isEn ? 'en' : 'vi'),
+                        _contentLoading
+                            ? (isEn
+                                  ? 'Loading artifact details…'
+                                  : 'Đang tải nội dung hiện vật…')
+                            : _contentError ??
+                                  _remoteContent?.description ??
+                                  widget.artifact.getDescription(
+                                    isEn ? 'en' : 'vi',
+                                  ),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontSize: 14.5,
                           height: 1.65,
                           color: HeritagePalette.bodyText,
                         ),
                       ),
+                      if (_contentError != null)
+                        TextButton.icon(
+                          onPressed: () => _loadRemoteContent(
+                            isEn ? 'en' : 'vi',
+                            artifactId: widget.artifact.id,
+                          ),
+                          icon: const Icon(Icons.refresh),
+                          label: Text(isEn ? 'Retry' : 'Thử lại'),
+                        ),
+                      if (_remoteContent?.isFallback == true)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            isEn
+                                ? 'Fallback language content'
+                                : 'Nội dung đang dùng ngôn ngữ dự phòng',
+                          ),
+                        ),
+                      if (_remoteContent?.historyContent?.trim().isNotEmpty ==
+                          true) ...[
+                        const SizedBox(height: AppSpacing.medium),
+                        Text(
+                          isEn ? 'History' : 'Lịch sử',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: HeritagePalette.primaryNavy,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.small),
+                        Text(
+                          _remoteContent!.historyContent!,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -461,7 +806,9 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                   width: double.infinity,
                   height: 52,
                   child: FilledButton.icon(
-                    onPressed: () => _toggleFavorite(isEn),
+                    onPressed: _favoriteRequestRunning
+                        ? null
+                        : () => _toggleFavorite(isEn),
                     icon: Icon(
                       _isFav ? Icons.favorite : Icons.favorite_border,
                       color: Colors.white,
@@ -470,11 +817,9 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                     label: Text(
                       _isFav
                           ? (isEn
-                              ? 'Saved to Favorites'
-                              : 'Đã lưu vào yêu thích')
-                          : (isEn
-                              ? 'Save to Favorites'
-                              : 'Lưu vào yêu thích'),
+                                ? 'Saved to Favorites'
+                                : 'Đã lưu vào yêu thích')
+                          : (isEn ? 'Save to Favorites' : 'Lưu vào yêu thích'),
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -512,11 +857,7 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
             color: HeritagePalette.background,
             borderRadius: BorderRadius.circular(AppRadii.small),
           ),
-          child: Icon(
-            icon,
-            color: HeritagePalette.primaryNavy,
-            size: 18,
-          ),
+          child: Icon(icon, color: HeritagePalette.primaryNavy, size: 18),
         ),
         const SizedBox(width: AppSpacing.small),
         Expanded(

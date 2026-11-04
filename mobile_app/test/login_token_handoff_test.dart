@@ -11,7 +11,6 @@ void main() {
     _FakeAuthHttpClient client, {
     ValueChanged<AuthToken>? onAuthenticated,
     VoidCallback? onLoginSuccess,
-    VoidCallback? onDemoContinue,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -23,7 +22,6 @@ void main() {
           ),
           onAuthenticated: onAuthenticated,
           onLoginSuccess: onLoginSuccess,
-          onDemoContinue: onDemoContinue,
         ),
       ),
     );
@@ -58,14 +56,11 @@ void main() {
     );
     final received = <AuthToken>[];
     var legacyCalled = false;
-    var demoCalled = false;
-
     await openLogin(
       tester,
       client,
       onAuthenticated: received.add,
       onLoginSuccess: () => legacyCalled = true,
-      onDemoContinue: () => demoCalled = true,
     );
     await submitLogin(tester);
 
@@ -74,7 +69,6 @@ void main() {
     expect(received.single.accessToken, 'test-token');
     expect(received.single.tokenType, 'bearer');
     expect(legacyCalled, isFalse);
-    expect(demoCalled, isFalse);
   });
 
   testWidgets('rejects an empty token before navigation', (tester) async {
@@ -104,31 +98,22 @@ void main() {
     );
   });
 
-  testWidgets('demo does not request or emit an authentication token', (
-    tester,
-  ) async {
+  testWidgets('login does not show a demo entry point', (tester) async {
     final client = _FakeAuthHttpClient(
       const AuthHttpResponse(statusCode: 500, body: '{}'),
     );
     var authenticated = false;
-    var demoCalled = false;
-
     await openLogin(
       tester,
       client,
       onAuthenticated: (_) => authenticated = true,
-      onDemoContinue: () => demoCalled = true,
     );
 
-    final demo = find.byKey(const Key('login-demo-preview'));
-    await tester.ensureVisible(demo);
-    await tester.pumpAndSettle();
-    await tester.tap(demo);
-    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('login-demo-preview')), findsNothing);
+    expect(find.text('Continue as Guest'), findsNothing);
 
     expect(client.calls, 0);
     expect(authenticated, isFalse);
-    expect(demoCalled, isTrue);
   });
 }
 

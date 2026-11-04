@@ -45,3 +45,11 @@ verified. Do not treat these entries as a license or attribution:
 | `images/artifacts/doctor_stelae.jpg` | Golden animal sculpture, not a doctoral stele | Unknown; verification required |
 | `images/artifacts/dong_son_drum.jpg` | Drum surface with Dong Son style motifs | Unknown; verification required |
 | `images/artifacts/ly_sword.jpg` | Close-up of a small metal object; sword identity unconfirmed | Unknown; verification required |
+
+## Google Sign-In G mark
+
+- File: `images/google/g-logo.png`
+- Source: https://developers.google.com/static/identity/images/g-logo.png
+- Reference: https://developers.google.com/identity/branding-guidelines
+- Provenance check: SHA-256 matched the file downloaded from the source URL on 2026-11-05.
+- Google marks remain Google's property. This source note is not a blanket license; use is subject to Google's branding guidelines and applicable terms.

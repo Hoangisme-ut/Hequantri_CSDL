@@ -16,16 +16,18 @@ class AuthPageScaffold extends StatelessWidget {
   const AuthPageScaffold({
     required this.child,
     this.heritageBackground = false,
+    this.accentColor,
     super.key,
   });
 
   final Widget child;
   final bool heritageBackground;
+  final Color? accentColor;
 
   @override
   Widget build(BuildContext context) {
     return Theme(
-      data: AppTheme.auth(Theme.of(context)),
+      data: AppTheme.auth(Theme.of(context), accentColor: accentColor),
       child: Scaffold(
         backgroundColor: HeritagePalette.background,
         body: Stack(

@@ -6,6 +6,7 @@ from sqlmodel import col, func, select
 
 from app import crud
 from app.api.deps import AdminUser, SessionDep, VisitorUser
+from app.api.docs import errors
 from app.models import (
     Artifact,
     Beacon,
@@ -31,7 +32,11 @@ def _validate_links(
     beacon_id: uuid.UUID | None = None,
     require_active_site: bool = True,
 ) -> None:
-   
+    """Site phải tồn tại; hiện vật gán phải cùng site và chưa gắn với beacon khác.
+
+    `require_active_site`: khi tạo beacon / đổi Site / gán hiện vật mới thì Site phải
+    đang bật (409). Gỡ hiện vật hoặc sửa thông số trên Site đã ẩn thì vẫn được phép.
+    """
     site = session.get(Site, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
@@ -78,7 +83,9 @@ def _check_identity_unique(
 
 
 # ------------------------- App du khách: quét beacon -------------------------
-@router.get("/resolve", response_model=BeaconResolvePublic)
+@router.get(
+    "/resolve", response_model=BeaconResolvePublic, responses=errors(401, 404, 409)
+)
 def resolve_beacon(
     session: SessionDep,
     current_user: VisitorUser,
@@ -87,7 +94,11 @@ def resolve_beacon(
     minor: int = Query(ge=0, le=65535),
     lang: str | None = Query(default=None, description="Mã ngôn ngữ: vi, en..."),
 ) -> Any:
-    
+    """
+    **App gọi khi quét được beacon**: trả hiện vật gắn với beacon + nội dung đúng
+    ngôn ngữ + media. Ngôn ngữ: `lang` -> ngôn ngữ ưa thích của user -> mặc định.
+    **Visitor / Admin** (cần đăng nhập).
+    """
     beacon = session.exec(
         select(Beacon).where(
             Beacon.proximity_uuid == str(proximity_uuid).upper(),
@@ -126,7 +137,9 @@ def resolve_beacon(
 
 
 # ------------------------------ Admin: quản lý ------------------------------
-@router.get("/{beacon_id}", response_model=BeaconPublic)
+@router.get(
+    "/{beacon_id}", response_model=BeaconPublic, responses=errors(401, 403, 404)
+)
 def read_beacon(session: SessionDep, _admin: AdminUser, beacon_id: uuid.UUID) -> Any:
     """Lấy chi tiết một beacon. **Admin**."""
     beacon = session.get(Beacon, beacon_id)
@@ -135,7 +148,7 @@ def read_beacon(session: SessionDep, _admin: AdminUser, beacon_id: uuid.UUID) ->
     return beacon
 
 
-@router.get("/", response_model=BeaconsPublic)
+@router.get("/", response_model=BeaconsPublic, responses=errors(401, 403))
 def read_beacons(
     session: SessionDep,
     _admin: AdminUser,
@@ -167,7 +180,12 @@ def read_beacons(
     )
 
 
-@router.post("/", response_model=BeaconPublic, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=BeaconPublic,
+    status_code=status.HTTP_201_CREATED,
+    responses=errors(400, 401, 403, 404, 409),
+)
 def create_beacon(
     *, session: SessionDep, _admin: AdminUser, beacon_in: BeaconCreate
 ) -> Any:
@@ -184,7 +202,11 @@ def create_beacon(
     return beacon
 
 
-@router.put("/{beacon_id}", response_model=BeaconPublic)
+@router.put(
+    "/{beacon_id}",
+    response_model=BeaconPublic,
+    responses=errors(400, 401, 403, 404, 409, 422),
+)
 def update_beacon(
     *,
     session: SessionDep,
@@ -192,7 +214,9 @@ def update_beacon(
     beacon_id: uuid.UUID,
     beacon_in: BeaconUpdate,
 ) -> Any:
-    
+    """
+    Cấu hình beacon / gán hoặc gỡ hiện vật (`artifact_id: null` để gỡ). **Admin**.
+    """
     beacon = session.get(Beacon, beacon_id)
     if not beacon:
         raise HTTPException(status_code=404, detail="Beacon not found")
@@ -232,7 +256,7 @@ def update_beacon(
     return beacon
 
 
-@router.delete("/{beacon_id}")
+@router.delete("/{beacon_id}", responses=errors(401, 403, 404))
 def delete_beacon(
     session: SessionDep, _admin: AdminUser, beacon_id: uuid.UUID
 ) -> Message:

@@ -2,10 +2,11 @@ import uuid
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import true
+from sqlalchemy import ColumnElement, true
 from sqlmodel import col, func, select
 
 from app.api.deps import AdminUser, OptionalUser, SessionDep, is_admin
+from app.api.docs import errors
 from app.models import (
     Language,
     Message,
@@ -34,11 +35,8 @@ def read_sites(
     include_inactive: bool = False,
     lang: Literal["vi", "en"] = "vi",
 ) -> Any:
-    """
-    Danh sách di tích. **Public**.
-    Chỉ admin mới xem được di tích đã ẩn (`include_inactive=true`).
-    """
-    conditions: list[Any] = []
+    """List heritage sites. Public. Inactive sites are visible only to admins."""
+    conditions: list[ColumnElement[bool]] = []
     if not (include_inactive and is_admin(current_user)):
         conditions.append(col(Site.is_active) == true())
     if q:
@@ -57,16 +55,14 @@ def read_sites(
     return SitesPublic(data=_localized_sites(session, sites, lang), count=count)
 
 
-@router.get("/{site_id}", response_model=SitePublic)
+@router.get("/{site_id}", response_model=SitePublic, responses=errors(404))
 def read_site(
     session: SessionDep,
     current_user: OptionalUser,
     site_id: uuid.UUID,
     lang: Literal["vi", "en"] = "vi",
 ) -> Any:
-    """
-    Chi tiết di tích. **Public** (di tích đã ẩn chỉ admin xem được).
-    """
+    """Get a heritage site. Public; inactive sites are visible only to admins."""
     site = session.get(Site, site_id)
     if not site or (not site.is_active and not is_admin(current_user)):
         raise HTTPException(status_code=404, detail="Site not found")
@@ -120,7 +116,11 @@ def _localized_sites(
     return result
 
 
-@router.get("/{site_id}/translations", response_model=list[SiteTranslationPublic])
+@router.get(
+    "/{site_id}/translations",
+    response_model=list[SiteTranslationPublic],
+    responses=errors(401, 403, 404),
+)
 def read_site_translations(
     session: SessionDep, _admin: AdminUser, site_id: uuid.UUID
 ) -> Any:
@@ -145,7 +145,9 @@ def read_site_translations(
 
 
 @router.put(
-    "/{site_id}/translations/{language_id}", response_model=SiteTranslationPublic
+    "/{site_id}/translations/{language_id}",
+    response_model=SiteTranslationPublic,
+    responses=errors(401, 403, 404, 422),
 )
 def upsert_site_translation(
     *,
@@ -199,7 +201,11 @@ def upsert_site_translation(
     )
 
 
-@router.delete("/{site_id}/translations/{language_id}", response_model=Message)
+@router.delete(
+    "/{site_id}/translations/{language_id}",
+    response_model=Message,
+    responses=errors(401, 403, 404, 422),
+)
 def delete_site_translation(
     session: SessionDep,
     _admin: AdminUser,
@@ -229,11 +235,9 @@ def delete_site_translation(
     return Message(message="Site translation deleted successfully")
 
 
-@router.post("/", response_model=SitePublic)
+@router.post("/", response_model=SitePublic, responses=errors(401, 403))
 def create_site(*, session: SessionDep, _admin: AdminUser, site_in: SiteCreate) -> Any:
-    """
-    Tạo di tích. **Admin**.
-    """
+    """Create a heritage site. Admin only."""
     site = Site.model_validate(site_in)
     session.add(site)
     session.commit()
@@ -241,13 +245,11 @@ def create_site(*, session: SessionDep, _admin: AdminUser, site_in: SiteCreate) 
     return site
 
 
-@router.put("/{site_id}", response_model=SitePublic)
+@router.put("/{site_id}", response_model=SitePublic, responses=errors(401, 403, 404))
 def update_site(
     *, session: SessionDep, _admin: AdminUser, site_id: uuid.UUID, site_in: SiteUpdate
 ) -> Any:
-    """
-    Sửa di tích (cả bật lại `is_active`). **Admin**.
-    """
+    """Update a heritage site, including its active state. Admin only."""
     site = session.get(Site, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
@@ -259,14 +261,9 @@ def update_site(
     return site
 
 
-@router.delete("/{site_id}")
+@router.delete("/{site_id}", responses=errors(401, 403, 404))
 def delete_site(session: SessionDep, _admin: AdminUser, site_id: uuid.UUID) -> Message:
-    """
-    Ẩn di tích (xóa mềm: is_active = false). **Admin**.
-
-    Không sửa dữ liệu con: hiện vật + beacon của Site ẩn tự không trả cho du khách
-    (kiểm tra lúc đọc). Bật lại Site (`PUT is_active=true`) -> hiển thị lại như cũ.
-    """
+    """Soft-delete a heritage site by setting is_active to false. Admin only."""
     site = session.get(Site, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")

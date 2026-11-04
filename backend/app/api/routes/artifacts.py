@@ -7,6 +7,7 @@ from sqlmodel import col, func, select
 
 from app import crud
 from app.api.deps import AdminUser, OptionalUser, SessionDep, is_admin
+from app.api.docs import errors
 from app.models import (
     Artifact,
     ArtifactContentPublic,
@@ -129,7 +130,9 @@ def read_artifacts(
     return ArtifactSummariesPublic(data=summaries, count=count)
 
 
-@router.get("/{artifact_id}", response_model=ArtifactContentPublic)
+@router.get(
+    "/{artifact_id}", response_model=ArtifactContentPublic, responses=errors(404)
+)
 def read_artifact(
     session: SessionDep,
     current_user: OptionalUser,
@@ -148,7 +151,7 @@ def read_artifact(
 
 
 # --------------------------------- Admin ----------------------------------
-@router.post("/", response_model=ArtifactPublic)
+@router.post("/", response_model=ArtifactPublic, responses=errors(401, 403, 404, 409))
 def create_artifact(
     *, session: SessionDep, _admin: AdminUser, artifact_in: ArtifactCreate
 ) -> Any:
@@ -165,7 +168,11 @@ def create_artifact(
     return artifact
 
 
-@router.put("/{artifact_id}", response_model=ArtifactPublic)
+@router.put(
+    "/{artifact_id}",
+    response_model=ArtifactPublic,
+    responses=errors(401, 403, 404, 409),
+)
 def update_artifact(
     *,
     session: SessionDep,
@@ -173,7 +180,12 @@ def update_artifact(
     artifact_id: uuid.UUID,
     artifact_in: ArtifactUpdate,
 ) -> Any:
+    """
+    Sửa hiện vật (cả bật lại `is_active`). **Admin**.
 
+    Đổi `site_id`: Site mới phải tồn tại và đang bật (409 nếu bị ẩn); nếu hiện vật
+    đang gắn Beacon thì phải gỡ Beacon trước (409) để Beacon và hiện vật luôn cùng Site.
+    """
     artifact = session.get(Artifact, artifact_id)
     if not artifact:
         raise HTTPException(status_code=404, detail="Artifact not found")
@@ -200,7 +212,7 @@ def update_artifact(
     return artifact
 
 
-@router.delete("/{artifact_id}")
+@router.delete("/{artifact_id}", responses=errors(401, 403, 404))
 def delete_artifact(
     session: SessionDep, _admin: AdminUser, artifact_id: uuid.UUID
 ) -> Message:
@@ -219,7 +231,9 @@ def delete_artifact(
 
 # ----------------------- Nội dung theo từng ngôn ngữ ------------------------
 @router.get(
-    "/{artifact_id}/translations", response_model=list[ArtifactTranslationPublic]
+    "/{artifact_id}/translations",
+    response_model=list[ArtifactTranslationPublic],
+    responses=errors(401, 403, 404),
 )
 def read_translations(
     session: SessionDep, _admin: AdminUser, artifact_id: uuid.UUID
@@ -239,6 +253,7 @@ def read_translations(
 @router.put(
     "/{artifact_id}/translations/{language_id}",
     response_model=ArtifactTranslationPublic,
+    responses=errors(401, 403, 404),
 )
 def upsert_translation(
     *,
@@ -248,7 +263,9 @@ def upsert_translation(
     language_id: uuid.UUID,
     translation_in: ArtifactTranslationBase,
 ) -> Any:
-  
+    """
+    Thêm hoặc sửa nội dung hiện vật cho 1 ngôn ngữ (upsert). **Admin**.
+    """
     if not session.get(Artifact, artifact_id):
         raise HTTPException(status_code=404, detail="Artifact not found")
     if not session.get(Language, language_id):
@@ -273,14 +290,18 @@ def upsert_translation(
     return translation
 
 
-@router.delete("/{artifact_id}/translations/{language_id}")
+@router.delete(
+    "/{artifact_id}/translations/{language_id}", responses=errors(401, 403, 404)
+)
 def delete_translation(
     session: SessionDep,
     _admin: AdminUser,
     artifact_id: uuid.UUID,
     language_id: uuid.UUID,
 ) -> Message:
-  
+    """
+    Xóa bản dịch của 1 ngôn ngữ. **Admin**.
+    """
     translation = session.exec(
         select(ArtifactTranslation).where(
             ArtifactTranslation.artifact_id == artifact_id,

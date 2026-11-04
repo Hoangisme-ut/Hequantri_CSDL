@@ -1,198 +1,267 @@
+"""Kiểm thử HTTP cho API beacon: quét (resolve) và quản trị."""
+
 import uuid
+from collections.abc import Generator
 
 import pytest
-from fastapi import HTTPException
-from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from fastapi.testclient import TestClient
+from sqlmodel import Session
 
-from app.api.routes.beacons import (
+from app.models import Media
+from tests.utils.heritage import (
+    API,
+    add_translation,
+    create_artifact,
     create_beacon,
-    delete_beacon,
-    read_beacon,
-    read_beacons,
-    update_beacon,
+    create_site,
+    get_language_id,
+    purge_sites,
+    resolve_params,
 )
-from app.models import Artifact, BeaconCreate, BeaconUpdate, Site, User
 
 
 @pytest.fixture
-def beacon_session() -> Session:
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+def site_ids(db: Session) -> Generator[list[str]]:
+    ids: list[str] = []
+    yield ids
+    purge_sites(db, ids)
+
+
+def _site_with_beacon(
+    client: TestClient, admin: dict[str, str], site_ids: list[str]
+) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
+    site = create_site(client, admin)
+    site_ids.append(site["id"])
+    artifact = create_artifact(client, admin, site["id"])
+    add_translation(
+        client, admin, artifact["id"], get_language_id(client, "vi"), "Trống đồng"
     )
-    SQLModel.metadata.create_all(engine)
-    with Session(engine) as session:
-        yield session
-
-
-@pytest.fixture
-def admin_user() -> User:
-    return User(
-        email="beacon-admin@example.com",
-        hashed_password="not-used-in-unit-tests",
-        is_superuser=True,
+    add_translation(
+        client, admin, artifact["id"], get_language_id(client, "en"), "Bronze drum"
     )
+    beacon = create_beacon(client, admin, site["id"], artifact["id"])
+    return site, artifact, beacon
 
 
-def create_site_and_artifact(session: Session) -> tuple[Site, Artifact]:
-    site = Site(name="Test site")
-    session.add(site)
-    session.commit()
-    session.refresh(site)
-
-    artifact = Artifact(site_id=site.id, code=f"ART-{uuid.uuid4().hex[:8]}")
-    session.add(artifact)
-    session.commit()
-    session.refresh(artifact)
-    return site, artifact
-
-
-def test_beacon_crud_and_artifact_assignment(
-    beacon_session: Session, admin_user: User
+def test_resolve_beacon_returns_artifact_in_requested_language(
+    client: TestClient,
+    db: Session,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    site_ids: list[str],
 ) -> None:
-    site, artifact = create_site_and_artifact(beacon_session)
-    proximity_uuid = uuid.uuid4()
-
-    created = create_beacon(
-        session=beacon_session,
-        _admin=admin_user,
-        beacon_in=BeaconCreate(
-            proximity_uuid=str(proximity_uuid),
-            major=10,
-            minor=20,
-            site_id=site.id,
-            artifact_id=artifact.id,
-        ),
-    )
-    assert created.proximity_uuid == str(proximity_uuid).upper()
-    assert created.artifact_id == artifact.id
-
-    detail = read_beacon(
-        session=beacon_session, _admin=admin_user, beacon_id=created.id
-    )
-    assert detail.id == created.id
-
-    listing = read_beacons(
-        session=beacon_session,
-        _admin=admin_user,
-        artifact_id=artifact.id,
-        limit=100,
-    )
-    assert listing.count == 1
-    assert listing.data[0].id == created.id
-
-    updated = update_beacon(
-        session=beacon_session,
-        _admin=admin_user,
-        beacon_id=created.id,
-        beacon_in=BeaconUpdate(minor=21, artifact_id=None),
-    )
-    assert updated.minor == 21
-    assert updated.artifact_id is None
-    assert updated.updated_at is not None
-
-    result = delete_beacon(
-        session=beacon_session, _admin=admin_user, beacon_id=created.id
-    )
-    beacon_session.refresh(created)
-    assert result.message == "Beacon deactivated successfully"
-    assert created.is_active is False
-    assert created.artifact_id is None
-
-
-def test_create_beacon_rejects_duplicate_identity(
-    beacon_session: Session, admin_user: User
-) -> None:
-    site, _ = create_site_and_artifact(beacon_session)
-    beacon_in = BeaconCreate(
-        proximity_uuid=str(uuid.uuid4()),
-        major=1,
-        minor=2,
-        site_id=site.id,
-    )
-    create_beacon(session=beacon_session, _admin=admin_user, beacon_in=beacon_in)
-
-    with pytest.raises(HTTPException) as exc_info:
-        create_beacon(session=beacon_session, _admin=admin_user, beacon_in=beacon_in)
-
-    assert exc_info.value.status_code == 409
-
-
-def test_create_beacon_rejects_artifact_from_another_site(
-    beacon_session: Session, admin_user: User
-) -> None:
-    first_site, _ = create_site_and_artifact(beacon_session)
-    _, other_artifact = create_site_and_artifact(beacon_session)
-
-    with pytest.raises(HTTPException) as exc_info:
-        create_beacon(
-            session=beacon_session,
-            _admin=admin_user,
-            beacon_in=BeaconCreate(
-                proximity_uuid=str(uuid.uuid4()),
-                major=1,
-                minor=2,
-                site_id=first_site.id,
-                artifact_id=other_artifact.id,
-            ),
+    _, artifact, beacon = _site_with_beacon(client, superuser_token_headers, site_ids)
+    db.add(
+        Media(
+            artifact_id=uuid.UUID(artifact["id"]),
+            media_type="image",
+            url="/media/drum.jpg",
+            sort_order=1,
         )
+    )
+    db.commit()
+    url = f"{API}/beacons/resolve?{resolve_params(beacon)}"
 
-    assert exc_info.value.status_code == 400
+    english = client.get(f"{url}&lang=en", headers=normal_user_token_headers)
+    assert english.status_code == 200
+    body = english.json()
+    assert body["beacon"]["id"] == beacon["id"]
+    assert body["beacon"]["last_seen_at"] is not None
+    assert body["artifact"]["id"] == artifact["id"]
+    assert body["artifact"]["title"] == "Bronze drum"
+    assert [m["url"] for m in body["artifact"]["media"]] == ["/media/drum.jpg"]
+
+    vietnamese = client.get(f"{url}&lang=vi", headers=normal_user_token_headers)
+    assert vietnamese.json()["artifact"]["title"] == "Trống đồng"
+
+    # UUID chữ thường vẫn nhận ra; admin cũng gọi được
+    lower = url.replace(beacon["proximity_uuid"], beacon["proximity_uuid"].lower())
+    assert client.get(lower, headers=superuser_token_headers).status_code == 200
 
 
-def test_artifact_cannot_be_assigned_to_two_beacons(
-    beacon_session: Session, admin_user: User
+def test_resolve_beacon_error_cases(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    site_ids: list[str],
 ) -> None:
-    site, artifact = create_site_and_artifact(beacon_session)
-    first_beacon = BeaconCreate(
-        proximity_uuid=str(uuid.uuid4()),
-        major=1,
-        minor=1,
-        site_id=site.id,
-        artifact_id=artifact.id,
+    site = create_site(client, superuser_token_headers)
+    site_ids.append(site["id"])
+    unassigned = create_beacon(client, superuser_token_headers, site["id"])
+    visitor = normal_user_token_headers
+    base = f"{API}/beacons/resolve"
+
+    # thiếu token -> 401
+    assert client.get(f"{base}?{resolve_params(unassigned)}").status_code == 401
+    # beacon chưa gán hiện vật / không tồn tại -> 404
+    assert (
+        client.get(f"{base}?{resolve_params(unassigned)}", headers=visitor).status_code
+        == 404
     )
-    second_beacon = BeaconCreate(
-        proximity_uuid=str(uuid.uuid4()),
-        major=1,
-        minor=2,
-        site_id=site.id,
-        artifact_id=artifact.id,
-    )
-    create_beacon(
-        session=beacon_session, _admin=admin_user, beacon_in=first_beacon
-    )
-
-    with pytest.raises(HTTPException) as exc_info:
-        create_beacon(
-            session=beacon_session, _admin=admin_user, beacon_in=second_beacon
-        )
-
-    assert exc_info.value.status_code == 409
+    unknown = f"{base}?proximity_uuid={uuid.uuid4()}&major=1&minor=1"
+    assert client.get(unknown, headers=visitor).status_code == 404
+    # dữ liệu sai -> 422
+    bad_uuid = f"{base}?proximity_uuid=abc&major=1&minor=1"
+    assert client.get(bad_uuid, headers=visitor).status_code == 422
+    too_big = f"{base}?proximity_uuid={uuid.uuid4()}&major=70000&minor=1"
+    assert client.get(too_big, headers=visitor).status_code == 422
+    missing = f"{base}?proximity_uuid={uuid.uuid4()}&major=1"
+    assert client.get(missing, headers=visitor).status_code == 422
 
 
-def test_update_beacon_rejects_null_required_field(
-    beacon_session: Session, admin_user: User
+def test_deactivated_beacon_cannot_be_resolved(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    site_ids: list[str],
 ) -> None:
-    site, _ = create_site_and_artifact(beacon_session)
-    created = create_beacon(
-        session=beacon_session,
-        _admin=admin_user,
-        beacon_in=BeaconCreate(
-            proximity_uuid=str(uuid.uuid4()),
-            major=1,
-            minor=2,
-            site_id=site.id,
-        ),
+    _, _, beacon = _site_with_beacon(client, superuser_token_headers, site_ids)
+    deleted = client.delete(
+        f"{API}/beacons/{beacon['id']}", headers=superuser_token_headers
+    )
+    assert deleted.status_code == 200
+    response = client.get(
+        f"{API}/beacons/resolve?{resolve_params(beacon)}",
+        headers=normal_user_token_headers,
+    )
+    assert response.status_code == 404
+    detail = client.get(
+        f"{API}/beacons/{beacon['id']}", headers=superuser_token_headers
+    ).json()
+    assert detail["is_active"] is False
+    assert detail["artifact_id"] is None
+
+
+def test_beacon_admin_crud_over_http(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    site_ids: list[str],
+) -> None:
+    site = create_site(client, superuser_token_headers)
+    site_ids.append(site["id"])
+    artifact = create_artifact(client, superuser_token_headers, site["id"])
+    other = create_artifact(client, superuser_token_headers, site["id"])
+    headers = superuser_token_headers
+    puuid = str(uuid.uuid4())
+    body = {
+        "proximity_uuid": puuid.lower(),
+        "major": 10,
+        "minor": 20,
+        "site_id": site["id"],
+        "artifact_id": artifact["id"],
+    }
+
+    created = client.post(f"{API}/beacons/", headers=headers, json=body)
+    assert created.status_code == 201
+    beacon = created.json()
+    assert beacon["proximity_uuid"] == puuid.upper()  # lưu chữ HOA
+    assert beacon["tx_power"] == -59  # mặc định theo ERD
+    assert beacon["rssi_threshold"] == -80
+
+    # Trùng (uuid, major, minor) -> 409
+    assert client.post(f"{API}/beacons/", headers=headers, json=body).status_code == 409
+    # Hiện vật đã gắn beacon khác -> 409
+    second = {**body, "minor": 21}
+    assert (
+        client.post(f"{API}/beacons/", headers=headers, json=second).status_code == 409
     )
 
-    with pytest.raises(HTTPException) as exc_info:
-        update_beacon(
-            session=beacon_session,
-            _admin=admin_user,
-            beacon_id=created.id,
-            beacon_in=BeaconUpdate(major=None),
-        )
+    detail = client.get(f"{API}/beacons/{beacon['id']}", headers=headers)
+    assert detail.status_code == 200
+    listed = client.get(
+        f"{API}/beacons/?site_id={site['id']}&artifact_id={artifact['id']}",
+        headers=headers,
+    ).json()
+    assert [item["id"] for item in listed["data"]] == [beacon["id"]]
 
-    assert exc_info.value.status_code == 422
+    moved = client.put(
+        f"{API}/beacons/{beacon['id']}",
+        headers=headers,
+        json={"artifact_id": other["id"], "battery_level": 80},
+    )
+    assert moved.status_code == 200
+    assert moved.json()["artifact_id"] == other["id"]
+    assert moved.json()["battery_level"] == 80
+    assert moved.json()["updated_at"] is not None
+
+    # Trường bắt buộc không được đặt null
+    null_field = client.put(
+        f"{API}/beacons/{beacon['id']}", headers=headers, json={"major": None}
+    )
+    assert null_field.status_code == 422
+
+
+def test_beacon_validation_errors(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    site_ids: list[str],
+) -> None:
+    site = create_site(client, superuser_token_headers)
+    site_ids.append(site["id"])
+    headers = superuser_token_headers
+    ok_body = {
+        "proximity_uuid": str(uuid.uuid4()),
+        "major": 1,
+        "minor": 1,
+        "site_id": site["id"],
+    }
+    for change in (
+        {"major": 70000},
+        {"minor": -1},
+        {"site_id": "abc"},
+        {"proximity_uuid": "x" * 40},
+    ):
+        response = client.post(
+            f"{API}/beacons/", headers=headers, json={**ok_body, **change}
+        )
+        assert response.status_code == 422, change
+    unknown_site = {**ok_body, "site_id": str(uuid.uuid4())}
+    assert (
+        client.post(f"{API}/beacons/", headers=headers, json=unknown_site).status_code
+        == 404
+    )
+    unknown_artifact = {**ok_body, "artifact_id": str(uuid.uuid4())}
+    assert (
+        client.post(
+            f"{API}/beacons/", headers=headers, json=unknown_artifact
+        ).status_code
+        == 404
+    )
+    assert (
+        client.get(f"{API}/beacons/{uuid.uuid4()}", headers=headers).status_code == 404
+    )
+    assert client.get(f"{API}/beacons/?limit=201", headers=headers).status_code == 422
+
+
+def test_beacon_admin_endpoints_require_admin(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    site_ids: list[str],
+) -> None:
+    site = create_site(client, superuser_token_headers)
+    site_ids.append(site["id"])
+    beacon = create_beacon(client, superuser_token_headers, site["id"])
+    base = f"{API}/beacons"
+    new_body = {
+        "proximity_uuid": str(uuid.uuid4()),
+        "major": 5,
+        "minor": 5,
+        "site_id": site["id"],
+    }
+    calls = [
+        ("get", f"{base}/", None),
+        ("get", f"{base}/{beacon['id']}", None),
+        ("post", f"{base}/", new_body),
+        ("put", f"{base}/{beacon['id']}", {"battery_level": 1}),
+        ("delete", f"{base}/{beacon['id']}", None),
+    ]
+    for method, url, body in calls:
+        kwargs = {"json": body} if body is not None else {}
+        assert getattr(client, method)(url, **kwargs).status_code == 401, (method, url)
+        visitor = getattr(client, method)(
+            url, headers=normal_user_token_headers, **kwargs
+        )
+        assert visitor.status_code == 403, (method, url)
+    still = client.get(f"{base}/{beacon['id']}", headers=superuser_token_headers).json()
+    assert still["is_active"] is True

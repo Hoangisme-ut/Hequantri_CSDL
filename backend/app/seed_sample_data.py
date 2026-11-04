@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from sqlmodel import Session, col, select
 
 from app.core.db import engine
-from app.models import Artifact, ArtifactTranslation, Beacon, Language, Site
+from app.models import Artifact, ArtifactTranslation, Beacon, Language, Media, Site
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -257,6 +257,36 @@ def _seed_artifacts_and_translations(
     session.flush()
 
 
+def _seed_media(session: Session, languages: dict[str, Language]) -> None:
+    # Generic playback samples, not photographs or narration of these artifacts.
+    samples = (
+        ("image", None, "https://www.w3schools.com/html/img_girl.jpg"),
+        ("video", None, "https://www.w3schools.com/html/mov_bbb.mp4"),
+        ("audio", "vi", "https://www.w3schools.com/html/horse.mp3"),
+        ("audio", "en", "https://www.w3schools.com/html/horse.mp3"),
+    )
+    for artifact in ARTIFACTS:
+        for order, (media_type, code, url) in enumerate(samples):
+            media_id = uuid.uuid5(
+                artifact.id, f"demo-media:{media_type}:{code or 'shared'}"
+            )
+            values = {
+                "artifact_id": artifact.id,
+                "language_id": languages[code].id if code else None,
+                "media_type": media_type,
+                "url": url,
+                "caption": f"Demo {media_type} ({code or 'shared'}) - {artifact.code}",
+                "sort_order": order,
+            }
+            media = session.get(Media, media_id)
+            if media is None:
+                media = Media(id=media_id, **values)
+            else:
+                media.sqlmodel_update(values)
+            session.add(media)
+    session.flush()
+
+
 def _seed_beacons(session: Session) -> None:
     for seed in BEACONS:
         beacon = session.get(Beacon, seed.id)
@@ -289,6 +319,7 @@ def seed_sample_data(session: Session) -> None:
     languages = _seed_languages(session)
     _seed_sites(session)
     _seed_artifacts_and_translations(session, languages)
+    _seed_media(session, languages)
     _seed_beacons(session)
     session.commit()
 
@@ -297,7 +328,7 @@ def main() -> None:
     logger.info("Creating sample Smart Heritage data")
     with Session(engine) as session:
         seed_sample_data(session)
-    logger.info("Sample data ready: 2 sites, 5 artifacts, 3 beacons, vi/en")
+    logger.info("Sample data ready: 2 sites, 5 artifacts, 3 beacons, 20 media, vi/en")
 
 
 if __name__ == "__main__":

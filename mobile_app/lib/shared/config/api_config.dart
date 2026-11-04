@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class ApiConfig {
   ApiConfig._();
 
@@ -17,7 +19,7 @@ class ApiConfig {
     final legacy = _legacyBaseUrl.trim();
 
     if (primary.isEmpty && legacy.isEmpty) {
-      throw StateError('Chưa cấu hình API_BASE_URL khi chạy ứng dụng.');
+      return Uri.parse(_defaultBaseUrl);
     }
 
     final selected = _parseOrigin(primary.isNotEmpty ? primary : legacy);
@@ -35,6 +37,14 @@ class ApiConfig {
     }
 
     return selected;
+  }
+
+  static String get _defaultBaseUrl {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:8000';
+    }
+
+    return 'http://localhost:8000';
   }
 
   static Uri _parseOrigin(String value) {

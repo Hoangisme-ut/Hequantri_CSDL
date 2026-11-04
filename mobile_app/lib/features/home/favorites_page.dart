@@ -1,5 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../auth/auth_session.dart';
+import '../auth/auth_service.dart';
+import '../data/visitor_api_service.dart';
+import '../../shared/config/api_config.dart';
 import '../../l10n/app_strings.dart';
 import '../../theme/app_theme.dart';
 import '../artifacts/artifact.dart';
@@ -8,14 +14,165 @@ import '../data/heritage_repository.dart';
 import '../heritage/heritage_detail_page.dart';
 
 class FavoritesPage extends StatefulWidget {
-  const FavoritesPage({super.key});
+  const FavoritesPage({super.key, this.api});
+
+  @visibleForTesting
+  final VisitorApi? api;
 
   @override
-  State<FavoritesPage> createState() => _FavoritesPageState();
+  State<FavoritesPage> createState() => FavoritesPageState();
 }
 
-class _FavoritesPageState extends State<FavoritesPage> {
+class FavoritesPageState extends State<FavoritesPage> {
   int _tabIndex = 0;
+  VisitorApi? _api;
+  bool _ownsApi = false;
+  bool _loading = true;
+  bool _requestRunning = false;
+  String? _error;
+  List<VisitorFavorite> _favorites = const [];
+  AuthToken? _token;
+  String? _lastToken;
+  String? _lastTokenType;
+  String? _lastLanguage;
+  int _requestGeneration = 0;
+  bool _reloadPending = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _token = AuthSessionScope.maybeOf(context)?.readToken();
+    final language = AppStrings.of(context).locale.languageCode;
+    if (_api == null) {
+      _api = widget.api;
+      if (_api == null) {
+        try {
+          _api = HttpVisitorApi(baseUrl: ApiConfig.baseUrl);
+          _ownsApi = true;
+        } on StateError {
+          _error = AppStrings.of(context).apiConfigurationMissing;
+        }
+      }
+    }
+    final tokenValue = _token?.accessToken;
+    final tokenType = _token?.tokenType.toLowerCase();
+    if (tokenValue != _lastToken ||
+        tokenType != _lastTokenType ||
+        language != _lastLanguage) {
+      _lastToken = tokenValue;
+      _lastTokenType = tokenType;
+      _lastLanguage = language;
+      _requestGeneration++;
+      _favorites = const [];
+      _error = null;
+      _loading = _token != null;
+      _loadFavorites();
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_ownsApi && _api is HttpVisitorApi) (_api as HttpVisitorApi).close();
+    super.dispose();
+  }
+
+  Future<void> _loadFavorites() async {
+    if (!mounted) return;
+    if (_requestRunning) {
+      _reloadPending = true;
+      return;
+    }
+    final token = _token;
+    final api = _api;
+    final strings = AppStrings.of(context);
+    final languageCode = strings.locale.languageCode;
+    final generation = _requestGeneration;
+    if (token == null || api == null) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error ??= token == null
+              ? strings.favoritesSignInRequired
+              : strings.apiConfigurationMissing;
+        });
+      }
+      return;
+    }
+
+    _requestRunning = true;
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
+    try {
+      final firstPage = await api.loadFavorites(
+        token: token,
+        languageCode: languageCode,
+        limit: 100,
+      );
+      final itemsByArtifactId = <String, VisitorFavorite>{};
+      for (final item in firstPage.items) {
+        itemsByArtifactId.putIfAbsent(item.artifactId, () => item);
+      }
+      var nextSkip = firstPage.items.length;
+      while (nextSkip < firstPage.count) {
+        if (generation != _requestGeneration) return;
+        final next = await api.loadFavorites(
+          token: token,
+          languageCode: languageCode,
+          skip: nextSkip,
+          limit: 100,
+        );
+        if (next.items.isEmpty) break;
+        nextSkip += next.items.length;
+        for (final item in next.items) {
+          itemsByArtifactId.putIfAbsent(item.artifactId, () => item);
+        }
+      }
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() {
+        _favorites = itemsByArtifactId.values.toList(growable: false);
+        _loading = false;
+      });
+    } on VisitorApiException catch (error) {
+      if (mounted && generation == _requestGeneration) {
+        setState(() {
+          _error = strings.visitorApiError(error.statusCode);
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted && generation == _requestGeneration) {
+        setState(() {
+          _error = strings.favoritesLoadError;
+          _loading = false;
+        });
+      }
+    } finally {
+      _requestRunning = false;
+      if (mounted && (_reloadPending || generation != _requestGeneration)) {
+        _reloadPending = false;
+        unawaited(_loadFavorites());
+      }
+    }
+  }
+
+  Future<void> reload() => _loadFavorites();
+
+  Artifact _artifactFor(VisitorArtifactSummary summary) => Artifact(
+    id: summary.id,
+    titleVi: summary.title ?? summary.code,
+    titleEn: summary.title ?? summary.code,
+    period: summary.era ?? '',
+    category: 'Artifact',
+    location: summary.code,
+    descriptionVi: '',
+    descriptionEn: '',
+    imageUrl: summary.coverImageUrl ?? '',
+    isFavorite: true,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -24,14 +181,12 @@ class _FavoritesPageState extends State<FavoritesPage> {
     final strings = AppStrings.of(context);
     final isEn = strings.isEnglish;
 
-    final favoriteArtifacts = sampleArtifacts.where((e) => e.isFavorite).toList();
+    final favoriteArtifacts = _favorites
+        .map((item) => _artifactFor(item.artifact))
+        .toList();
 
     // Di tích tương ứng với các hiện vật yêu thích hoặc danh sách di tích mẫu
-    final favoriteLocations = mockLocations.where((loc) {
-      return favoriteArtifacts.any((art) =>
-          art.location.toLowerCase().contains(loc.nameVi.toLowerCase()) ||
-          loc.nameVi.toLowerCase().contains(art.location.toLowerCase()));
-    }).toList();
+    const favoriteLocations = <HeritageLocation>[];
 
     final canPop = Navigator.canPop(context);
 
@@ -102,18 +257,44 @@ class _FavoritesPageState extends State<FavoritesPage> {
 
           // List Items
           Expanded(
-            child: _buildTabContent(
-              favoriteArtifacts,
-              favoriteLocations,
-              isEn,
-              theme,
-              strings,
-            ),
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                ? _buildLoadError(theme, isEn)
+                : _buildTabContent(
+                    favoriteArtifacts,
+                    favoriteLocations,
+                    isEn,
+                    theme,
+                    strings,
+                  ),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildLoadError(ThemeData theme, bool isEn) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(AppSpacing.large),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _error!,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyLarge,
+          ),
+          const SizedBox(height: AppSpacing.medium),
+          FilledButton.icon(
+            onPressed: _loadFavorites,
+            icon: const Icon(Icons.refresh),
+            label: Text(isEn ? 'Retry' : 'Thử lại'),
+          ),
+        ],
+      ),
+    ),
+  );
 
   Widget _buildTabContent(
     List<Artifact> artifacts,
@@ -179,7 +360,20 @@ class _FavoritesPageState extends State<FavoritesPage> {
       );
     } else {
       if (locations.isEmpty) {
-        return _buildEmptyState(theme, isEn);
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.large),
+            child: Text(
+              isEn
+                  ? 'The current Favorites API supports artifacts only.'
+                  : 'Favorites API hiện chỉ hỗ trợ hiện vật.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: HeritagePalette.secondaryText,
+              ),
+            ),
+          ),
+        );
       }
       return ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.medium),
@@ -249,13 +443,20 @@ class _FavoritesPageState extends State<FavoritesPage> {
         borderRadius: BorderRadius.circular(AppRadii.medium),
         child: InkWell(
           borderRadius: BorderRadius.circular(AppRadii.medium),
-          onTap: () {
-            Navigator.push(
+          onTap: () async {
+            var didChangeFavorite = false;
+            await Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => ArtifactDetailPage(artifact: item),
+                builder: (_) => ArtifactDetailPage(
+                  artifact: item,
+                  visitorApi: _api,
+                  initialIsFavorite: true,
+                  onFavoriteChanged: () => didChangeFavorite = true,
+                ),
               ),
             );
+            if (mounted && didChangeFavorite) await _loadFavorites();
           },
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.small),
@@ -349,11 +550,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
                   ),
                 ),
                 const SizedBox(width: 4),
-                const Icon(
-                  Icons.favorite,
-                  color: Color(0xFFEF4444),
-                  size: 20,
-                ),
+                const Icon(Icons.favorite, color: Color(0xFFEF4444), size: 20),
               ],
             ),
           ),

@@ -1,15 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_strings.dart';
+import '../../shared/config/api_config.dart';
 import '../../theme/app_theme.dart';
 import '../artifacts/artifact.dart';
 import '../artifacts/artifact_detail_page.dart';
-import '../data/heritage_repository.dart';
+import '../data/visitor_api_service.dart';
 import '../heritage/beacon_simulation_page.dart';
-import '../heritage/heritage_detail_page.dart';
+import '../sites/site_detail_page.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({super.key, this.siteApi});
+
+  final SiteApi? siteApi;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -18,10 +23,76 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  late final SiteApi _siteApi;
+  HttpVisitorApi? _ownedSiteApi;
+  List<VisitorSite> _sites = const [];
+  bool _sitesLoading = true;
+  int? _sitesErrorStatusCode;
+  bool _sitesGenericError = false;
+  int _sitesRequestGeneration = 0;
+  String? _languageCode;
+
+  @override
+  void initState() {
+    super.initState();
+    final suppliedApi = widget.siteApi;
+    if (suppliedApi != null) {
+      _siteApi = suppliedApi;
+    } else {
+      final api = HttpVisitorApi(baseUrl: ApiConfig.baseUrl);
+      _siteApi = api;
+      _ownedSiteApi = api;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final code = Localizations.localeOf(context).languageCode == 'en'
+        ? 'en'
+        : 'vi';
+    if (_languageCode == code) return;
+    _languageCode = code;
+    unawaited(_loadSites());
+  }
+
+  Future<void> _loadSites() async {
+    final generation = ++_sitesRequestGeneration;
+    setState(() {
+      _sitesLoading = true;
+      _sitesErrorStatusCode = null;
+      _sitesGenericError = false;
+    });
+    try {
+      final page = await _siteApi.loadSites(
+        languageCode: _languageCode ?? 'vi',
+        skip: 0,
+        limit: 100,
+      );
+      if (!mounted || generation != _sitesRequestGeneration) return;
+      setState(() {
+        _sites = page.items;
+        _sitesLoading = false;
+      });
+    } on VisitorApiException catch (error) {
+      if (!mounted || generation != _sitesRequestGeneration) return;
+      setState(() {
+        _sitesErrorStatusCode = error.statusCode;
+        _sitesLoading = false;
+      });
+    } catch (_) {
+      if (!mounted || generation != _sitesRequestGeneration) return;
+      setState(() {
+        _sitesGenericError = true;
+        _sitesLoading = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _ownedSiteApi?.close();
     super.dispose();
   }
 
@@ -31,13 +102,12 @@ class _HomePageState extends State<HomePage> {
     final colorScheme = theme.colorScheme;
     final isEn = Localizations.localeOf(context).languageCode == 'en';
 
-    final filteredLocations = mockLocations.where((loc) {
+    final filteredSites = _sites.where((site) {
       if (_searchQuery.isEmpty) return true;
       final q = _searchQuery.toLowerCase();
-      final name = loc.getName(isEn ? 'en' : 'vi').toLowerCase();
-      final city = loc.city.toLowerCase();
-      final address = loc.address.toLowerCase();
-      return name.contains(q) || city.contains(q) || address.contains(q);
+      return site.name.toLowerCase().contains(q) ||
+          (site.description?.toLowerCase().contains(q) ?? false) ||
+          (site.address?.toLowerCase().contains(q) ?? false);
     }).toList();
 
     final filteredArtifacts = sampleArtifacts.where((art) {
@@ -53,8 +123,12 @@ class _HomePageState extends State<HomePage> {
           category.contains(q);
     }).toList();
 
-    final hasNoResults = _searchQuery.isNotEmpty &&
-        filteredLocations.isEmpty &&
+    final hasNoResults =
+        _searchQuery.isNotEmpty &&
+        !_sitesLoading &&
+        _sitesErrorStatusCode == null &&
+        !_sitesGenericError &&
+        filteredSites.isEmpty &&
         filteredArtifacts.isEmpty;
 
     return Scaffold(
@@ -115,9 +189,7 @@ class _HomePageState extends State<HomePage> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    isEn
-                        ? 'No new notifications'
-                        : 'Chưa có thông báo mới',
+                    isEn ? 'No new notifications' : 'Chưa có thông báo mới',
                   ),
                   duration: const Duration(seconds: 1),
                 ),
@@ -204,51 +276,8 @@ class _HomePageState extends State<HomePage> {
               _buildHeroBanner(isEn, theme),
               const SizedBox(height: AppSpacing.large),
 
-              // Featured Destinations
-              if (filteredLocations.isNotEmpty) ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        isEn ? 'Featured Destinations' : 'Địa điểm nổi bật',
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: HeritagePalette.primaryNavy,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      style: TextButton.styleFrom(
-                        foregroundColor: HeritagePalette.actionBlue,
-                      ),
-                      child: Text(isEn ? 'See All' : 'Xem tất cả'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.small),
-
-                // Horizontal Destination Cards
-                SizedBox(
-                  height: 215,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: filteredLocations.length,
-                    itemBuilder: (context, index) {
-                      final locationObj = filteredLocations[index];
-                      return _buildDestinationCard(
-                        context,
-                        locationObj,
-                        isEn,
-                        theme,
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.large),
-              ],
+              _buildSitesSection(context, filteredSites, isEn, theme),
+              const SizedBox(height: AppSpacing.large),
 
               // Highlighted Artifacts
               if (filteredArtifacts.isNotEmpty) ...[
@@ -356,6 +385,120 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildSitesSection(
+    BuildContext context,
+    List<VisitorSite> sites,
+    bool isEn,
+    ThemeData theme,
+  ) {
+    final sectionTitle = Text(
+      isEn ? 'Heritage Sites' : 'Địa điểm di sản',
+      style: theme.textTheme.titleMedium?.copyWith(
+        color: HeritagePalette.primaryNavy,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+
+    Widget stateCard({required Widget child}) => Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.medium),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.medium),
+        border: Border.all(color: HeritagePalette.border),
+      ),
+      child: child,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(child: sectionTitle),
+            IconButton(
+              tooltip: isEn ? 'Refresh Sites' : 'Tải lại địa điểm',
+              onPressed: _sitesLoading ? null : _loadSites,
+              icon: const Icon(Icons.refresh),
+              color: HeritagePalette.primaryNavy,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.small),
+        if (_sitesLoading)
+          stateCard(
+            child: const Center(
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacing.medium),
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          )
+        else if (_sitesErrorStatusCode != null || _sitesGenericError)
+          stateCard(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.cloud_off_outlined,
+                  size: 30,
+                  color: theme.colorScheme.error,
+                ),
+                const SizedBox(height: AppSpacing.small),
+                Text(
+                  _sitesGenericError
+                      ? (isEn
+                            ? 'Could not load heritage sites. Please retry.'
+                            : 'Không tải được địa điểm di sản. Vui lòng thử lại.')
+                      : AppStrings.of(context)
+                            .visitorApiError(_sitesErrorStatusCode),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.small),
+                OutlinedButton.icon(
+                  onPressed: _loadSites,
+                  icon: const Icon(Icons.refresh),
+                  label: Text(isEn ? 'Retry' : 'Thử lại'),
+                ),
+              ],
+            ),
+          )
+        else if (sites.isEmpty)
+          stateCard(
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.account_balance_outlined,
+                  color: HeritagePalette.secondaryText,
+                ),
+                const SizedBox(width: AppSpacing.small),
+                Expanded(
+                  child: Text(
+                    isEn
+                        ? 'No heritage sites are available yet.'
+                        : 'Hiện chưa có địa điểm di sản nào.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: HeritagePalette.secondaryText,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          SizedBox(
+            height: 254,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: sites.length,
+              itemBuilder: (context, index) =>
+                  _buildSiteCard(context, sites[index], isEn, theme),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildHeroBanner(bool isEn, ThemeData theme) {
     return InkWell(
       borderRadius: BorderRadius.circular(AppRadii.large),
@@ -439,7 +582,9 @@ class _HomePageState extends State<HomePage> {
                           const SizedBox(width: 5),
                           Flexible(
                             child: Text(
-                              isEn ? 'iBeacon Smart Tour' : 'Thuyết minh tự động',
+                              isEn
+                                  ? 'iBeacon Smart Tour'
+                                  : 'Thuyết minh tự động',
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: Colors.white,
@@ -482,12 +627,19 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildDestinationCard(
+  Widget _buildSiteCard(
     BuildContext context,
-    HeritageLocation locationObj,
+    VisitorSite site,
     bool isEn,
     ThemeData theme,
   ) {
+    final coverUri = Uri.tryParse(site.coverImageUrl ?? '');
+    final hasCover =
+        coverUri != null &&
+        (coverUri.scheme == 'https' || coverUri.scheme == 'http') &&
+        coverUri.host.isNotEmpty;
+    final description = site.description?.trim();
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -495,13 +647,13 @@ class _HomePageState extends State<HomePage> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => HeritageDetailPage(location: locationObj),
+              builder: (_) => SiteDetailPage(site: site, siteApi: _siteApi),
             ),
           );
         },
         borderRadius: BorderRadius.circular(AppRadii.medium),
         child: Container(
-          width: 220,
+          width: 258,
           margin: const EdgeInsets.only(right: 14),
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
@@ -522,23 +674,16 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(AppRadii.medium),
                 ),
-                child: Image.asset(
-                  locationObj.imageUrl,
-                  height: 120,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    height: 120,
-                    color: HeritagePalette.background,
-                    child: const Center(
-                      child: Icon(
-                        Icons.account_balance_outlined,
-                        color: HeritagePalette.secondaryText,
-                        size: 38,
-                      ),
-                    ),
-                  ),
-                ),
+                child: hasCover
+                    ? Image.network(
+                        site.coverImageUrl!,
+                        height: 108,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            _siteImagePlaceholder(),
+                      )
+                    : _siteImagePlaceholder(),
               ),
               Padding(
                 padding: const EdgeInsets.all(AppSpacing.small),
@@ -546,7 +691,7 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      locationObj.getName(isEn ? 'en' : 'vi'),
+                      site.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyMedium?.copyWith(
@@ -554,53 +699,64 @@ class _HomePageState extends State<HomePage> {
                         color: HeritagePalette.primaryNavy,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.location_on_outlined,
-                          size: 14,
+                    if (site.isFallback) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        AppStrings.of(context).siteTranslationFallback,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelSmall?.copyWith(
                           color: HeritagePalette.secondaryText,
                         ),
-                        const SizedBox(width: 3),
-                        Expanded(
-                          child: Text(
-                            locationObj.city,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: HeritagePalette.secondaryText,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                      ),
+                    ],
+                    const SizedBox(height: 5),
+                    SizedBox(
+                      height: 38,
+                      child: Text(
+                        description?.isNotEmpty == true
+                            ? description!
+                            : (isEn
+                                  ? 'No description provided.'
+                                  : 'Chưa có mô tả.'),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: HeritagePalette.secondaryText,
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
+                      ),
+                    ),
+                    if (site.address?.trim().isNotEmpty == true) ...[
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on_outlined,
+                            size: 14,
+                            color: HeritagePalette.secondaryText,
                           ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFEF3C7),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.star_rounded,
-                                size: 13,
-                                color: Color(0xFFD97706),
+                          const SizedBox(width: 3),
+                          Expanded(
+                            child: Text(
+                              site.address!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: HeritagePalette.secondaryText,
                               ),
-                              const SizedBox(width: 2),
-                              Text(
-                                '${locationObj.rating}',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF92400E),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Icon(
+                          Icons.open_in_new,
+                          size: 15,
+                          color: HeritagePalette.actionBlue,
                         ),
                       ],
                     ),
@@ -613,6 +769,19 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
+  Widget _siteImagePlaceholder() => Container(
+    height: 108,
+    width: double.infinity,
+    color: HeritagePalette.background,
+    child: const Center(
+      child: Icon(
+        Icons.account_balance_outlined,
+        color: HeritagePalette.secondaryText,
+        size: 38,
+      ),
+    ),
+  );
 
   Widget _buildArtifactCard(
     BuildContext context,

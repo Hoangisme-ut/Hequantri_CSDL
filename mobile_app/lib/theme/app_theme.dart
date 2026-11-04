@@ -51,13 +51,14 @@ abstract final class AppTheme {
 
   static ThemeData dark() => _buildTheme(Brightness.dark);
 
-  static ThemeData auth(ThemeData base) {
+  static ThemeData auth(ThemeData base, {Color? accentColor}) {
+    final accent = accentColor ?? HeritagePalette.authGold;
     // Sửa lỗi test Dark Theme: Inherit độ sáng thay vì ép Brightness.light
     final colorScheme = base.colorScheme.copyWith(
       brightness: base.brightness,
-      primary: HeritagePalette.authGold,
+      primary: accent,
       onPrimary: HeritagePalette.surface,
-      secondary: HeritagePalette.authCta,
+      secondary: accent,
       onSecondary: HeritagePalette.surface,
       tertiary: HeritagePalette.deepNavy,
       surface: HeritagePalette.surface,
@@ -104,10 +105,7 @@ abstract final class AppTheme {
         suffixIconColor: HeritagePalette.secondaryText,
         border: _inputBorder(color: HeritagePalette.border),
         enabledBorder: _inputBorder(color: HeritagePalette.border),
-        focusedBorder: _inputBorder(
-          color: HeritagePalette.authGold,
-          width: 1.8,
-        ),
+        focusedBorder: _inputBorder(color: accent, width: 1.8),
         errorBorder: _inputBorder(color: colorScheme.error),
         focusedErrorBorder: _inputBorder(color: colorScheme.error, width: 1.8),
       ),
@@ -115,9 +113,9 @@ abstract final class AppTheme {
         style: FilledButton.styleFrom(
           minimumSize: const Size.fromHeight(52),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.large),
-          backgroundColor: HeritagePalette.actionBlue,
+          backgroundColor: accent,
           foregroundColor: HeritagePalette.surface,
-          disabledBackgroundColor: HeritagePalette.actionBlue,
+          disabledBackgroundColor: accent,
           disabledForegroundColor: HeritagePalette.surface,
           textStyle: textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.w700,

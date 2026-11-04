@@ -80,11 +80,6 @@ class _MyAppState extends State<MyApp> {
     _enterMainApp();
   }
 
-  void _enterDemo() {
-    _session.enterDemo();
-    _enterMainApp();
-  }
-
   void _enterMainApp() {
     final navigator = _navigatorKey.currentState;
     if (!mounted || navigator == null) return;
@@ -109,7 +104,6 @@ class _MyAppState extends State<MyApp> {
     navigator.pushAndRemoveUntil(
       MaterialPageRoute<void>(
         builder: (_) => LoginPage(
-          onDemoContinue: _enterDemo,
           onAuthenticated: _onAuthenticated,
           authService: _authService,
         ),
@@ -141,7 +135,6 @@ class _MyAppState extends State<MyApp> {
             widget.appShell ??
             WelcomePage(
               onLocaleChanged: _changeLocale,
-              onDemoContinue: _enterDemo,
               onAuthenticated: _onAuthenticated,
               authService: _authService,
             ),

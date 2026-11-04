@@ -12,6 +12,11 @@ from sqlmodel import Field, Relationship, SQLModel
 NO_ACTION: Any = "NO ACTION"
 
 
+def _examples(*examples: dict[str, Any]) -> Any:
+    """Cấu hình model: ví dụ request mẫu hiển thị trong Swagger."""
+    return {"json_schema_extra": {"examples": list(examples)}}
+
+
 def get_datetime_utc() -> datetime:
     return datetime.now(UTC)
 
@@ -176,7 +181,14 @@ class LanguageBase(SQLModel):
 
 
 class LanguageCreate(LanguageBase):
-    pass
+    model_config = _examples(
+        {
+            "code": "en",
+            "name": "English",
+            "is_active": True,
+            "is_default": False,
+        }
+    )
 
 
 class LanguageUpdate(SQLModel):
@@ -237,7 +249,15 @@ class SiteBase(SQLModel):
 
 
 class SiteCreate(SiteBase):
-    pass
+    model_config = _examples(
+        {
+            "name": "Hoàng thành Thăng Long",
+            "address": "19C Hoàng Diệu, Ba Đình, Hà Nội",
+            "latitude": 21.0348,
+            "longitude": 105.8403,
+            "is_active": True,
+        }
+    )
 
 
 class SiteUpdate(SQLModel):
@@ -344,6 +364,15 @@ class ArtifactBase(SQLModel):
 class ArtifactCreate(ArtifactBase):
     site_id: uuid.UUID
 
+    model_config = _examples(
+        {
+            "site_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "code": "HT-001",
+            "era": "Thế kỷ 11",
+            "is_active": True,
+        }
+    )
+
 
 class ArtifactUpdate(SQLModel):
     site_id: uuid.UUID | None = None
@@ -402,6 +431,14 @@ class ArtifactTranslationBase(SQLModel):
     )
     history_content: str | None = Field(default=None, sa_type=Unicode())  # nội dung dài
 
+    model_config = _examples(
+        {
+            "title": "Trống đồng Đông Sơn",
+            "description": "Hiện vật tiêu biểu của văn hóa Đông Sơn.",
+            "history_content": "Trống đồng ra đời cách đây hơn 2.000 năm...",
+        }
+    )
+
 
 class ArtifactTranslationCreate(ArtifactTranslationBase):
     language_id: uuid.UUID
@@ -438,6 +475,15 @@ class ArtifactTranslationPublic(ArtifactTranslationBase):
 
 
 # ----------------------------------- Media -----------------------------------
+def _validate_media_url(value: str) -> str:
+    value = value.strip()
+    if not value.lower().startswith(("http://", "https://")) or " " in value:
+        raise ValueError("url must be an absolute http(s) URL")
+    if not value.split("://", 1)[1]:
+        raise ValueError("url must be an absolute http(s) URL")
+    return value
+
+
 class MediaBase(SQLModel):
     media_type: str = Field(default=MediaType.IMAGE, max_length=20)  # MediaType
     url: str = Field(max_length=500)
@@ -459,6 +505,13 @@ class MediaCreate(MediaBase):
     # audio/video theo ngôn ngữ -> có language_id; ảnh dùng chung -> để None
     language_id: uuid.UUID | None = None
 
+    # Chỉ kiểm tra URL khi NHẬN dữ liệu (tạo mới); không áp dụng khi trả dữ liệu
+    # (MediaPublic) để dữ liệu cũ trong DB không làm lỗi API đọc.
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value: str) -> str:
+        return _validate_media_url(value)
+
 
 class MediaUpdate(SQLModel):
     media_type: str | None = Field(default=None, max_length=20)
@@ -478,6 +531,11 @@ class MediaUpdate(SQLModel):
                 f"media_type must be one of: {', '.join(sorted(allowed_types))}"
             )
         return value
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value: str | None) -> str | None:
+        return value if value is None else _validate_media_url(value)
 
 
 class Media(MediaBase, table=True):
@@ -529,6 +587,16 @@ class BeaconBase(SQLModel):
 class BeaconCreate(BeaconBase):
     site_id: uuid.UUID
     artifact_id: uuid.UUID | None = None
+
+    model_config = _examples(
+        {
+            "proximity_uuid": "E2C56DB5-DFFB-48D2-B060-D0F5A71096E0",
+            "major": 1,
+            "minor": 1,
+            "site_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "artifact_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        }
+    )
 
 
 class BeaconUpdate(SQLModel):
@@ -610,6 +678,14 @@ class VisitLogCreate(SQLModel):
     rssi: int | None = None
     duration_seconds: int | None = Field(default=None, ge=0)
 
+    model_config = _examples(
+        {
+            "artifact_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "beacon_id": "b3a1c2d4-1111-4222-8333-444455556666",
+            "rssi": -62,
+        }
+    )
+
 
 class VisitLog(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -654,6 +730,8 @@ class VisitLogsPublic(SQLModel):
 # ---------------------------------- Favorite ---------------------------------
 class FavoriteCreate(SQLModel):
     artifact_id: uuid.UUID
+
+    model_config = _examples({"artifact_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7"})
 
 
 class Favorite(SQLModel, table=True):

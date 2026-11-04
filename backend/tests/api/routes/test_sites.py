@@ -1,116 +1,99 @@
-import uuid
+"""Kiểm thử HTTP bổ sung cho API Site: dữ liệu sai, thiếu token, sai quyền."""
 
+import uuid
+from collections.abc import Generator
+
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from app.core.config import settings
-from app.models import Site
+from tests.utils.heritage import API, create_site, purge_sites
 
 
-def test_site_crud_lifecycle(
+@pytest.fixture
+def site_ids(db: Session) -> Generator[list[str]]:
+    ids: list[str] = []
+    yield ids
+    purge_sites(db, ids)
+
+
+def test_read_sites_is_public_and_paginated(
     client: TestClient,
-    db: Session,
     superuser_token_headers: dict[str, str],
+    site_ids: list[str],
 ) -> None:
-    payload = {
-        "name": "Test heritage site",
-        "address": "1 Test Street",
-        "description": "Created by the Site API test.",
-        "latitude": 10.25,
-        "longitude": 106.75,
-        "cover_image_url": None,
-        "is_active": True,
-    }
-    site_id: uuid.UUID | None = None
-
-    try:
-        response = client.post(
-            f"{settings.API_V1_STR}/sites/",
-            headers=superuser_token_headers,
-            json=payload,
-        )
-        assert response.status_code == 200
-        created = response.json()
-        site_id = uuid.UUID(created["id"])
-        assert created["name"] == payload["name"]
-        assert created["created_at"] is not None
-        assert created["updated_at"] is None
-
-        listed = client.get(f"{settings.API_V1_STR}/sites/?q=Test%20heritage")
-        assert listed.status_code == 200
-        assert any(item["id"] == str(site_id) for item in listed.json()["data"])
-
-        detail = client.get(f"{settings.API_V1_STR}/sites/{site_id}")
-        assert detail.status_code == 200
-        assert detail.json()["address"] == payload["address"]
-
-        update = client.put(
-            f"{settings.API_V1_STR}/sites/{site_id}",
-            headers=superuser_token_headers,
-            json={"name": "Updated test heritage site", "latitude": 11.5},
-        )
-        assert update.status_code == 200
-        assert update.json()["id"] == str(site_id)
-        assert update.json()["name"] == "Updated test heritage site"
-        assert update.json()["latitude"] == 11.5
-        assert update.json()["updated_at"] is not None
-
-        deleted = client.delete(
-            f"{settings.API_V1_STR}/sites/{site_id}",
-            headers=superuser_token_headers,
-        )
-        assert deleted.status_code == 200
-        assert deleted.json()["message"] == "Site deactivated successfully"
-
-        assert client.get(f"{settings.API_V1_STR}/sites/{site_id}").status_code == 404
-        admin_detail = client.get(
-            f"{settings.API_V1_STR}/sites/{site_id}",
-            headers=superuser_token_headers,
-        )
-        assert admin_detail.status_code == 200
-        assert admin_detail.json()["is_active"] is False
-        assert admin_detail.json()["updated_at"] is not None
-    finally:
-        if site_id is not None:
-            site = db.get(Site, site_id)
-            if site is not None:
-                db.delete(site)
-                db.commit()
+    for _ in range(3):
+        site_ids.append(create_site(client, superuser_token_headers)["id"])
+    page = client.get(f"{API}/sites/?skip=1&limit=1")
+    assert page.status_code == 200
+    body = page.json()
+    assert body["count"] >= 3
+    assert len(body["data"]) == 1
+    assert client.get(f"{API}/sites/?limit=201").status_code == 422
 
 
-def test_site_validation_and_missing_id(
+def test_hidden_site_visible_only_to_admin_with_flag(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    site_ids: list[str],
+) -> None:
+    site = create_site(client, superuser_token_headers)
+    site_ids.append(site["id"])
+    client.delete(f"{API}/sites/{site['id']}", headers=superuser_token_headers)
+
+    def ids(headers: dict[str, str] | None) -> list[str]:
+        response = client.get(f"{API}/sites/?include_inactive=true", headers=headers)
+        return [item["id"] for item in response.json()["data"]]
+
+    assert site["id"] not in ids(None)
+    assert site["id"] not in ids(normal_user_token_headers)
+    assert site["id"] in ids(superuser_token_headers)
+
+
+def test_site_validation_errors(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
-    invalid = client.post(
-        f"{settings.API_V1_STR}/sites/",
-        headers=superuser_token_headers,
-        json={"name": "Invalid coordinates", "latitude": 91},
+    empty_name = client.post(
+        f"{API}/sites/", headers=superuser_token_headers, json={"name": ""}
     )
-    assert invalid.status_code == 422
-
-    missing_id = uuid.uuid4()
-    assert client.get(f"{settings.API_V1_STR}/sites/{missing_id}").status_code == 404
-
-    update = client.put(
-        f"{settings.API_V1_STR}/sites/{missing_id}",
-        headers=superuser_token_headers,
-        json={"name": "Missing site"},
+    assert empty_name.status_code == 422
+    missing_name = client.post(
+        f"{API}/sites/", headers=superuser_token_headers, json={}
     )
-    assert update.status_code == 404
-
-    delete = client.delete(
-        f"{settings.API_V1_STR}/sites/{missing_id}",
+    assert missing_name.status_code == 422
+    unknown = client.get(f"{API}/sites/{uuid.uuid4()}")
+    assert unknown.status_code == 404
+    bad_id = client.get(f"{API}/sites/not-a-uuid")
+    assert bad_id.status_code == 422
+    update_unknown = client.put(
+        f"{API}/sites/{uuid.uuid4()}",
         headers=superuser_token_headers,
+        json={"name": "x"},
     )
-    assert delete.status_code == 404
+    assert update_unknown.status_code == 404
 
 
-def test_site_writes_require_admin(
-    client: TestClient, normal_user_token_headers: dict[str, str]
+def test_site_write_requires_admin(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    site_ids: list[str],
 ) -> None:
-    response = client.post(
-        f"{settings.API_V1_STR}/sites/",
-        headers=normal_user_token_headers,
-        json={"name": "Unauthorized site"},
+    site = create_site(client, superuser_token_headers)
+    site_ids.append(site["id"])
+    target = f"{API}/sites/{site['id']}"
+
+    assert client.post(f"{API}/sites/", json={"name": "x"}).status_code == 401
+    assert client.put(target, json={"name": "x"}).status_code == 401
+    assert client.delete(target).status_code == 401
+
+    visitor = normal_user_token_headers
+    assert (
+        client.post(f"{API}/sites/", headers=visitor, json={"name": "x"}).status_code
+        == 403
     )
-    assert response.status_code == 403
+    assert client.put(target, headers=visitor, json={"name": "x"}).status_code == 403
+    assert client.delete(target, headers=visitor).status_code == 403
+    # dữ liệu không bị đổi
+    assert client.get(target).json()["name"] == site["name"]
