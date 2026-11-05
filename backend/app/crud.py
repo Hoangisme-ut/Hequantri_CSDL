@@ -28,6 +28,10 @@ ROLE_ADMIN = "admin"
 ROLE_VISITOR = "visitor"
 
 
+class InvalidRoleAssignmentError(ValueError):
+    """A privilege update would leave incompatible role/superuser values."""
+
+
 # ------------------------------ Role ------------------------------
 def get_role_by_name(*, session: Session, name: str) -> Role | None:
     return session.exec(select(Role).where(Role.name == name)).first()
@@ -55,18 +59,31 @@ def create_user(*, session: Session, user_create: UserCreate) -> User:
 def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any:
     user_data = user_in.model_dump(exclude_unset=True)
     extra_data: dict[str, Any] = {}
-    if "password" in user_data:
-        password = user_data["password"]
-        hashed_password = get_password_hash(password)
-        extra_data["hashed_password"] = hashed_password
     # [Smart Heritage] đổi is_superuser mà không chỉ định role_id -> đổi role theo
     if "is_superuser" in user_data and "role_id" not in user_data:
         role = get_role_by_name(
             session=session,
             name=ROLE_ADMIN if user_data["is_superuser"] else ROLE_VISITOR,
         )
-        if role:
-            extra_data["role_id"] = role.id
+        if role is None:
+            raise InvalidRoleAssignmentError("Required role is not configured")
+        extra_data["role_id"] = role.id
+    if {"is_superuser", "role_id"}.intersection(user_data):
+        role_id = extra_data.get("role_id", user_data.get("role_id", db_user.role_id))
+        effective_role = session.get(Role, role_id) if role_id is not None else None
+        if role_id is not None and effective_role is None:
+            raise InvalidRoleAssignmentError("Role not found")
+        if (
+            user_data.get("is_superuser", db_user.is_superuser)
+            and effective_role is not None
+            and effective_role.name != ROLE_ADMIN
+        ):
+            raise InvalidRoleAssignmentError(
+                "Superusers must have the admin role or the legacy null role"
+            )
+    # Validate privilege changes before hashing or mutating the persisted user.
+    if "password" in user_data:
+        extra_data["hashed_password"] = get_password_hash(user_data["password"])
     db_user.sqlmodel_update(user_data, update=extra_data)
     session.add(db_user)
     session.commit()

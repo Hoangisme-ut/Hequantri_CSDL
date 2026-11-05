@@ -217,7 +217,10 @@ def update_user(
 
     if user_in.role_id is not None and session.get(Role, user_in.role_id) is None:
         raise HTTPException(status_code=404, detail="Role not found")
-    db_user = crud.update_user(session=session, db_user=db_user, user_in=user_in)
+    try:
+        db_user = crud.update_user(session=session, db_user=db_user, user_in=user_in)
+    except crud.InvalidRoleAssignmentError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     return db_user
 
 

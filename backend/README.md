@@ -218,6 +218,16 @@ Once you are done, regenerate the templates used by the application:
 ```console
 $ bun run email:export
 ```
+## User management and Heritage roles
+
+User management remains restricted to `is_superuser=true`. A user with the
+`admin` role can manage Heritage content without becoming a superuser. Role
+assignment never promotes a user implicitly. Boolean-only superuser changes
+continue to synchronize the role to `admin`/`visitor`; conflicting explicit
+assignments return 409 before any mutation. Null roles retain the existing
+fallback (superuser -> admin, other users -> visitor). Existing inconsistent
+records are not silently migrated by profile/password updates.
+
 # Media metadata API
 
 All media management endpoints require an authenticated Admin (including the
