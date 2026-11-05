@@ -154,8 +154,8 @@ def read_beacons(
     _admin: AdminUser,
     site_id: uuid.UUID | None = None,
     artifact_id: uuid.UUID | None = None,
-    skip: int = 0,
-    limit: int = Query(default=100, le=200),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=200),
 ) -> Any:
     """
     Danh sách beacon. **Admin**.

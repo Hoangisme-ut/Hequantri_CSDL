@@ -75,8 +75,8 @@ def read_artifacts(
     site_id: uuid.UUID | None = None,
     lang: str | None = Query(default=None, description="Mã ngôn ngữ: vi, en..."),
     q: str | None = Query(default=None, description="Tìm theo mã hiện vật"),
-    skip: int = 0,
-    limit: int = Query(default=100, le=200),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=200),
     include_inactive: bool = False,
 ) -> Any:
     """

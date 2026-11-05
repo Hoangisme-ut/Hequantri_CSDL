@@ -24,8 +24,8 @@ router = APIRouter(prefix="/sites", tags=["sites"])
 def read_sites(
     session: SessionDep,
     current_user: OptionalUser,
-    skip: int = 0,
-    limit: int = Query(default=100, le=200),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=200),
     q: str | None = None,
     include_inactive: bool = False,
 ) -> Any:
