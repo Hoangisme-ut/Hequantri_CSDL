@@ -27,8 +27,13 @@ export type SiteInput = Pick<
 export type SitePatch = SiteUpdate
 export type SitesResponse = SitesPublic & { data: Site[] }
 
+export interface SiteListFilters {
+  skip?: number
+  limit?: number
+}
+
 export interface SiteService {
-  list(): Promise<SitesResponse>
+  list(filters?: SiteListFilters): Promise<SitesResponse>
   get(id: string): Promise<Site>
   create(site: SiteInput): Promise<Site>
   update(id: string, site: SiteInput): Promise<Site>

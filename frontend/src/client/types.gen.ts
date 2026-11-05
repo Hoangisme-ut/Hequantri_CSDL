@@ -497,6 +497,198 @@ export type Body_login_login_access_token = {
 };
 
 /**
+ * FavoriteCreate
+ */
+export type FavoriteCreate = {
+    /**
+     * Artifact Id
+     */
+    artifact_id: string;
+};
+
+/**
+ * FavoriteDetailPublic
+ *
+ * Hiện vật yêu thích kèm tiêu đề theo ngôn ngữ (để app hiển thị luôn).
+ */
+export type FavoriteDetailPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * User Id
+     */
+    user_id: string;
+    /**
+     * Artifact Id
+     */
+    artifact_id: string;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+    artifact: ArtifactSummary;
+};
+
+/**
+ * FavoritePublic
+ */
+export type FavoritePublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * User Id
+     */
+    user_id: string;
+    /**
+     * Artifact Id
+     */
+    artifact_id: string;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+};
+
+/**
+ * FavoritesDetailPublic
+ */
+export type FavoritesDetailPublic = {
+    /**
+     * Data
+     */
+    data: Array<FavoriteDetailPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * FeedbackPublic
+ */
+export type FeedbackPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * User Id
+     */
+    user_id: string;
+    /**
+     * Artifact Id
+     */
+    artifact_id: string;
+    /**
+     * Rating
+     */
+    rating: number;
+    /**
+     * Comment
+     */
+    comment?: string | null;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+};
+
+/**
+ * FeedbackReviewPublic
+ *
+ * Thông tin phản hồi dành cho Admin kiểm duyệt.
+ */
+export type FeedbackReviewPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * User Id
+     */
+    user_id: string;
+    /**
+     * Artifact Id
+     */
+    artifact_id: string;
+    /**
+     * Rating
+     */
+    rating: number;
+    /**
+     * Comment
+     */
+    comment?: string | null;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+    /**
+     * Visitor Name
+     */
+    visitor_name?: string | null;
+    /**
+     * Visitor Email
+     */
+    visitor_email: string;
+    /**
+     * Artifact Code
+     */
+    artifact_code: string;
+    /**
+     * Artifact Title
+     */
+    artifact_title?: string | null;
+    /**
+     * Site Name
+     */
+    site_name: string;
+};
+
+/**
+ * FeedbackReviewsPublic
+ *
+ * Danh sách phản hồi dành cho Admin.
+ */
+export type FeedbackReviewsPublic = {
+    /**
+     * Data
+     */
+    data: Array<FeedbackReviewPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * FeedbackStatus
+ */
+export type FeedbackStatus = 'pending' | 'approved' | 'rejected';
+
+/**
+ * FeedbackStatusUpdate
+ */
+export type FeedbackStatusUpdate = {
+    /**
+     * Status
+     */
+    status: string;
+};
+
+/**
  * HTTPValidationError
  */
 export type HTTPValidationError = {
@@ -981,6 +1173,48 @@ export type UserCreate = {
 };
 
 /**
+ * UserMePublic
+ */
+export type UserMePublic = {
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Is Active
+     */
+    is_active?: boolean;
+    /**
+     * Is Superuser
+     */
+    is_superuser?: boolean;
+    /**
+     * Full Name
+     */
+    full_name?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+    /**
+     * Role Id
+     */
+    role_id?: string | null;
+    /**
+     * Language Id
+     */
+    language_id?: string | null;
+    /**
+     * Role Name
+     */
+    role_name: string;
+};
+
+/**
  * UserPublic
  */
 export type UserPublic = {
@@ -1124,6 +1358,125 @@ export type ValidationError = {
     ctx?: {
         [key: string]: unknown;
     };
+};
+
+/**
+ * VisitDetailPublic
+ *
+ * Một lượt tham quan kèm tóm tắt hiện vật (tiêu đề theo ngôn ngữ).
+ */
+export type VisitDetailPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * User Id
+     */
+    user_id: string;
+    /**
+     * Artifact Id
+     */
+    artifact_id: string;
+    /**
+     * Beacon Id
+     */
+    beacon_id?: string | null;
+    /**
+     * Language Id
+     */
+    language_id?: string | null;
+    /**
+     * Visited At
+     */
+    visited_at?: string | null;
+    /**
+     * Duration Seconds
+     */
+    duration_seconds?: number | null;
+    /**
+     * Rssi
+     */
+    rssi?: number | null;
+    artifact: ArtifactSummary;
+};
+
+/**
+ * VisitLogCreate
+ */
+export type VisitLogCreate = {
+    /**
+     * Artifact Id
+     */
+    artifact_id: string;
+    /**
+     * Beacon Id
+     */
+    beacon_id?: string | null;
+    /**
+     * Language Id
+     */
+    language_id?: string | null;
+    /**
+     * Rssi
+     */
+    rssi?: number | null;
+    /**
+     * Duration Seconds
+     */
+    duration_seconds?: number | null;
+};
+
+/**
+ * VisitLogPublic
+ */
+export type VisitLogPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * User Id
+     */
+    user_id: string;
+    /**
+     * Artifact Id
+     */
+    artifact_id: string;
+    /**
+     * Beacon Id
+     */
+    beacon_id?: string | null;
+    /**
+     * Language Id
+     */
+    language_id?: string | null;
+    /**
+     * Visited At
+     */
+    visited_at?: string | null;
+    /**
+     * Duration Seconds
+     */
+    duration_seconds?: number | null;
+    /**
+     * Rssi
+     */
+    rssi?: number | null;
+};
+
+/**
+ * VisitsDetailPublic
+ */
+export type VisitsDetailPublic = {
+    /**
+     * Data
+     */
+    data: Array<VisitDetailPublic>;
+    /**
+     * Count
+     */
+    count: number;
 };
 
 export type loginLoginAccessTokenData = {
@@ -1338,7 +1691,7 @@ export type usersReadUserMeResponses = {
     /**
      * Successful Response
      */
-    200: UserPublic;
+    200: UserMePublic;
 };
 
 export type usersReadUserMeResponse = usersReadUserMeResponses[keyof usersReadUserMeResponses];
@@ -1730,6 +2083,18 @@ export type languagesCreateLanguageData = {
 
 export type languagesCreateLanguageErrors = {
     /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
+     */
+    409: unknown;
+    /**
      * Validation Error
      */
     422: HTTPValidationError;
@@ -1760,6 +2125,22 @@ export type languagesDeleteLanguageData = {
 
 export type languagesDeleteLanguageErrors = {
     /**
+     * Dữ liệu không hợp lệ về nghiệp vụ (ví dụ Beacon và Artifact khác Site)
+     */
+    400: unknown;
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
      * Validation Error
      */
     422: HTTPValidationError;
@@ -1789,6 +2170,26 @@ export type languagesUpdateLanguageData = {
 };
 
 export type languagesUpdateLanguageErrors = {
+    /**
+     * Dữ liệu không hợp lệ về nghiệp vụ (ví dụ Beacon và Artifact khác Site)
+     */
+    400: unknown;
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
+     */
+    409: unknown;
     /**
      * Validation Error
      */
@@ -1857,6 +2258,14 @@ export type sitesCreateSiteData = {
 
 export type sitesCreateSiteErrors = {
     /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
      * Validation Error
      */
     422: HTTPValidationError;
@@ -1886,6 +2295,18 @@ export type sitesDeleteSiteData = {
 };
 
 export type sitesDeleteSiteErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
     /**
      * Validation Error
      */
@@ -1917,6 +2338,10 @@ export type sitesReadSiteData = {
 
 export type sitesReadSiteErrors = {
     /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
      * Validation Error
      */
     422: HTTPValidationError;
@@ -1946,6 +2371,18 @@ export type sitesUpdateSiteData = {
 };
 
 export type sitesUpdateSiteErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
     /**
      * Validation Error
      */
@@ -2026,6 +2463,22 @@ export type artifactsCreateArtifactData = {
 
 export type artifactsCreateArtifactErrors = {
     /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
+     */
+    409: unknown;
+    /**
      * Validation Error
      */
     422: HTTPValidationError;
@@ -2055,6 +2508,18 @@ export type artifactsDeleteArtifactData = {
 };
 
 export type artifactsDeleteArtifactErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
     /**
      * Validation Error
      */
@@ -2093,6 +2558,10 @@ export type artifactsReadArtifactData = {
 
 export type artifactsReadArtifactErrors = {
     /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
      * Validation Error
      */
     422: HTTPValidationError;
@@ -2123,6 +2592,22 @@ export type artifactsUpdateArtifactData = {
 
 export type artifactsUpdateArtifactErrors = {
     /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
+     */
+    409: unknown;
+    /**
      * Validation Error
      */
     422: HTTPValidationError;
@@ -2152,6 +2637,18 @@ export type artifactsReadTranslationsData = {
 };
 
 export type artifactsReadTranslationsErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
     /**
      * Validation Error
      */
@@ -2189,6 +2686,18 @@ export type artifactsDeleteTranslationData = {
 
 export type artifactsDeleteTranslationErrors = {
     /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
      * Validation Error
      */
     422: HTTPValidationError;
@@ -2223,6 +2732,18 @@ export type artifactsUpsertTranslationData = {
 
 export type artifactsUpsertTranslationErrors = {
     /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
      * Validation Error
      */
     422: HTTPValidationError;
@@ -2238,6 +2759,515 @@ export type artifactsUpsertTranslationResponses = {
 };
 
 export type artifactsUpsertTranslationResponse = artifactsUpsertTranslationResponses[keyof artifactsUpsertTranslationResponses];
+
+export type beaconsResolveBeaconData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Proximity Uuid
+         *
+         * iBeacon UUID
+         */
+        proximity_uuid: string;
+        /**
+         * Major
+         */
+        major: number;
+        /**
+         * Minor
+         */
+        minor: number;
+        /**
+         * Lang
+         *
+         * Mã ngôn ngữ: vi, en...
+         */
+        lang?: string | null;
+    };
+    url: '/api/v1/beacons/resolve';
+};
+
+export type beaconsResolveBeaconErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
+     */
+    409: unknown;
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type beaconsResolveBeaconError = beaconsResolveBeaconErrors[keyof beaconsResolveBeaconErrors];
+
+export type beaconsResolveBeaconResponses = {
+    /**
+     * Successful Response
+     */
+    200: BeaconResolvePublic;
+};
+
+export type beaconsResolveBeaconResponse = beaconsResolveBeaconResponses[keyof beaconsResolveBeaconResponses];
+
+export type beaconsDeleteBeaconData = {
+    body?: never;
+    path: {
+        /**
+         * Beacon Id
+         */
+        beacon_id: string;
+    };
+    query?: never;
+    url: '/api/v1/beacons/{beacon_id}';
+};
+
+export type beaconsDeleteBeaconErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type beaconsDeleteBeaconError = beaconsDeleteBeaconErrors[keyof beaconsDeleteBeaconErrors];
+
+export type beaconsDeleteBeaconResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type beaconsDeleteBeaconResponse = beaconsDeleteBeaconResponses[keyof beaconsDeleteBeaconResponses];
+
+export type beaconsReadBeaconData = {
+    body?: never;
+    path: {
+        /**
+         * Beacon Id
+         */
+        beacon_id: string;
+    };
+    query?: never;
+    url: '/api/v1/beacons/{beacon_id}';
+};
+
+export type beaconsReadBeaconErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type beaconsReadBeaconError = beaconsReadBeaconErrors[keyof beaconsReadBeaconErrors];
+
+export type beaconsReadBeaconResponses = {
+    /**
+     * Successful Response
+     */
+    200: BeaconPublic;
+};
+
+export type beaconsReadBeaconResponse = beaconsReadBeaconResponses[keyof beaconsReadBeaconResponses];
+
+export type beaconsUpdateBeaconData = {
+    body: BeaconUpdate;
+    path: {
+        /**
+         * Beacon Id
+         */
+        beacon_id: string;
+    };
+    query?: never;
+    url: '/api/v1/beacons/{beacon_id}';
+};
+
+export type beaconsUpdateBeaconErrors = {
+    /**
+     * Dữ liệu không hợp lệ về nghiệp vụ (ví dụ Beacon và Artifact khác Site)
+     */
+    400: unknown;
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
+     */
+    409: unknown;
+    /**
+     * Dữ liệu gửi lên sai định dạng
+     */
+    422: unknown;
+};
+
+export type beaconsUpdateBeaconResponses = {
+    /**
+     * Successful Response
+     */
+    200: BeaconPublic;
+};
+
+export type beaconsUpdateBeaconResponse = beaconsUpdateBeaconResponses[keyof beaconsUpdateBeaconResponses];
+
+export type beaconsReadBeaconsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Site Id
+         */
+        site_id?: string | null;
+        /**
+         * Artifact Id
+         */
+        artifact_id?: string | null;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/beacons/';
+};
+
+export type beaconsReadBeaconsErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type beaconsReadBeaconsError = beaconsReadBeaconsErrors[keyof beaconsReadBeaconsErrors];
+
+export type beaconsReadBeaconsResponses = {
+    /**
+     * Successful Response
+     */
+    200: BeaconsPublic;
+};
+
+export type beaconsReadBeaconsResponse = beaconsReadBeaconsResponses[keyof beaconsReadBeaconsResponses];
+
+export type beaconsCreateBeaconData = {
+    body: BeaconCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/beacons/';
+};
+
+export type beaconsCreateBeaconErrors = {
+    /**
+     * Dữ liệu không hợp lệ về nghiệp vụ (ví dụ Beacon và Artifact khác Site)
+     */
+    400: unknown;
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
+     */
+    409: unknown;
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type beaconsCreateBeaconError = beaconsCreateBeaconErrors[keyof beaconsCreateBeaconErrors];
+
+export type beaconsCreateBeaconResponses = {
+    /**
+     * Successful Response
+     */
+    201: BeaconPublic;
+};
+
+export type beaconsCreateBeaconResponse = beaconsCreateBeaconResponses[keyof beaconsCreateBeaconResponses];
+
+export type favoritesReadMyFavoritesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Lang
+         *
+         * Mã ngôn ngữ: vi, en...
+         */
+        lang?: string | null;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/favorites/me';
+};
+
+export type favoritesReadMyFavoritesErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type favoritesReadMyFavoritesError = favoritesReadMyFavoritesErrors[keyof favoritesReadMyFavoritesErrors];
+
+export type favoritesReadMyFavoritesResponses = {
+    /**
+     * Successful Response
+     */
+    200: FavoritesDetailPublic;
+};
+
+export type favoritesReadMyFavoritesResponse = favoritesReadMyFavoritesResponses[keyof favoritesReadMyFavoritesResponses];
+
+export type favoritesAddFavoriteData = {
+    body: FavoriteCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/favorites/';
+};
+
+export type favoritesAddFavoriteErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type favoritesAddFavoriteError = favoritesAddFavoriteErrors[keyof favoritesAddFavoriteErrors];
+
+export type favoritesAddFavoriteResponses = {
+    /**
+     * Đã yêu thích từ trước (không tạo bản ghi mới)
+     */
+    200: unknown;
+    /**
+     * Successful Response
+     */
+    201: FavoritePublic;
+};
+
+export type favoritesAddFavoriteResponse = favoritesAddFavoriteResponses[keyof favoritesAddFavoriteResponses];
+
+export type favoritesRemoveFavoriteData = {
+    body?: never;
+    path: {
+        /**
+         * Artifact Id
+         */
+        artifact_id: string;
+    };
+    query?: never;
+    url: '/api/v1/favorites/{artifact_id}';
+};
+
+export type favoritesRemoveFavoriteErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type favoritesRemoveFavoriteError = favoritesRemoveFavoriteErrors[keyof favoritesRemoveFavoriteErrors];
+
+export type favoritesRemoveFavoriteResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type favoritesRemoveFavoriteResponse = favoritesRemoveFavoriteResponses[keyof favoritesRemoveFavoriteResponses];
+
+export type visitsRecordVisitData = {
+    body: VisitLogCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/visits/';
+};
+
+export type visitsRecordVisitErrors = {
+    /**
+     * Dữ liệu không hợp lệ về nghiệp vụ (ví dụ Beacon và Artifact khác Site)
+     */
+    400: unknown;
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type visitsRecordVisitError = visitsRecordVisitErrors[keyof visitsRecordVisitErrors];
+
+export type visitsRecordVisitResponses = {
+    /**
+     * Đã có lượt xem hiện vật này trong 300 giây gần nhất (không tạo bản ghi mới)
+     */
+    200: unknown;
+    /**
+     * Successful Response
+     */
+    201: VisitLogPublic;
+};
+
+export type visitsRecordVisitResponse = visitsRecordVisitResponses[keyof visitsRecordVisitResponses];
+
+export type visitsReadMyVisitsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Lang
+         *
+         * Mã ngôn ngữ: vi, en...
+         */
+        lang?: string | null;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/visits/me';
+};
+
+export type visitsReadMyVisitsErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type visitsReadMyVisitsError = visitsReadMyVisitsErrors[keyof visitsReadMyVisitsErrors];
+
+export type visitsReadMyVisitsResponses = {
+    /**
+     * Successful Response
+     */
+    200: VisitsDetailPublic;
+};
+
+export type visitsReadMyVisitsResponse = visitsReadMyVisitsResponses[keyof visitsReadMyVisitsResponses];
 
 export type mediaReadMediaListData = {
     body?: never;
@@ -2403,154 +3433,22 @@ export type mediaUpdateMediaResponses = {
 
 export type mediaUpdateMediaResponse = mediaUpdateMediaResponses[keyof mediaUpdateMediaResponses];
 
-export type beaconsResolveBeaconData = {
-    body?: never;
-    path?: never;
-    query: {
-        /**
-         * Proximity Uuid
-         *
-         * iBeacon UUID
-         */
-        proximity_uuid: string;
-        /**
-         * Major
-         */
-        major: number;
-        /**
-         * Minor
-         */
-        minor: number;
-        /**
-         * Lang
-         *
-         * Mã ngôn ngữ: vi, en...
-         */
-        lang?: string | null;
-    };
-    url: '/api/v1/beacons/resolve';
-};
-
-export type beaconsResolveBeaconErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type beaconsResolveBeaconError = beaconsResolveBeaconErrors[keyof beaconsResolveBeaconErrors];
-
-export type beaconsResolveBeaconResponses = {
-    /**
-     * Successful Response
-     */
-    200: BeaconResolvePublic;
-};
-
-export type beaconsResolveBeaconResponse = beaconsResolveBeaconResponses[keyof beaconsResolveBeaconResponses];
-
-export type beaconsDeleteBeaconData = {
-    body?: never;
-    path: {
-        /**
-         * Beacon Id
-         */
-        beacon_id: string;
-    };
-    query?: never;
-    url: '/api/v1/beacons/{beacon_id}';
-};
-
-export type beaconsDeleteBeaconErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type beaconsDeleteBeaconError = beaconsDeleteBeaconErrors[keyof beaconsDeleteBeaconErrors];
-
-export type beaconsDeleteBeaconResponses = {
-    /**
-     * Successful Response
-     */
-    200: Message;
-};
-
-export type beaconsDeleteBeaconResponse = beaconsDeleteBeaconResponses[keyof beaconsDeleteBeaconResponses];
-
-export type beaconsReadBeaconData = {
-    body?: never;
-    path: {
-        /**
-         * Beacon Id
-         */
-        beacon_id: string;
-    };
-    query?: never;
-    url: '/api/v1/beacons/{beacon_id}';
-};
-
-export type beaconsReadBeaconErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type beaconsReadBeaconError = beaconsReadBeaconErrors[keyof beaconsReadBeaconErrors];
-
-export type beaconsReadBeaconResponses = {
-    /**
-     * Successful Response
-     */
-    200: BeaconPublic;
-};
-
-export type beaconsReadBeaconResponse = beaconsReadBeaconResponses[keyof beaconsReadBeaconResponses];
-
-export type beaconsUpdateBeaconData = {
-    body: BeaconUpdate;
-    path: {
-        /**
-         * Beacon Id
-         */
-        beacon_id: string;
-    };
-    query?: never;
-    url: '/api/v1/beacons/{beacon_id}';
-};
-
-export type beaconsUpdateBeaconErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type beaconsUpdateBeaconError = beaconsUpdateBeaconErrors[keyof beaconsUpdateBeaconErrors];
-
-export type beaconsUpdateBeaconResponses = {
-    /**
-     * Successful Response
-     */
-    200: BeaconPublic;
-};
-
-export type beaconsUpdateBeaconResponse = beaconsUpdateBeaconResponses[keyof beaconsUpdateBeaconResponses];
-
-export type beaconsReadBeaconsData = {
+export type feedbackReadFeedbacksData = {
     body?: never;
     path?: never;
     query?: {
         /**
-         * Site Id
+         * Status
+         *
+         * Filter by status: pending, approved, or rejected
          */
-        site_id?: string | null;
+        status?: FeedbackStatus | null;
         /**
-         * Artifact Id
+         * Q
+         *
+         * Search by visitor name, email, artifact code, or feedback comment
          */
-        artifact_id?: string | null;
+        q?: string | null;
         /**
          * Skip
          */
@@ -2560,51 +3458,74 @@ export type beaconsReadBeaconsData = {
          */
         limit?: number;
     };
-    url: '/api/v1/beacons/';
+    url: '/api/v1/feedback/';
 };
 
-export type beaconsReadBeaconsErrors = {
+export type feedbackReadFeedbacksErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
     /**
      * Validation Error
      */
     422: HTTPValidationError;
 };
 
-export type beaconsReadBeaconsError = beaconsReadBeaconsErrors[keyof beaconsReadBeaconsErrors];
+export type feedbackReadFeedbacksError = feedbackReadFeedbacksErrors[keyof feedbackReadFeedbacksErrors];
 
-export type beaconsReadBeaconsResponses = {
+export type feedbackReadFeedbacksResponses = {
     /**
      * Successful Response
      */
-    200: BeaconsPublic;
+    200: FeedbackReviewsPublic;
 };
 
-export type beaconsReadBeaconsResponse = beaconsReadBeaconsResponses[keyof beaconsReadBeaconsResponses];
+export type feedbackReadFeedbacksResponse = feedbackReadFeedbacksResponses[keyof feedbackReadFeedbacksResponses];
 
-export type beaconsCreateBeaconData = {
-    body: BeaconCreate;
-    path?: never;
+export type feedbackUpdateFeedbackStatusData = {
+    body: FeedbackStatusUpdate;
+    path: {
+        /**
+         * Feedback Id
+         */
+        feedback_id: string;
+    };
     query?: never;
-    url: '/api/v1/beacons/';
+    url: '/api/v1/feedback/{feedback_id}/status';
 };
 
-export type beaconsCreateBeaconErrors = {
+export type feedbackUpdateFeedbackStatusErrors = {
     /**
-     * Validation Error
+     * Thiếu hoặc sai token đăng nhập
      */
-    422: HTTPValidationError;
+    401: unknown;
+    /**
+     * Không đủ quyền (cần role admin)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Dữ liệu gửi lên sai định dạng
+     */
+    422: unknown;
 };
 
-export type beaconsCreateBeaconError = beaconsCreateBeaconErrors[keyof beaconsCreateBeaconErrors];
-
-export type beaconsCreateBeaconResponses = {
+export type feedbackUpdateFeedbackStatusResponses = {
     /**
      * Successful Response
      */
-    201: BeaconPublic;
+    200: FeedbackPublic;
 };
 
-export type beaconsCreateBeaconResponse = beaconsCreateBeaconResponses[keyof beaconsCreateBeaconResponses];
+export type feedbackUpdateFeedbackStatusResponse = feedbackUpdateFeedbackStatusResponses[keyof feedbackUpdateFeedbackStatusResponses];
 
 export type privateCreateUserData = {
     body: PrivateUserCreate;

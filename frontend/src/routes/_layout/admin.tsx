@@ -16,10 +16,18 @@ import useAuth from "@/hooks/useAuth"
 export const Route = createFileRoute("/_layout/admin")({
   component: Admin,
   beforeLoad: async () => {
-    const { data: user } = await UsersService.readUserMe()
-    if (!user.is_superuser) throw redirect({ to: "/" })
+    const { data: user } = await UsersService.readUserMe({
+      throwOnError: true,
+    })
+
+    if (user.role_name !== "admin") {
+      throw redirect({ to: "/" })
+    }
   },
-  head: () => ({ meta: [{ title: "Team & Roles - Smart Heritage" }] }),
+
+  head: () => ({
+    meta: [{ title: "Team & Roles - Smart Heritage" }],
+  }),
 })
 
 function Admin() {

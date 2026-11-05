@@ -95,6 +95,9 @@ class UsersPublic(SQLModel):
     data: list[UserPublic]
     count: int
 
+class UserMePublic(UserPublic):
+    role_name: str
+
 
 # Shared properties
 class ItemBase(SQLModel):
@@ -886,3 +889,18 @@ class TokenPayload(SQLModel):
 class NewPassword(SQLModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
+
+# ------------------- Schemas dùng cho API nội dung hiện vật -------------------
+class FeedbackReviewPublic(FeedbackPublic):
+    """Thông tin phản hồi dành cho Admin kiểm duyệt."""
+    visitor_name: str | None = None
+    visitor_email: str
+    artifact_code: str
+    artifact_title: str | None = None
+    site_name: str
+
+
+class FeedbackReviewsPublic(SQLModel):
+    """Danh sách phản hồi dành cho Admin."""
+    data: list[FeedbackReviewPublic]
+    count: int

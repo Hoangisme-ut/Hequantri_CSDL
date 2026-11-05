@@ -271,7 +271,10 @@ function SiteManagement() {
   const [editing, setEditing] = useState<Site | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [translationSite, setTranslationSite] = useState<Site | null>(null)
-  const sitesQuery = useQuery({ queryKey: siteKey, queryFn: sitesService.list })
+  const sitesQuery = useQuery({
+    queryKey: siteKey,
+    queryFn: () => sitesService.list(),
+  })
   const deactivateMutation = useMutation({
     mutationFn: sitesService.deactivate,
     onSuccess: async () => {

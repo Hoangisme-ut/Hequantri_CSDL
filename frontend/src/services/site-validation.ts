@@ -46,10 +46,7 @@ export function validateSiteInput(site: SiteInput): string[] {
   return errors
 }
 
-export function filterSites<T extends Pick<Site, "name" | "address">>(
-  sites: T[],
-  search: string,
-): T[] {
+export function filterSites(sites: Site[], search: string): Site[] {
   const term = search.trim().toLocaleLowerCase()
   if (!term) return sites
   return sites.filter((site) =>

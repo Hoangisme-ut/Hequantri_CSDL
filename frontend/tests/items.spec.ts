@@ -1,138 +1,139 @@
+
 import { expect, test } from "@playwright/test"
-import { createUser } from "./utils/privateApi"
-import {
-  randomEmail,
-  randomItemDescription,
-  randomItemTitle,
-  randomPassword,
-} from "./utils/random"
-import { logInUser } from "./utils/user"
 
-test("Items page is accessible and shows correct title", async ({ page }) => {
-  await page.goto("/items")
-  await expect(
-    page.getByRole("heading", { name: "Artifact Management" }),
-  ).toBeVisible()
-  await expect(page.getByText("Manage the artifact catalog")).toBeVisible()
-})
+function randomArtifactCode() {
+  return `TEST-${Date.now()}-${Math.floor(Math.random() * 10000)}`
+}
 
-test("Add Item button is visible", async ({ page }) => {
-  await page.goto("/items")
-  await expect(page.getByRole("button", { name: "Add Item" })).toBeVisible()
-})
-
-test.describe("Items management", () => {
-  test.use({ storageState: { cookies: [], origins: [] } })
-  let email: string
-  const password = randomPassword()
-
-  test.beforeAll(async () => {
-    email = randomEmail()
-    await createUser({ email, password })
-  })
-
+test.describe("Admin - Artifact Management", () => {
   test.beforeEach(async ({ page }) => {
-    await logInUser(page, email, password)
     await page.goto("/items")
   })
 
-  test("Create a new item successfully", async ({ page }) => {
-    const title = randomItemTitle()
-    const description = randomItemDescription()
+  test("Artifact page is accessible and displays correct content", async ({
+    page,
+  }) => {
+    await expect(
+      page.getByRole("heading", { name: "Artifact Management" }),
+    ).toBeVisible()
 
-    await page.getByRole("button", { name: "Add Item" }).click()
-    await page.getByLabel("Title").fill(title)
-    await page.getByLabel("Description").fill(description)
-    await page.getByRole("button", { name: "Save" }).click()
+    await expect(
+      page.getByText("Manage artifact records and their language content."),
+    ).toBeVisible()
 
-    await expect(page.getByText("Item created successfully")).toBeVisible()
-    await expect(page.getByText(title)).toBeVisible()
+    await expect(
+      page.getByRole("button", { name: "Add artifact" }),
+    ).toBeVisible()
   })
 
-  test("Create item with only required fields", async ({ page }) => {
-    const title = randomItemTitle()
+  test("Create a new artifact successfully", async ({ page }) => {
+    const code = randomArtifactCode()
 
-    await page.getByRole("button", { name: "Add Item" }).click()
-    await page.getByLabel("Title").fill(title)
-    await page.getByRole("button", { name: "Save" }).click()
+    await page.getByRole("button", { name: "Add artifact" }).click()
 
-    await expect(page.getByText("Item created successfully")).toBeVisible()
-    await expect(page.getByText(title)).toBeVisible()
+    await expect(page.getByRole("dialog")).toBeVisible()
+
+    await page.getByLabel("Artifact code").fill(code)
+
+    // The form automatically selects the first active site.
+    await expect(page.locator("#artifact-site")).not.toHaveValue("")
+
+    await page.getByRole("button", { name: "Save artifact" }).click()
+
+    await expect(page.getByText("Artifact created")).toBeVisible()
+
+    const artifactRow = page.getByRole("row").filter({ hasText: code })
+    await expect(artifactRow).toBeVisible()
+    await expect(page.getByRole("dialog")).not.toBeVisible()
   })
 
-  test("Cancel item creation", async ({ page }) => {
-    await page.getByRole("button", { name: "Add Item" }).click()
-    await page.getByLabel("Title").fill("Test Item")
+  test("Artifact code is required", async ({ page }) => {
+    await page.getByRole("button", { name: "Add artifact" }).click()
+
+    await page.getByRole("button", { name: "Save artifact" }).click()
+
+    await expect(
+      page.getByText("Artifact code is required."),
+    ).toBeVisible()
+  })
+
+  test("Cancel artifact creation", async ({ page }) => {
+    await page.getByRole("button", { name: "Add artifact" }).click()
+
+    await page.getByLabel("Artifact code").fill(randomArtifactCode())
+
     await page.getByRole("button", { name: "Cancel" }).click()
 
     await expect(page.getByRole("dialog")).not.toBeVisible()
   })
 
-  test("Title is required", async ({ page }) => {
-    await page.getByRole("button", { name: "Add Item" }).click()
-    await page.getByLabel("Title").fill("")
-    await page.getByLabel("Title").blur()
+  test("Edit an artifact successfully", async ({ page }) => {
+    const code = randomArtifactCode()
+    const updatedEra = `Updated Era ${Date.now()}`
 
-    await expect(page.getByText("Title is required")).toBeVisible()
+    // Create test artifact.
+    await page.getByRole("button", { name: "Add artifact" }).click()
+    await page.getByLabel("Artifact code").fill(code)
+    await page.getByRole("button", { name: "Save artifact" }).click()
+
+    await expect(page.getByText("Artifact created")).toBeVisible()
+
+    // Open edit dialog.
+    await page.getByRole("button", { name: `Edit ${code}` }).click()
+
+    await expect(page.getByRole("dialog")).toBeVisible()
+
+    await expect(page.getByLabel("Era")).toBeEnabled()
+    await page.getByLabel("Era").fill(updatedEra)
+
+    await page.getByRole("button", { name: "Save artifact" }).click()
+
+    await expect(page.getByText("Artifact updated")).toBeVisible()
+
+    const artifactRow = page.getByRole("row").filter({ hasText: code })
+    await expect(artifactRow).toContainText(updatedEra)
   })
 
-  test.describe("Edit and Delete", () => {
-    let itemTitle: string
+  test("View artifact details in read-only mode", async ({ page }) => {
+    const code = randomArtifactCode()
 
-    test.beforeEach(async ({ page }) => {
-      itemTitle = randomItemTitle()
+    await page.getByRole("button", { name: "Add artifact" }).click()
+    await page.getByLabel("Artifact code").fill(code)
+    await page.getByRole("button", { name: "Save artifact" }).click()
 
-      await page.getByRole("button", { name: "Add Item" }).click()
-      await page.getByLabel("Title").fill(itemTitle)
-      await page.getByRole("button", { name: "Save" }).click()
-      await expect(page.getByText("Item created successfully")).toBeVisible()
-      await expect(page.getByRole("dialog")).not.toBeVisible()
-    })
+    await expect(page.getByText("Artifact created")).toBeVisible()
 
-    test("Edit an item successfully", async ({ page }) => {
-      const itemRow = page.getByRole("row").filter({ hasText: itemTitle })
-      await itemRow.getByRole("button").last().click()
-      await page.getByRole("menuitem", { name: "Edit Item" }).click()
+    await page.getByRole("button", { name: `View ${code}` }).click()
 
-      const updatedTitle = randomItemTitle()
-      await page.getByLabel("Title").fill(updatedTitle)
-      await page.getByRole("button", { name: "Save" }).click()
-
-      await expect(page.getByText("Item updated successfully")).toBeVisible()
-      await expect(page.getByText(updatedTitle)).toBeVisible()
-    })
-
-    test("Delete an item successfully", async ({ page }) => {
-      const itemRow = page.getByRole("row").filter({ hasText: itemTitle })
-      await itemRow.getByRole("button").last().click()
-      await page.getByRole("menuitem", { name: "Delete Item" }).click()
-
-      await page.getByRole("button", { name: "Delete" }).click()
-
-      await expect(
-        page.getByText("The item was deleted successfully"),
-      ).toBeVisible()
-      await expect(page.getByText(itemTitle)).not.toBeVisible()
-    })
-  })
-})
-
-test.describe("Items empty state", () => {
-  test.use({ storageState: { cookies: [], origins: [] } })
-
-  test("Shows empty state message when no items exist", async ({ page }) => {
-    const email = randomEmail()
-    const password = randomPassword()
-    await createUser({ email, password })
-    await logInUser(page, email, password)
-
-    await page.goto("/items")
-
-    await expect(page.getByText("No artifacts yet")).toBeVisible()
     await expect(
-      page.getByText(
-        "Add an artifact using the existing Items API to get started.",
-      ),
+      page.getByRole("heading", { name: `Artifact details · ${code}` }),
     ).toBeVisible()
+
+    await expect(page.getByLabel("Artifact code")).toBeDisabled()
+
+    await expect(
+      page.getByRole("button", { name: "Save artifact" }),
+    ).not.toBeVisible()
+  })
+
+  test("Deactivate an artifact successfully", async ({ page }) => {
+    const code = randomArtifactCode()
+
+    await page.getByRole("button", { name: "Add artifact" }).click()
+    await page.getByLabel("Artifact code").fill(code)
+    await page.getByRole("button", { name: "Save artifact" }).click()
+
+    await expect(page.getByText("Artifact created")).toBeVisible()
+
+    page.on("dialog", async (dialog) => {
+      await dialog.accept()
+    })
+
+    await page.getByRole("button", { name: `Deactivate ${code}` }).click()
+
+    await expect(page.getByText("Artifact deactivated")).toBeVisible()
+
+    const artifactRow = page.getByRole("row").filter({ hasText: code })
+    await expect(artifactRow.getByText("Inactive")).toBeVisible()
   })
 })

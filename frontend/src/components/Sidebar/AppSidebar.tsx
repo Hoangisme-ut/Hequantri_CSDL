@@ -55,12 +55,21 @@ const previewItems: Item[] = [
 ]
 
 export function AppSidebar({ preview = false }: { preview?: boolean }) {
-  const { user: authenticatedUser } = useAuth({ enabled: !preview })
-  const currentUser = preview
-    ? { full_name: "Alex Morgan", email: "alex.morgan@example.org · DEMO", is_superuser: true }
-    : authenticatedUser
-
-  const items = preview ? previewItems : currentUser?.is_superuser ? [...navItems, ...adminItems] : navItems
+    const { user: authenticatedUser } = useAuth({ enabled: !preview })
+    const currentUser = preview
+      ? {
+          full_name: "Alex Morgan",
+          email: "alex.morgan@example.org · DEMO",
+          is_superuser: true,
+          role_name: "admin",
+        }
+      : authenticatedUser
+    const isAdmin = currentUser?.role_name === "admin"
+    const items = preview
+      ? previewItems
+      : isAdmin
+        ? [...navItems, ...adminItems]
+        : []
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
