@@ -14,19 +14,30 @@ export const Route = createFileRoute("/_layout")({
       throw redirect({ to: "/login" })
     }
 
-    // A token in localStorage may be expired or rejected. Validate it before
-    // rendering any page under the admin layout to avoid flashing protected UI.
     try {
-      await UsersService.readUserMe({ throwOnError: true })
+      const { data: user } = await UsersService.readUserMe({
+        throwOnError: true,
+      })
+
+      if (user.role_name !== "admin") {
+        throw redirect({ to: "/forbidden" })
+      }
     } catch (error) {
+      // Giữ nguyên các redirect của TanStack Router
+      if (error instanceof Response) {
+        throw error
+      }
+
       const status =
         error instanceof AxiosError
           ? error.response?.status
           : (error as { response?: { status?: number } }).response?.status
+
       if ([401, 403].includes(status ?? 0)) {
         localStorage.removeItem("access_token")
         throw redirect({ to: "/login" })
       }
+
       throw error
     }
   },
