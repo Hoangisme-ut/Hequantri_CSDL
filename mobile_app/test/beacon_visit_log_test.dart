@@ -107,6 +107,44 @@ void main() {
   });
 
   testWidgets(
+    'controller dedup allows another visit after the backend window',
+    (tester) async {
+      var now = DateTime.utc(2026, 11, 1);
+      final contents = _Contents();
+      final visits = _Visits();
+      final c = BeaconContentController(
+        service: contents,
+        visitLogService: visits,
+        readToken: () => _token,
+        clock: () => now,
+        minRequestInterval: Duration.zero,
+      );
+      try {
+        _receive(c, 1);
+        contents.pending.single.complete(_content(1));
+        await tester.pump(Duration.zero);
+        final displayed = c.content!;
+
+        await c.recordDisplayedContent(displayed);
+        await c.recordDisplayedContent(displayed);
+        expect(visits.artifacts, ['artifact-1']);
+
+        now = now.add(const Duration(seconds: 300));
+        await c.recordDisplayedContent(displayed);
+        expect(visits.artifacts, ['artifact-1']);
+
+        now = now.add(const Duration(seconds: 1));
+        await c.recordDisplayedContent(displayed);
+        expect(visits.artifacts, ['artifact-1', 'artifact-1']);
+      } finally {
+        c.dispose();
+        contents.close();
+        visits.close();
+      }
+    },
+  );
+
+  testWidgets(
     'language changes and content retry do not create another visit',
     (tester) async {
       final contents = _Contents();
@@ -322,7 +360,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('Simulation records displayed A and B, without fabricated RSSI', (
+  testWidgets('Simulation resolves content without recording real visits', (
     tester,
   ) async {
     final contents = _Contents();
@@ -343,16 +381,16 @@ void main() {
     await tester.tap(find.text('Simulate Beacon A'));
     contents.pending.single.complete(_content(1));
     await tester.pumpAndSettle();
-    expect(visits.artifacts, ['artifact-1']);
+    expect(visits.artifacts, isEmpty);
     await tester.tap(find.text('Simulate Beacon A'));
     await tester.pumpAndSettle();
-    expect(visits.artifacts.length, 1);
+    expect(visits.artifacts, isEmpty);
     await tester.pump(const Duration(seconds: 3));
     await tester.tap(find.text('Simulate Beacon B'));
     contents.pending.last.complete(_content(2));
     await tester.pumpAndSettle();
-    expect(visits.artifacts, ['artifact-1', 'artifact-2']);
-    expect(visits.signals, [null, null]);
+    expect(visits.artifacts, isEmpty);
+    expect(visits.signals, isEmpty);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

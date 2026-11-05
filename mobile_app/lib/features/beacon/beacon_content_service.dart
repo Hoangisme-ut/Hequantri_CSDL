@@ -80,10 +80,23 @@ class BeaconContent {
 
     final mediaJson = artifact['media'] as List<dynamic>? ?? const <dynamic>[];
 
+    _responseUuid(beacon, 'id');
+    _responseUuid(beacon, 'site_id');
+    _optionalResponseUuid(beacon, 'artifact_id');
+    _requireUuid(beacon['proximity_uuid'], 'beacon.proximity_uuid');
+    _responseUuid(artifact, 'id');
+    _responseUuid(artifact, 'site_id');
+    for (final item in mediaJson) {
+      final media = item as Map<String, dynamic>;
+      _responseUuid(media, 'id');
+      _responseUuid(media, 'artifact_id');
+      _optionalResponseUuid(media, 'language_id');
+    }
+
     return BeaconContent(
-      beaconId: beacon['id'] as String,
-      artifactId: artifact['id'] as String,
-      siteId: artifact['site_id'] as String,
+      beaconId: _responseUuid(beacon, 'id'),
+      artifactId: _responseUuid(artifact, 'id'),
+      siteId: _responseUuid(artifact, 'site_id'),
       code: artifact['code'] as String,
       title: artifact['title'] as String?,
       description: artifact['description'] as String?,
@@ -98,6 +111,35 @@ class BeaconContent {
       ),
     );
   }
+}
+
+final _uuidPattern = RegExp(
+  r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+);
+
+String _responseUuid(Map<String, dynamic> json, String field) {
+  final value = json[field];
+  if (value is! String || !_uuidPattern.hasMatch(value)) {
+    throw FormatException(
+      'Beacon resolve field "$field" must be a valid UUID.',
+    );
+  }
+  return value;
+}
+
+String? _optionalResponseUuid(Map<String, dynamic> json, String field) {
+  final value = json[field];
+  if (value == null) return null;
+  return _requireUuid(value, field);
+}
+
+String _requireUuid(Object? value, String field) {
+  if (value is! String || !_uuidPattern.hasMatch(value)) {
+    throw FormatException(
+      'Beacon resolve field "$field" must be a valid UUID.',
+    );
+  }
+  return value;
 }
 
 /// Lớp gọi API dùng chung cho beacon thật và Simulation.

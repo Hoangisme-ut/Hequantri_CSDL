@@ -9,13 +9,15 @@ import 'features/beacon/beacon_tools_page.dart';
 import 'features/home/main_navigation_scaffold.dart';
 import 'features/welcome/welcome_page.dart';
 import 'l10n/app_strings.dart';
+import 'l10n/locale_controller.dart';
 import 'theme/app_theme.dart';
 
 export 'features/beacon/beacon_tools_page.dart'
     show AppShell, BeaconTestPage, BeaconTestPageState;
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await LocaleController.instance.initialized;
   runApp(const MyApp());
 }
 
@@ -40,7 +42,7 @@ class _MyAppState extends State<MyApp> {
   late final AuthService _authService;
   late final bool _ownsAuthService;
 
-  Locale _locale = const Locale('vi');
+  late Locale _locale;
 
   @override
   void initState() {
@@ -50,20 +52,31 @@ class _MyAppState extends State<MyApp> {
     _authService =
         widget.authService ??
         AuthService(baseUrl: AuthConfig.apiBaseUrl, client: IoAuthHttpClient());
+    _locale = LocaleController.instance.locale;
+    LocaleController.instance.addListener(_onLocaleControllerChanged);
+  }
+
+  @override
+  void dispose() {
+    LocaleController.instance.removeListener(_onLocaleControllerChanged);
+    if (_ownsAuthService) {
+      _authService.close();
+    }
+    _session.dispose();
+    super.dispose();
+  }
+
+  void _onLocaleControllerChanged() {
+    if (!mounted) return;
+    setState(() => _locale = LocaleController.instance.locale);
   }
 
   void _changeLocale(Locale locale) {
-    if (!mounted) return;
-    setState(() => _locale = locale);
+    LocaleController.instance.setLocale(locale);
   }
 
   void _onAuthenticated(AuthToken token) {
     _session.authenticate(token);
-    _enterMainApp();
-  }
-
-  void _enterDemo() {
-    _session.enterDemo();
     _enterMainApp();
   }
 
@@ -91,23 +104,12 @@ class _MyAppState extends State<MyApp> {
     navigator.pushAndRemoveUntil(
       MaterialPageRoute<void>(
         builder: (_) => LoginPage(
-          onDemoContinue: _enterDemo,
           onAuthenticated: _onAuthenticated,
           authService: _authService,
         ),
       ),
       (_) => false,
     );
-  }
-
-  @override
-  void dispose() {
-    if (_ownsAuthService) {
-      _authService.close();
-    }
-
-    _session.dispose();
-    super.dispose();
   }
 
   @override
@@ -133,7 +135,6 @@ class _MyAppState extends State<MyApp> {
             widget.appShell ??
             WelcomePage(
               onLocaleChanged: _changeLocale,
-              onDemoContinue: _enterDemo,
               onAuthenticated: _onAuthenticated,
               authService: _authService,
             ),
