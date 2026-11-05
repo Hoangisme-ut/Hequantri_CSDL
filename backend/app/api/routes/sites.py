@@ -87,7 +87,11 @@ def update_site(
     site = session.get(Site, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
-    site.sqlmodel_update(site_in.model_dump(exclude_unset=True))
+    data = site_in.model_dump(exclude_unset=True)
+    for field in ("name", "is_active"):
+        if field in data and data[field] is None:
+            raise HTTPException(status_code=422, detail=f"{field} cannot be null")
+    site.sqlmodel_update(data)
     site.updated_at = get_datetime_utc()
     session.add(site)
     session.commit()

@@ -190,6 +190,9 @@ def update_artifact(
     if not artifact:
         raise HTTPException(status_code=404, detail="Artifact not found")
     data = artifact_in.model_dump(exclude_unset=True)
+    for field in ("site_id", "code", "is_active"):
+        if field in data and data[field] is None:
+            raise HTTPException(status_code=422, detail=f"{field} cannot be null")
     new_site_id = data.get("site_id", artifact.site_id)
     new_code = data.get("code", artifact.code)
     if "site_id" in data and new_site_id != artifact.site_id:

@@ -25,6 +25,32 @@ def site_ids(db: Session) -> Generator[list[str]]:
     purge_sites(db, ids)
 
 
+@pytest.mark.parametrize("field", ["site_id", "code", "is_active"])
+def test_artifact_update_null_required_fields_leave_record_unchanged(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    site_ids: list[str],
+    field: str,
+) -> None:
+    site = create_site(client, superuser_token_headers)
+    site_ids.append(site["id"])
+    artifact = create_artifact(
+        client, superuser_token_headers, site["id"], era="Old era"
+    )
+    url = f"{API}/artifacts/{artifact['id']}"
+    before = client.get(url).json()
+    response = client.put(url, headers=superuser_token_headers, json={field: None})
+    assert response.status_code == 422
+    assert client.get(url).json() == before
+    cleared = client.put(url, headers=superuser_token_headers, json={"era": None})
+    assert cleared.status_code == 200
+    assert cleared.json()["era"] is None
+    assert cleared.json()["code"] == artifact["code"]
+    assert cleared.json()["site_id"] == site["id"]
+    assert cleared.json()["is_active"] is True
+    assert client.put(url, headers=superuser_token_headers, json={}).status_code == 200
+
+
 def test_artifact_crud_lifecycle(
     client: TestClient,
     superuser_token_headers: dict[str, str],
