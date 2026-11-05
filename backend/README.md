@@ -115,6 +115,26 @@ $ docker compose exec backend bash
 
 ## Backend Tests
 
+Database tests now fail closed unless `TEST_DATABASE_URL` and
+`TEST_DATABASE_TOKEN` identify a separately provisioned SQL Server database.
+Never point tests at the application's `DATABASE_URL`. Before running tests:
+
+1. Start a dedicated test SQL Server instance (separate container/storage).
+2. Set `TEST_DATABASE_URL` to a **new** `test_*` database on that instance and
+   `TEST_DATABASE_TOKEN` to a random 64-character hexadecimal token.
+3. Run `uv run python scripts/provision_test_database.py`. This refuses an
+   existing database and creates an identity marker only in the new database.
+4. Run migrations with `DATABASE_URL` temporarily set to `TEST_DATABASE_URL`
+   **only for the migration process**, then restore the application URL.
+5. Run the test command below with the two `TEST_DATABASE_*` variables set.
+
+The fixture verifies the database name and marker before importing the app's
+engine and again before setup/cleanup. A name alone is not proof of isolation.
+No test command provisions, marks, or migrates an existing database automatically.
+The GitHub Backend workflow provisions a new test database on its disposable runner.
+For pure model/guard tests with no DB fixtures, `pytest --noconftest` can be used
+explicitly; it is not a substitute for the integration suite.
+
 To test the backend from the `backend` directory, run:
 
 ```console
