@@ -22,7 +22,7 @@ from app.models import (
 
 router = APIRouter(prefix="/beacons", tags=["beacons"])
 
-REQUIRED_UPDATE_FIELDS = {"proximity_uuid", "major", "minor", "site_id"}
+REQUIRED_UPDATE_FIELDS = {"proximity_uuid", "major", "minor", "site_id", "is_active"}
 
 
 def _validate_links(

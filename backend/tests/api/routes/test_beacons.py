@@ -191,6 +191,28 @@ def test_beacon_admin_crud_over_http(
     assert null_field.status_code == 422
 
 
+def test_beacon_active_null_rejected_and_unassignment_preserved(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    site_ids: list[str],
+) -> None:
+    site = create_site(client, superuser_token_headers)
+    site_ids.append(site["id"])
+    artifact = create_artifact(client, superuser_token_headers, site["id"])
+    beacon = create_beacon(client, superuser_token_headers, site["id"], artifact["id"])
+    url = f"{API}/beacons/{beacon['id']}"
+    headers = superuser_token_headers
+    assert client.put(url, headers=headers, json={"is_active": None}).status_code == 422
+    assert client.get(url, headers=headers).json() == beacon
+    unassigned = client.put(url, headers=headers, json={"artifact_id": None})
+    assert unassigned.status_code == 200
+    assert unassigned.json()["artifact_id"] is None
+    assert unassigned.json()["is_active"] is True
+    disabled = client.put(url, headers=headers, json={"is_active": False})
+    assert disabled.status_code == 200
+    assert disabled.json()["is_active"] is False
+
+
 def test_beacon_validation_errors(
     client: TestClient,
     superuser_token_headers: dict[str, str],
