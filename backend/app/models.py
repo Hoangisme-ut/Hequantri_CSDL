@@ -49,11 +49,25 @@ class UserUpdate(SQLModel):
     password: str | None = Field(default=None, min_length=8, max_length=128)
     role_id: uuid.UUID | None = None  # [Smart Heritage] admin gán role
 
+    @field_validator("email", "password", "is_active", "is_superuser")
+    @classmethod
+    def reject_null_required(cls, value: Any) -> Any:
+        if value is None:
+            raise ValueError("Field cannot be null")
+        return value
+
 
 class UserUpdateMe(SQLModel):
     full_name: str | None = Field(default=None, max_length=255)
     email: EmailStr | None = Field(default=None, max_length=255)
     language_id: uuid.UUID | None = None  # [Smart Heritage] ngôn ngữ ưa thích
+
+    @field_validator("email")
+    @classmethod
+    def reject_null_email(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("email cannot be null")
+        return value
 
 
 class UpdatePassword(SQLModel):

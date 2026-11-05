@@ -14,7 +14,9 @@ from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
 from app.models import (
     Item,
+    Language,
     Message,
+    Role,
     UpdatePassword,
     User,
     UserCreate,
@@ -93,6 +95,12 @@ def update_user_me(
                 status_code=409, detail="User with this email already exists"
             )
     user_data = user_in.model_dump(exclude_unset=True)
+    if user_in.language_id is not None:
+        language = session.get(Language, user_in.language_id)
+        if language is None:
+            raise HTTPException(status_code=404, detail="Language not found")
+        if not language.is_active:
+            raise HTTPException(status_code=400, detail="Language is inactive")
     current_user.sqlmodel_update(user_data)
     session.add(current_user)
     session.commit()
@@ -207,6 +215,8 @@ def update_user(
                 status_code=409, detail="User with this email already exists"
             )
 
+    if user_in.role_id is not None and session.get(Role, user_in.role_id) is None:
+        raise HTTPException(status_code=404, detail="Role not found")
     db_user = crud.update_user(session=session, db_user=db_user, user_in=user_in)
     return db_user
 
