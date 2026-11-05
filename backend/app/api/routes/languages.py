@@ -4,7 +4,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from sqlmodel import col, func, select
 
-from app.api.deps import AdminUser, SessionDep
+from app.api.deps import AdminUser, OptionalUser, SessionDep, is_admin
 from app.api.docs import errors
 from app.models import (
     Language,
@@ -28,14 +28,19 @@ def _unset_other_defaults(session: SessionDep, keep_id: uuid.UUID | None) -> Non
 
 
 @router.get("/", response_model=LanguagesPublic)
-def read_languages(session: SessionDep) -> Any:
+def read_languages(
+    session: SessionDep, current_user: OptionalUser, include_inactive: bool = False
+) -> Any:
     """
     Danh sách ngôn ngữ đang bật. **Public** (app dùng để cho khách chọn ngôn ngữ).
     """
-    statement = select(Language).where(col(Language.is_active)).order_by(Language.code)
+    conditions = (
+        [] if include_inactive and is_admin(current_user) else [col(Language.is_active)]
+    )
+    statement = select(Language).where(*conditions).order_by(Language.code)
     languages = session.exec(statement).all()
     count = session.exec(
-        select(func.count()).select_from(Language).where(col(Language.is_active))
+        select(func.count()).select_from(Language).where(*conditions)
     ).one()
     return LanguagesPublic(
         data=[LanguagePublic.model_validate(x) for x in languages], count=count
@@ -51,6 +56,8 @@ def create_language(
     """
     if session.exec(select(Language).where(Language.code == language_in.code)).first():
         raise HTTPException(status_code=409, detail="Language code already exists")
+    if language_in.is_default and not language_in.is_active:
+        raise HTTPException(status_code=400, detail="Default language must be active")
     if language_in.is_default:
         _unset_other_defaults(session, keep_id=None)
     language = Language.model_validate(language_in)
@@ -79,6 +86,13 @@ def update_language(
     if not language:
         raise HTTPException(status_code=404, detail="Language not found")
     data = language_in.model_dump(exclude_unset=True)
+    for field in ("code", "name", "is_active", "is_default"):
+        if field in data and data[field] is None:
+            raise HTTPException(status_code=422, detail=f"{field} cannot be null")
+    if data.get("is_default", language.is_default) and not data.get(
+        "is_active", language.is_active
+    ):
+        raise HTTPException(status_code=400, detail="Default language must be active")
     if "code" in data and data["code"] != language.code:
         if session.exec(select(Language).where(Language.code == data["code"])).first():
             raise HTTPException(status_code=409, detail="Language code already exists")
