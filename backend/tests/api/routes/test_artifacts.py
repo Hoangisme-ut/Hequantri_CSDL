@@ -7,14 +7,17 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
+from app.models import Language
 from tests.utils.heritage import (
     API,
     add_translation,
     create_artifact,
+    create_beacon,
     create_site,
     get_language_id,
     purge_sites,
     random_code,
+    resolve_params,
 )
 
 
@@ -328,3 +331,77 @@ def test_user_preferred_language_is_used_when_no_lang_param(
             headers=normal_user_token_headers,
             json={"language_id": None},
         )
+
+
+def test_fallback_excludes_inactive_translations_and_their_media(
+    client: TestClient,
+    db: Session,
+    superuser_token_headers: dict[str, str],
+    site_ids: list[str],
+) -> None:
+    headers = superuser_token_headers
+    site = create_site(client, headers)
+    site_ids.append(site["id"])
+    artifact = create_artifact(client, headers, site["id"])
+    beacon = create_beacon(client, headers, site["id"], artifact["id"])
+    url = f"{API}/artifacts/{artifact['id']}"
+    langs = []
+    try:
+        # Insert in reverse order; fallback must use code order, not insertion order.
+        for prefix, active in [("z", True), ("a", True), ("0", False)]:
+            language = client.post(
+                f"{API}/languages/",
+                headers=headers,
+                json={
+                    "code": prefix + uuid.uuid4().hex[:6],
+                    "name": prefix,
+                    "is_active": active,
+                },
+            ).json()
+            langs.append(language)
+            add_translation(client, headers, artifact["id"], language["id"], prefix)
+            response = client.post(
+                f"{url}/media",
+                headers=headers,
+                json={
+                    "url": f"https://example.com/{prefix}.mp3",
+                    "media_type": "audio",
+                    "language_id": language["id"],
+                },
+            )
+            assert response.status_code == 201
+        shared = client.post(
+            f"{url}/media",
+            headers=headers,
+            json={"url": "https://example.com/shared.jpg"},
+        ).json()
+        content = client.get(f"{url}?lang=en").json()
+        assert content["title"] == "a"
+        assert content["language_code"] == langs[1]["code"]
+        assert content["is_fallback"] is True
+        assert {m["language_id"] for m in content["media"]} == {None, langs[1]["id"]}
+        listing = client.get(f"{API}/artifacts/?site_id={site['id']}&lang=en").json()
+        assert listing["data"][0]["title"] == "a"
+        resolved = client.get(
+            f"{API}/beacons/resolve?{resolve_params(beacon)}&lang=en", headers=headers
+        ).json()
+        assert resolved["artifact"]["title"] == "a"
+        for language in langs[:2]:
+            assert (
+                client.put(
+                    f"{API}/languages/{language['id']}",
+                    headers=headers,
+                    json={"is_active": False},
+                ).status_code
+                == 200
+            )
+        empty = client.get(f"{url}?lang=en").json()
+        assert empty["title"] is None
+        assert empty["language_code"] is None
+        assert [m["id"] for m in empty["media"]] == [shared["id"]]
+    finally:
+        for language in langs:
+            row = db.get(Language, uuid.UUID(language["id"]))
+            if row:
+                db.delete(row)
+        db.commit()

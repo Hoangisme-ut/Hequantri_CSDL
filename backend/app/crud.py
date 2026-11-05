@@ -167,9 +167,10 @@ def pick_translation(
 ) -> tuple[ArtifactTranslation | None, Language | None]:
     """Bản dịch theo ngôn ngữ yêu cầu; không có thì dự phòng: mặc định -> bất kỳ."""
     translations = session.exec(
-        select(ArtifactTranslation).where(
-            ArtifactTranslation.artifact_id == artifact_id
-        )
+        select(ArtifactTranslation)
+        .join(Language, col(Language.id) == col(ArtifactTranslation.language_id))
+        .where(ArtifactTranslation.artifact_id == artifact_id, col(Language.is_active))
+        .order_by(col(Language.code), col(ArtifactTranslation.id))
     ).all()
     if not translations:
         return None, None
