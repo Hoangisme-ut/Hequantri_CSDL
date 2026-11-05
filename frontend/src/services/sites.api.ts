@@ -1,6 +1,6 @@
 import { AxiosError } from "axios"
 import { type SitePublic, SitesService } from "@/client"
-import type { Site, SiteInput, SiteService } from "./sites"
+import type { Site, SiteInput, SiteListFilters, SiteService } from "./sites"
 
 function normalizeSite(site: SitePublic): Site {
   return {
@@ -65,14 +65,21 @@ async function requestSite<T>(request: Promise<{ data: T }>): Promise<T> {
 }
 
 export const apiSitesService: SiteService = {
-  async list() {
-    const response = await requestSite(
-      SitesService.readSites({
-        query: { include_inactive: true, limit: 200 },
-      }),
-    )
-    return { ...response, data: response.data.map(normalizeSite) }
-  },
+  async list(filters: SiteListFilters = {}) {
+  const response = await requestSite(
+    SitesService.readSites({
+      query: {
+        include_inactive: true,
+        skip: filters.skip ?? 0,
+        limit: filters.limit ?? 200,
+      },
+    }),
+  )
+  return {
+    ...response,
+    data: response.data.map(normalizeSite),
+  }
+},
   async get(id) {
     return normalizeSite(
       await requestSite(SitesService.readSite({ path: { site_id: id } })),
