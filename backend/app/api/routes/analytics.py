@@ -5,8 +5,8 @@ from datetime import UTC, date, datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import Date, cast, distinct
-from sqlmodel import SQLModel, col, func, select
+from sqlalchemy import Date, cast, distinct, select
+from sqlmodel import SQLModel, col, func
 
 from app.api.deps import AdminUser, SessionDep
 from app.models import Artifact, Site, VisitLog
@@ -84,7 +84,7 @@ def overview(session: SessionDep, _admin: AdminUser, conditions: Filters) -> Any
         .join(Artifact)
         .where(*conditions)
     )
-    return session.execute(stmt).mappings().one()
+    return session.connection().execute(stmt).mappings().one()
 
 
 @router.get("/visits", response_model=list[DailyViews])
@@ -99,7 +99,7 @@ def visits(session: SessionDep, _admin: AdminUser, conditions: Filters) -> Any:
         .group_by(day)
         .order_by(day)
     )
-    return session.execute(stmt).mappings().all()
+    return session.connection().execute(stmt).mappings().all()
 
 
 @router.get("/top-artifacts", response_model=list[ArtifactViews])
@@ -113,19 +113,19 @@ def top_artifacts(
     stmt = (
         select(
             col(Artifact.id).label("artifact_id"),
-            Artifact.site_id,
-            Artifact.code,
+            col(Artifact.site_id),
+            col(Artifact.code),
             views,
             users,
         )
         .select_from(VisitLog)
         .join(Artifact)
         .where(*conditions)
-        .group_by(Artifact.id, Artifact.site_id, Artifact.code)
+        .group_by(col(Artifact.id), col(Artifact.site_id), col(Artifact.code))
         .order_by(views.desc(), col(Artifact.id))
         .limit(limit)
     )
-    return session.execute(stmt).mappings().all()
+    return session.connection().execute(stmt).mappings().all()
 
 
 @router.get("/sites", response_model=list[SiteViews])
@@ -138,14 +138,14 @@ def sites(
 ) -> Any:
     views, users = _counts()
     stmt = (
-        select(col(Site.id).label("site_id"), Site.name, views, users)
+        select(col(Site.id).label("site_id"), col(Site.name), views, users)
         .select_from(VisitLog)
         .join(Artifact)
         .join(Site)
         .where(*conditions)
-        .group_by(Site.id, Site.name)
+        .group_by(col(Site.id), col(Site.name))
         .order_by(views.desc(), col(Site.id))
         .offset(skip)
         .limit(limit)
     )
-    return session.execute(stmt).mappings().all()
+    return session.connection().execute(stmt).mappings().all()
