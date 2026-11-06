@@ -134,7 +134,8 @@ def read_my_visits(
         .where(*conditions)
     ).one()
     visits = session.exec(
-        select(VisitLog)
+        select(VisitLog, Artifact)
+        .select_from(VisitLog)
         .join(Artifact, col(Artifact.id) == col(VisitLog.artifact_id))
         .join(Site, col(Site.id) == col(Artifact.site_id))
         .where(*conditions)
@@ -144,14 +145,14 @@ def read_my_visits(
     ).all()
 
     language = crud.resolve_language(session=session, lang_code=lang, user=current_user)
+    summaries = crud.build_artifact_summaries(
+        session=session,
+        artifacts=[artifact for _, artifact in visits],
+        language=language,
+    )
     items = []
-    for visit in visits:
-        artifact = session.get(Artifact, visit.artifact_id)
-        if artifact is None:  # không xảy ra: đã join ở trên
-            continue
-        summary = crud.build_artifact_summary(
-            session=session, artifact=artifact, language=language
-        )
+    for visit, artifact in visits:
+        summary = summaries[artifact.id]
         items.append(
             VisitDetailPublic.model_validate(visit, update={"artifact": summary})
         )

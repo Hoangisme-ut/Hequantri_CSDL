@@ -55,7 +55,8 @@ def read_my_favorites(
         col(Site.is_active) == true(),
     ]
     joined = (
-        select(Favorite)
+        select(Favorite, Artifact)
+        .select_from(Favorite)
         .join(Artifact, col(Artifact.id) == col(Favorite.artifact_id))
         .join(Site, col(Site.id) == col(Artifact.site_id))
         .where(*conditions)
@@ -74,14 +75,14 @@ def read_my_favorites(
     ).all()
 
     language = crud.resolve_language(session=session, lang_code=lang, user=current_user)
+    summaries = crud.build_artifact_summaries(
+        session=session,
+        artifacts=[artifact for _, artifact in favorites],
+        language=language,
+    )
     items = []
-    for favorite in favorites:
-        artifact = session.get(Artifact, favorite.artifact_id)
-        if artifact is None:  # không xảy ra: đã join ở trên
-            continue
-        summary = crud.build_artifact_summary(
-            session=session, artifact=artifact, language=language
-        )
+    for favorite, artifact in favorites:
+        summary = summaries[artifact.id]
         items.append(
             FavoriteDetailPublic.model_validate(favorite, update={"artifact": summary})
         )

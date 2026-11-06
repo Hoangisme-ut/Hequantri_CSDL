@@ -19,7 +19,6 @@ from app.models import (
     ArtifactCreate,
     ArtifactPublic,
     ArtifactSummariesPublic,
-    ArtifactSummary,
     ArtifactTranslation,
     ArtifactTranslationBase,
     ArtifactTranslationPublic,
@@ -113,26 +112,12 @@ def read_artifacts(
     ).all()
 
     language = crud.resolve_language(session=session, lang_code=lang, user=current_user)
-    summaries = []
-    for a in artifacts:
-        translation, used_lang = crud.pick_translation(
-            session=session, artifact_id=a.id, language=language
-        )
-        summaries.append(
-            ArtifactSummary.model_validate(
-                a,
-                update={
-                    "title": translation.title if translation else None,
-                    "language_code": used_lang.code if used_lang else None,
-                    "is_fallback": bool(
-                        translation
-                        and language is not None
-                        and translation.language_id != language.id
-                    ),
-                },
-            )
-        )
-    return ArtifactSummariesPublic(data=summaries, count=count)
+    summaries = crud.build_artifact_summaries(
+        session=session, artifacts=artifacts, language=language
+    )
+    return ArtifactSummariesPublic(
+        data=[summaries[a.id] for a in artifacts], count=count
+    )
 
 
 @router.get(

@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Sequence
 from datetime import timedelta
 from typing import Any
 
@@ -166,24 +167,46 @@ def pick_translation(
     *, session: Session, artifact_id: uuid.UUID, language: Language | None
 ) -> tuple[ArtifactTranslation | None, Language | None]:
     """Bản dịch theo ngôn ngữ yêu cầu; không có thì dự phòng: mặc định -> bất kỳ."""
+    return pick_translations(
+        session=session, artifact_ids=[artifact_id], language=language
+    ).get(artifact_id, (None, None))
+
+
+def pick_translations(
+    *, session: Session, artifact_ids: Sequence[uuid.UUID], language: Language | None
+) -> dict[uuid.UUID, tuple[ArtifactTranslation, Language]]:
+    """K07 priority: requested active language, default, then code/id order."""
+    if not artifact_ids:
+        return {}
     translations = session.exec(
-        select(ArtifactTranslation)
+        select(ArtifactTranslation, Language)
         .join(Language, col(Language.id) == col(ArtifactTranslation.language_id))
-        .where(ArtifactTranslation.artifact_id == artifact_id, col(Language.is_active))
+        .where(
+            col(ArtifactTranslation.artifact_id).in_(set(artifact_ids)),
+            col(Language.is_active),
+        )
         .order_by(col(Language.code), col(ArtifactTranslation.id))
     ).all()
     if not translations:
-        return None, None
-    by_lang = {t.language_id: t for t in translations}
-    candidates: list[Language | None] = [
-        language,
-        get_default_language(session=session),
-    ]
-    for cand in candidates:
-        if cand is not None and cand.id in by_lang:
-            return by_lang[cand.id], session.get(Language, cand.id)
-    first = translations[0]
-    return first, session.get(Language, first.language_id)
+        return {}
+    default = get_default_language(session=session)
+    priorities: dict[uuid.UUID, int] = {}
+    chosen: dict[uuid.UUID, tuple[ArtifactTranslation, Language]] = {}
+    for translation, used_language in translations:
+        rank = (
+            0
+            if language and used_language.id == language.id
+            else 1
+            if default and used_language.id == default.id
+            else 2
+        )
+        if (
+            translation.artifact_id not in chosen
+            or rank < priorities[translation.artifact_id]
+        ):
+            chosen[translation.artifact_id] = (translation, used_language)
+            priorities[translation.artifact_id] = rank
+    return chosen
 
 
 def get_artifact_content(
@@ -249,21 +272,33 @@ def build_artifact_summary(
     *, session: Session, artifact: Artifact, language: Language | None
 ) -> ArtifactSummary:
     """Tóm tắt hiện vật (tiêu đề theo ngôn ngữ, có dự phòng) dùng cho danh sách."""
-    translation, used_lang = pick_translation(
-        session=session, artifact_id=artifact.id, language=language
+    return build_artifact_summaries(
+        session=session, artifacts=[artifact], language=language
+    )[artifact.id]
+
+
+def build_artifact_summaries(
+    *, session: Session, artifacts: Sequence[Artifact], language: Language | None
+) -> dict[uuid.UUID, ArtifactSummary]:
+    translations = pick_translations(
+        session=session, artifact_ids=[a.id for a in artifacts], language=language
     )
-    return ArtifactSummary.model_validate(
-        artifact,
-        update={
-            "title": translation.title if translation else None,
-            "language_code": used_lang.code if used_lang else None,
-            "is_fallback": bool(
-                translation
-                and language is not None
-                and translation.language_id != language.id
-            ),
-        },
-    )
+    result = {}
+    for artifact in artifacts:
+        translation, used_lang = translations.get(artifact.id, (None, None))
+        result[artifact.id] = ArtifactSummary.model_validate(
+            artifact,
+            update={
+                "title": translation.title if translation else None,
+                "language_code": used_lang.code if used_lang else None,
+                "is_fallback": bool(
+                    translation
+                    and language is not None
+                    and translation.language_id != language.id
+                ),
+            },
+        )
+    return result
 
 
 # =============================================================================
