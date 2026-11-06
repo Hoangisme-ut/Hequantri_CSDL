@@ -1,9 +1,9 @@
 import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
-from pydantic import EmailStr, field_validator
+from pydantic import EmailStr, field_validator, model_validator
 from sqlalchemy import CheckConstraint, Index, Unicode, UniqueConstraint, text
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -148,9 +148,11 @@ class MediaType(StrEnum):
 
 
 class FeedbackStatus(StrEnum):
-    PENDING = "pending"
-    APPROVED = "approved"
-    REJECTED = "rejected"
+    """Trạng thái Feedback theo ERD: chỉ nhận pending / approved / hidden."""
+
+    PENDING = "pending"  # có comment, đang chờ admin duyệt
+    APPROVED = "approved"  # hiển thị công khai
+    HIDDEN = "hidden"  # admin từ chối/ẩn: không hiện công khai, không tính rating
 
 
 # ---------------------------------- Role -------------------------------------
@@ -764,17 +766,64 @@ class FavoritesPublic(SQLModel):
 
 
 # ---------------------------------- Feedback ---------------------------------
+FEEDBACK_COMMENT_MAX = 2000
+
+
+def _clean_comment(value: str | None) -> str | None:
+    """Cắt khoảng trắng đầu/cuối; chuỗi rỗng coi như không có comment (None)."""
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+
 class FeedbackCreate(SQLModel):
     artifact_id: uuid.UUID
     rating: int = Field(ge=1, le=5)
-    comment: str | None = Field(default=None, max_length=2000)
+    comment: str | None = Field(default=None, max_length=FEEDBACK_COMMENT_MAX)
+
+    @field_validator("comment")
+    @classmethod
+    def _strip_comment(cls, value: str | None) -> str | None:
+        return _clean_comment(value)
+
+
+class FeedbackUpdate(SQLModel):
+    """Visitor sửa đánh giá của chính mình. Chỉ các trường được gửi mới bị đổi;
+    gửi `"comment": null` (hoặc chuỗi rỗng) để xóa comment."""
+
+    rating: int | None = Field(default=None, ge=1, le=5)
+    comment: str | None = Field(default=None, max_length=FEEDBACK_COMMENT_MAX)
+
+    @field_validator("comment")
+    @classmethod
+    def _strip_comment(cls, value: str | None) -> str | None:
+        return _clean_comment(value)
+
+    @model_validator(mode="after")
+    def _require_a_change(self) -> "FeedbackUpdate":
+        if not self.model_fields_set:
+            raise ValueError("Cần gửi ít nhất một trong hai: rating, comment")
+        if "rating" in self.model_fields_set and self.rating is None:
+            raise ValueError("rating không được để null")
+        return self
 
 
 class FeedbackStatusUpdate(SQLModel):
-    status: str = Field(max_length=20)  # FeedbackStatus
+    """Admin duyệt (approved) hoặc từ chối/ẩn (hidden). `pending` do hệ thống tự đặt."""
+
+    status: Literal["approved", "hidden"]
 
 
 class Feedback(SQLModel, table=True):
+    # ERD: mỗi người 1 đánh giá cho mỗi hiện vật; rating 1-5; status giới hạn 3 giá trị
+    __table_args__ = (
+        UniqueConstraint("user_id", "artifact_id", name="uq_feedback_user_artifact"),
+        CheckConstraint("rating BETWEEN 1 AND 5", name="ck_feedback_rating"),
+        CheckConstraint(
+            "status IN ('pending', 'approved', 'hidden')", name="ck_feedback_status"
+        ),
+    )
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     user_id: uuid.UUID = Field(
         foreign_key="user.id", nullable=False, ondelete="CASCADE"
@@ -783,14 +832,19 @@ class Feedback(SQLModel, table=True):
         foreign_key="artifact.id", nullable=False, ondelete="CASCADE"
     )
     rating: int = Field(ge=1, le=5)
-    comment: str | None = Field(default=None, max_length=2000, sa_type=Unicode(2000))
+    comment: str | None = Field(
+        default=None, max_length=FEEDBACK_COMMENT_MAX, sa_type=Unicode(2000)
+    )
     status: str = Field(default=FeedbackStatus.PENDING, max_length=20)
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
+    updated_at: datetime | None = None
     user: User | None = Relationship(back_populates="feedbacks")
     artifact: Artifact | None = Relationship(back_populates="feedbacks")
 
 
 class FeedbackPublic(SQLModel):
+    """Dữ liệu đầy đủ: chỉ trả cho chủ sở hữu (/feedbacks/me) và admin."""
+
     id: uuid.UUID
     user_id: uuid.UUID
     artifact_id: uuid.UUID
@@ -798,10 +852,26 @@ class FeedbackPublic(SQLModel):
     comment: str | None = None
     status: str
     created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class FeedbacksPublic(SQLModel):
     data: list[FeedbackPublic]
+    count: int
+
+
+class ArtifactReviewPublic(SQLModel):
+    """Bình luận công khai: chỉ comment đã duyệt, không lộ user_id / status."""
+
+    id: uuid.UUID
+    artifact_id: uuid.UUID
+    rating: int
+    comment: str | None = None
+    created_at: datetime | None = None
+
+
+class ArtifactReviewsPublic(SQLModel):
+    data: list[ArtifactReviewPublic]
     count: int
 
 
