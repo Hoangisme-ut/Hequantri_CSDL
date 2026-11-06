@@ -1,4 +1,5 @@
 import logging
+import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -8,6 +9,7 @@ import emails
 import jwt
 from jinja2 import Template
 from jwt.exceptions import InvalidTokenError
+from pydantic import EmailStr, TypeAdapter, ValidationError
 
 from app.core import security
 from app.core.config import settings
@@ -123,7 +125,13 @@ def generate_password_reset_token(email: str) -> str:
     expires = now + delta
     exp = expires.timestamp()
     encoded_jwt = jwt.encode(
-        {"exp": exp, "nbf": now, "sub": email},
+        {
+            "exp": exp,
+            "nbf": now,
+            "sub": email,
+            "purpose": "password_reset",
+            "jti": str(uuid.uuid4()),
+        },
         settings.SECRET_KEY,
         algorithm=security.ALGORITHM,
     )
@@ -133,8 +141,13 @@ def generate_password_reset_token(email: str) -> str:
 def verify_password_reset_token(token: str) -> str | None:
     try:
         decoded_token = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
+            token,
+            settings.SECRET_KEY,
+            algorithms=[security.ALGORITHM],
+            options={"require": ["exp", "sub"]},
         )
-        return str(decoded_token["sub"])
-    except InvalidTokenError:
+        if decoded_token.get("purpose") not in (None, "password_reset"):
+            return None
+        return TypeAdapter(EmailStr).validate_python(decoded_token["sub"])
+    except InvalidTokenError, ValidationError:
         return None

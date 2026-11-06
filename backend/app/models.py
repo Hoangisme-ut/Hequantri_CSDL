@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import EmailStr, field_validator
 from sqlalchemy import CheckConstraint, Index, Unicode, UniqueConstraint, text
@@ -850,7 +850,15 @@ class Token(SQLModel):
 
 # Contents of JWT token
 class TokenPayload(SQLModel):
-    sub: str | None = None
+    sub: uuid.UUID
+    purpose: Literal["access"] | None = None
+
+
+class UsedPasswordReset(SQLModel, table=True):
+    """Digest of the authenticated JWT signing input, never the raw token."""
+
+    token_digest: str = Field(primary_key=True, max_length=64)
+    used_at: datetime = Field(default_factory=get_datetime_utc)
 
 
 class NewPassword(SQLModel):

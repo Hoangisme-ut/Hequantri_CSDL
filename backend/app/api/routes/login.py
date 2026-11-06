@@ -1,3 +1,4 @@
+import hashlib
 import logging
 from datetime import timedelta
 from typing import Annotated, Any
@@ -10,7 +11,15 @@ from app import crud
 from app.api.deps import CurrentUser, SessionDep, get_current_active_superuser
 from app.core import security
 from app.core.config import settings
-from app.models import Message, NewPassword, Token, UserPublic, UserUpdate
+from app.core.transactions import acquire_transaction_lock
+from app.models import (
+    Message,
+    NewPassword,
+    Token,
+    UsedPasswordReset,
+    UserPublic,
+    UserUpdate,
+)
 from app.utils import (
     EmailDeliveryError,
     generate_password_reset_token,
@@ -91,6 +100,12 @@ def reset_password(session: SessionDep, body: NewPassword) -> Message:
     email = verify_password_reset_token(token=body.token)
     if not email:
         raise HTTPException(status_code=400, detail="Invalid token")
+    # Hash authenticated header.payload, not signature text (base64url aliases
+    # of the same signature must not bypass consumption).
+    digest = hashlib.sha256(body.token.rsplit(".", 1)[0].encode()).hexdigest()
+    acquire_transaction_lock(session, f"password-reset:{digest}")
+    if session.get(UsedPasswordReset, digest) is not None:
+        raise HTTPException(status_code=400, detail="Invalid token")
     user = crud.get_user_by_email(session=session, email=email)
     if not user:
         # Don't reveal that the user doesn't exist - use same error as invalid token
@@ -98,6 +113,8 @@ def reset_password(session: SessionDep, body: NewPassword) -> Message:
     elif not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     user_in_update = UserUpdate(password=body.new_password)
+    # update_user commits this marker and password in the SAME transaction.
+    session.add(UsedPasswordReset(token_digest=digest))
     crud.update_user(
         session=session,
         db_user=user,

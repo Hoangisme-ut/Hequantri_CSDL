@@ -20,6 +20,21 @@ counts across groups must not be summed to infer a global unique count.
 
 ## Requirements
 
+### Token compatibility and reset replay protection
+
+New JWTs carry `purpose=access` or `purpose=password_reset`. Legacy access
+tokens without purpose remain valid with a UUID subject and expiry. Legacy
+reset links remain valid with an email subject and expiry, but can be used only
+once. Migration `c3d4e5f6a7b8` adds `usedpasswordreset` to record a SHA-256 digest
+of the verified JWT signing input; no raw token is stored. Consumption and the
+password update commit atomically. Deploy the migration before the application.
+
+Web and Mobile continue using the same token response/body fields. Password
+changes do **not** revoke existing access sessions or other unused recovery
+links; access tokens expire under the existing policy. Global revocation or
+credential-version enforcement requires a separately approved session policy.
+Consumed-token records are retained; no automatic destructive cleanup is added.
+
 * [Docker](https://www.docker.com/).
 * [uv](https://docs.astral.sh/uv/) for Python package and environment management.
 
