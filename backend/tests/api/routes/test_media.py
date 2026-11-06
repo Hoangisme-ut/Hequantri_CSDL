@@ -1,47 +1,46 @@
+"""Integration tests for Media API (/artifacts/{artifact_id}/media).
+
+Runs on the shared SQL Server test database (db fixture from conftest) instead
+of an in-memory SQLite database, so SQL Server-specific types and constraints
+are exercised exactly as in production.
+"""
+
 import uuid
 from collections.abc import Generator
+from typing import Any
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, select
 
 from app.api.deps import get_current_user, get_db
 from app.api.routes import beacons, media
 from app.models import Artifact, ArtifactTranslation, Beacon, Language, Role, Site, User
+from tests.utils.heritage import purge_sites
 
 
 @pytest.fixture
-def db() -> Generator[Session]:
-    """Override the global database fixture with an isolated database."""
-    engine = create_engine(
-        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-    )
-    SQLModel.metadata.create_all(engine)
-    with Session(engine) as session:
-        yield session
-    engine.dispose()
+def media_api(db: Session) -> Generator[tuple[TestClient, FastAPI, Artifact, Language, Language, Beacon]]:
+    """Set up a minimal FastAPI app wired to the shared SQL Server test session.
 
+    Seed data (Site, Artifact, Beacon, translations) is created in the same
+    ``db`` session that the app uses, so every assertion reflects real SQL
+    Server behaviour.  All seed rows are deleted after the test via
+    ``purge_sites``.
+    """
+    # Reuse seeded languages so we don't duplicate the unique codes.
+    vi = db.exec(select(Language).where(Language.code == "vi")).one()
+    en = db.exec(select(Language).where(Language.code == "en")).one()
 
-@pytest.fixture
-def media_api(db: Session):
-    app = FastAPI()
-    app.include_router(media.router)
-    app.include_router(beacons.router)
-    admin = User(
-        email="admin@example.com", hashed_password="unused", role=Role(name="admin")
-    )
-    app.dependency_overrides[get_db] = lambda: db
-    app.dependency_overrides[get_current_user] = lambda: admin
-    site = Site(name="Museum")
+    site = Site(name=f"Museum {uuid.uuid4().hex[:6]}")
     db.add(site)
     db.flush()
-    artifact = Artifact(site_id=site.id, code="ART-1")
-    vi = Language(code="vi", name="Vietnamese", is_default=True)
-    en = Language(code="en", name="English")
-    db.add_all([artifact, vi, en])
+
+    artifact = Artifact(site_id=site.id, code=f"ART-{uuid.uuid4().hex[:6].upper()}")
+    db.add(artifact)
     db.flush()
+
     beacon = Beacon(
         site_id=site.id,
         artifact_id=artifact.id,
@@ -50,17 +49,34 @@ def media_api(db: Session):
         minor=2,
     )
     db.add(beacon)
-    db.add(
-        ArtifactTranslation(
-            artifact_id=artifact.id, language_id=vi.id, title="Artifact"
-        )
-    )
+    db.add(ArtifactTranslation(artifact_id=artifact.id, language_id=vi.id, title="Artifact"))
     db.commit()
+    db.refresh(site)
+    db.refresh(artifact)
+    db.refresh(beacon)
+
+    # Build a minimal application so we can control dependency overrides
+    # independently from the global TestClient in conftest.
+    admin_user = User(
+        email=f"media-admin-{uuid.uuid4().hex[:8]}@example.com",
+        hashed_password="unused",
+        role=Role(name="admin"),
+    )
+
+    app: FastAPI = FastAPI()
+    app.include_router(media.router)
+    app.include_router(beacons.router)
+    app.dependency_overrides[get_db] = lambda: db
+    app.dependency_overrides[get_current_user] = lambda: admin_user
+
     with TestClient(app) as client:
         yield client, app, artifact, vi, en, beacon
 
+    # Cleanup: remove all data seeded by this fixture.
+    purge_sites(db, [str(site.id)])
 
-def test_media_crud_and_beacon_resolve(media_api) -> None:
+
+def test_media_crud_and_beacon_resolve(media_api: Any) -> None:
     client, _, artifact, vi, en, beacon = media_api
     path = f"/artifacts/{artifact.id}/media"
     records = []
@@ -141,7 +157,7 @@ def test_media_crud_and_beacon_resolve(media_api) -> None:
         {"language_id": "invalid"},
     ],
 )
-def test_invalid_metadata(media_api, payload) -> None:
+def test_invalid_metadata(media_api: Any, payload: dict[str, Any]) -> None:
     client, _, artifact, *_ = media_api
     path = f"/artifacts/{artifact.id}/media"
     valid = {"url": "https://example.com/image"}
@@ -152,7 +168,7 @@ def test_invalid_metadata(media_api, payload) -> None:
     assert client.get(item_path).json() == created
 
 
-def test_missing_links_and_wrong_artifact(media_api, db: Session) -> None:
+def test_missing_links_and_wrong_artifact(media_api: Any, db: Session) -> None:
     client, _, artifact, *_ = media_api
     path = f"/artifacts/{artifact.id}/media"
     valid = {"url": "https://example.com/image"}
@@ -162,7 +178,7 @@ def test_missing_links_and_wrong_artifact(media_api, db: Session) -> None:
     assert (
         client.put(f"{path}/{created['id']}", json=missing_language).status_code == 404
     )
-    other = Artifact(site_id=artifact.site_id, code="OTHER")
+    other = Artifact(site_id=artifact.site_id, code=f"OTHER-{uuid.uuid4().hex[:6].upper()}")
     db.add(other)
     db.commit()
     for artifact_id in (uuid.uuid4(), other.id):
@@ -177,7 +193,7 @@ def test_missing_links_and_wrong_artifact(media_api, db: Session) -> None:
 
 
 @pytest.mark.parametrize("anonymous", [False, True])
-def test_media_requires_admin(media_api, anonymous: bool) -> None:
+def test_media_requires_admin(media_api: Any, anonymous: bool) -> None:
     client, app, artifact, *_ = media_api
     path = f"/artifacts/{artifact.id}/media"
     created = client.post(path, json={"url": "https://example.com/image"}).json()
