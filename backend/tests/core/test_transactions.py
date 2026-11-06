@@ -55,3 +55,13 @@ def test_only_known_duplicate_constraints_are_conflicts(code, name, conflict):
     with pytest.raises(HTTPException if conflict else IntegrityError):
         commit_with_conflicts(session, "expected")
     session.rollback.assert_called_once()
+
+
+def test_integrity_error_without_driver_details_is_preserved():
+    session = MagicMock()
+    original = IntegrityError("INSERT", {}, None)
+    session.commit.side_effect = original
+    with pytest.raises(IntegrityError) as error:
+        commit_with_conflicts(session, "expected")
+    assert error.value is original
+    session.rollback.assert_called_once()

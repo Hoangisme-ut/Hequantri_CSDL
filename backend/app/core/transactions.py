@@ -38,7 +38,7 @@ def commit_with_conflicts(session: Session, *constraints: str) -> None:
         session.commit()
     except IntegrityError as error:
         session.rollback()
-        args = error.orig.args
+        args = error.orig.args if error.orig is not None else ()
         if (
             args
             and args[0] in (2601, 2627)
