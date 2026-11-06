@@ -6,6 +6,7 @@ from sqlmodel import col, func, select
 
 from app.api.deps import AdminUser, OptionalUser, SessionDep, is_admin
 from app.api.docs import errors
+from app.core.transactions import acquire_transaction_lock, commit_with_conflicts
 from app.models import (
     Language,
     LanguageCreate,
@@ -16,6 +17,8 @@ from app.models import (
 )
 
 router = APIRouter(prefix="/languages", tags=["languages"])
+
+LANGUAGE_LOCK = "heritage:languages"
 
 
 def _unset_other_defaults(session: SessionDep, keep_id: uuid.UUID | None) -> None:
@@ -54,6 +57,7 @@ def create_language(
     """
     Thêm ngôn ngữ. **Admin**.
     """
+    acquire_transaction_lock(session, LANGUAGE_LOCK)
     if session.exec(select(Language).where(Language.code == language_in.code)).first():
         raise HTTPException(status_code=409, detail="Language code already exists")
     if language_in.is_default and not language_in.is_active:
@@ -62,7 +66,7 @@ def create_language(
         _unset_other_defaults(session, keep_id=None)
     language = Language.model_validate(language_in)
     session.add(language)
-    session.commit()
+    commit_with_conflicts(session, "ix_language_code", "uq_language_default")
     session.refresh(language)
     return language
 
@@ -82,6 +86,7 @@ def update_language(
     """
     Sửa / bật-tắt / đặt ngôn ngữ mặc định. **Admin**.
     """
+    acquire_transaction_lock(session, LANGUAGE_LOCK)
     language = session.get(Language, language_id)
     if not language:
         raise HTTPException(status_code=404, detail="Language not found")
@@ -105,18 +110,19 @@ def update_language(
         )
     language.sqlmodel_update(data)
     session.add(language)
-    session.commit()
+    commit_with_conflicts(session, "ix_language_code", "uq_language_default")
     session.refresh(language)
     return language
 
 
-@router.delete("/{language_id}", responses=errors(400, 401, 403, 404))
+@router.delete("/{language_id}", responses=errors(400, 401, 403, 404, 409))
 def delete_language(
     session: SessionDep, _admin: AdminUser, language_id: uuid.UUID
 ) -> Message:
     """
     Tắt ngôn ngữ (xóa mềm: is_active = false). **Admin**.
     """
+    acquire_transaction_lock(session, LANGUAGE_LOCK)
     language = session.get(Language, language_id)
     if not language:
         raise HTTPException(status_code=404, detail="Language not found")
