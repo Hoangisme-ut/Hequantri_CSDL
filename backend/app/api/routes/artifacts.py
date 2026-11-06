@@ -8,13 +8,17 @@ from sqlmodel import col, func, select
 from app import crud
 from app.api.deps import AdminUser, OptionalUser, SessionDep, is_admin
 from app.api.docs import errors
+from app.core.transactions import (
+    ASSIGNMENT_LOCK,
+    acquire_transaction_lock,
+    commit_with_conflicts,
+)
 from app.models import (
     Artifact,
     ArtifactContentPublic,
     ArtifactCreate,
     ArtifactPublic,
     ArtifactSummariesPublic,
-    ArtifactSummary,
     ArtifactTranslation,
     ArtifactTranslationBase,
     ArtifactTranslationPublic,
@@ -75,8 +79,8 @@ def read_artifacts(
     site_id: uuid.UUID | None = None,
     lang: str | None = Query(default=None, description="Mã ngôn ngữ: vi, en..."),
     q: str | None = Query(default=None, description="Tìm theo mã hiện vật"),
-    skip: int = 0,
-    limit: int = Query(default=100, le=200),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=200),
     include_inactive: bool = False,
 ) -> Any:
     """
@@ -108,26 +112,12 @@ def read_artifacts(
     ).all()
 
     language = crud.resolve_language(session=session, lang_code=lang, user=current_user)
-    summaries = []
-    for a in artifacts:
-        translation, used_lang = crud.pick_translation(
-            session=session, artifact_id=a.id, language=language
-        )
-        summaries.append(
-            ArtifactSummary.model_validate(
-                a,
-                update={
-                    "title": translation.title if translation else None,
-                    "language_code": used_lang.code if used_lang else None,
-                    "is_fallback": bool(
-                        translation
-                        and language is not None
-                        and translation.language_id != language.id
-                    ),
-                },
-            )
-        )
-    return ArtifactSummariesPublic(data=summaries, count=count)
+    summaries = crud.build_artifact_summaries(
+        session=session, artifacts=artifacts, language=language
+    )
+    return ArtifactSummariesPublic(
+        data=[summaries[a.id] for a in artifacts], count=count
+    )
 
 
 @router.get(
@@ -163,7 +153,7 @@ def create_artifact(
     _check_code_unique(session, artifact_in.site_id, artifact_in.code)
     artifact = Artifact.model_validate(artifact_in)
     session.add(artifact)
-    session.commit()
+    commit_with_conflicts(session, "uq_artifact_site_code")
     session.refresh(artifact)
     return artifact
 
@@ -186,10 +176,14 @@ def update_artifact(
     Đổi `site_id`: Site mới phải tồn tại và đang bật (409 nếu bị ẩn); nếu hiện vật
     đang gắn Beacon thì phải gỡ Beacon trước (409) để Beacon và hiện vật luôn cùng Site.
     """
+    acquire_transaction_lock(session, ASSIGNMENT_LOCK)
     artifact = session.get(Artifact, artifact_id)
     if not artifact:
         raise HTTPException(status_code=404, detail="Artifact not found")
     data = artifact_in.model_dump(exclude_unset=True)
+    for field in ("site_id", "code", "is_active"):
+        if field in data and data[field] is None:
+            raise HTTPException(status_code=422, detail=f"{field} cannot be null")
     new_site_id = data.get("site_id", artifact.site_id)
     new_code = data.get("code", artifact.code)
     if "site_id" in data and new_site_id != artifact.site_id:
@@ -207,7 +201,7 @@ def update_artifact(
     artifact.sqlmodel_update(data)
     crud.touch_updated_at(artifact)
     session.add(artifact)
-    session.commit()
+    commit_with_conflicts(session, "uq_artifact_site_code")
     session.refresh(artifact)
     return artifact
 
@@ -253,7 +247,7 @@ def read_translations(
 @router.put(
     "/{artifact_id}/translations/{language_id}",
     response_model=ArtifactTranslationPublic,
-    responses=errors(401, 403, 404),
+    responses=errors(401, 403, 404, 409),
 )
 def upsert_translation(
     *,
@@ -285,7 +279,7 @@ def upsert_translation(
             update={"artifact_id": artifact_id, "language_id": language_id},
         )
     session.add(translation)
-    session.commit()
+    commit_with_conflicts(session, "uq_artifact_language")
     session.refresh(translation)
     return translation
 

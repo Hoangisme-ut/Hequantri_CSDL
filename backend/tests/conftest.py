@@ -1,8 +1,14 @@
+# ruff: noqa: E402 -- verify test DB identity before application engine imports
 from collections.abc import Generator
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, delete
+
+from tests.db_safety import activate_test_database, verify_identity
+
+# Must run before app.core.db/app.main (and therefore their engine) are imported.
+TEST_DATABASE_TOKEN = activate_test_database()
 
 from app.core.config import settings
 from app.core.db import engine, init_db
@@ -14,9 +20,11 @@ from tests.utils.utils import get_superuser_token_headers
 
 @pytest.fixture(scope="session", autouse=True)
 def db() -> Generator[Session]:
+    verify_identity(engine, TEST_DATABASE_TOKEN)
     with Session(engine) as session:
         init_db(session)
         yield session
+        verify_identity(engine, TEST_DATABASE_TOKEN)
         statement = delete(Item)
         session.execute(statement)
         statement = delete(User)
