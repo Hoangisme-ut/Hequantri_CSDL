@@ -12,7 +12,9 @@ from app.core.transactions import acquire_transaction_lock, commit_with_conflict
 @pytest.mark.parametrize("result", [-1, -2, -3, -999])
 def test_failed_lock_rolls_back(result):
     session = MagicMock()
-    session.execute.return_value.scalar_one.return_value = result
+    session.connection.return_value.execute.return_value.scalar_one.return_value = (
+        result
+    )
     with pytest.raises(HTTPException) as error:
         acquire_transaction_lock(session, "test")
     assert error.value.status_code == 409
@@ -21,7 +23,7 @@ def test_failed_lock_rolls_back(result):
 
 def test_database_error_is_not_hidden():
     session = MagicMock()
-    session.execute.side_effect = RuntimeError("DB failure")
+    session.connection.return_value.execute.side_effect = RuntimeError("DB failure")
     with pytest.raises(RuntimeError, match="DB failure"):
         acquire_transaction_lock(session, "test")
     session.rollback.assert_called_once()

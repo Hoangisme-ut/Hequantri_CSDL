@@ -16,14 +16,18 @@ def acquire_transaction_lock(
     # Transaction ownership releases the lock on commit/rollback, including when
     # request dependencies close the session after validation errors.
     try:
-        result = session.execute(
-            text(
-                "DECLARE @result int; EXEC @result = sys.sp_getapplock "
-                "@Resource=:resource, @LockMode='Exclusive', "
-                "@LockOwner='Transaction', @LockTimeout=:timeout; SELECT @result"
-            ),
-            {"resource": resource, "timeout": timeout_ms},
-        ).scalar_one()
+        result = (
+            session.connection()
+            .execute(
+                text(
+                    "DECLARE @result int; EXEC @result = sys.sp_getapplock "
+                    "@Resource=:resource, @LockMode='Exclusive', "
+                    "@LockOwner='Transaction', @LockTimeout=:timeout; SELECT @result"
+                ),
+                {"resource": resource, "timeout": timeout_ms},
+            )
+            .scalar_one()
+        )
     except Exception:
         session.rollback()
         raise
