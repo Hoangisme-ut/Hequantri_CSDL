@@ -10,6 +10,7 @@ from app.models import (
     ArtifactContentPublic,
     ArtifactSummary,
     ArtifactTranslation,
+    FeedbackStatus,
     Item,
     ItemCreate,
     Language,
@@ -272,3 +273,25 @@ def find_recent_visit(
         )
         .order_by(col(VisitLog.visited_at).desc())
     ).first()
+
+
+# =============================================================================
+# [Smart Heritage] Feedback - trạng thái theo ERD: pending / approved / hidden
+#  - Tạo mới: comment rỗng -> approved (không có gì để duyệt); có comment -> pending.
+#  - Sửa comment: approved -> pending (phải duyệt lại); hidden giữ nguyên hidden.
+#    Chỉ sửa rating (comment không đổi) thì giữ nguyên trạng thái.
+#  - Khách chỉ thấy comment khi status = approved.
+#  - Dashboard tính rating từ mọi bản ghi trừ hidden.
+# =============================================================================
+def initial_feedback_status(comment: str | None) -> FeedbackStatus:
+    return FeedbackStatus.PENDING if comment else FeedbackStatus.APPROVED
+
+
+def status_after_feedback_edit(
+    *, current_status: str, old_comment: str | None, new_comment: str | None
+) -> str:
+    if current_status == FeedbackStatus.HIDDEN:
+        return FeedbackStatus.HIDDEN.value
+    if new_comment == old_comment:
+        return current_status
+    return initial_feedback_status(new_comment).value
