@@ -8,6 +8,7 @@ from sqlmodel import col, func, select
 from app import crud
 from app.api.deps import AdminUser, OptionalUser, SessionDep, is_admin
 from app.api.docs import errors
+from app.core.transactions import commit_with_conflicts
 from app.models import (
     Artifact,
     ArtifactContentPublic,
@@ -163,7 +164,7 @@ def create_artifact(
     _check_code_unique(session, artifact_in.site_id, artifact_in.code)
     artifact = Artifact.model_validate(artifact_in)
     session.add(artifact)
-    session.commit()
+    commit_with_conflicts(session, "uq_artifact_site_code")
     session.refresh(artifact)
     return artifact
 
@@ -210,7 +211,7 @@ def update_artifact(
     artifact.sqlmodel_update(data)
     crud.touch_updated_at(artifact)
     session.add(artifact)
-    session.commit()
+    commit_with_conflicts(session, "uq_artifact_site_code")
     session.refresh(artifact)
     return artifact
 
@@ -256,7 +257,7 @@ def read_translations(
 @router.put(
     "/{artifact_id}/translations/{language_id}",
     response_model=ArtifactTranslationPublic,
-    responses=errors(401, 403, 404),
+    responses=errors(401, 403, 404, 409),
 )
 def upsert_translation(
     *,
@@ -288,7 +289,7 @@ def upsert_translation(
             update={"artifact_id": artifact_id, "language_id": language_id},
         )
     session.add(translation)
-    session.commit()
+    commit_with_conflicts(session, "uq_artifact_language")
     session.refresh(translation)
     return translation
 

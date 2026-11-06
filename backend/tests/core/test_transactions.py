@@ -2,10 +2,11 @@ from unittest.mock import MagicMock
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
 from app.core.db import engine
-from app.core.transactions import acquire_transaction_lock
+from app.core.transactions import acquire_transaction_lock, commit_with_conflicts
 
 
 @pytest.mark.parametrize("result", [-1, -2, -3, -999])
@@ -36,3 +37,21 @@ def test_sql_server_timeout_and_release():
         owner.rollback()
         acquire_transaction_lock(contender, "test:lock-timeout", timeout_ms=20)
         contender.commit()
+
+
+@pytest.mark.parametrize(
+    "code,name,conflict",
+    [
+        (2601, "expected", True),
+        (2627, "expected", True),
+        (547, "expected", False),
+        (2627, "other", False),
+    ],
+)
+def test_only_known_duplicate_constraints_are_conflicts(code, name, conflict):
+    session = MagicMock()
+    original = IntegrityError("INSERT", {}, Exception(code, f"constraint '{name}'"))
+    session.commit.side_effect = original
+    with pytest.raises(HTTPException if conflict else IntegrityError):
+        commit_with_conflicts(session, "expected")
+    session.rollback.assert_called_once()
