@@ -5,6 +5,10 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
+# Low-volume admin assignment writes take one lock before reading content rows.
+# A shared lock order across Artifact and Beacon prevents move/assign races.
+ASSIGNMENT_LOCK = "heritage:assignments"
+
 
 def acquire_transaction_lock(
     session: Session, resource: str, *, timeout_ms: int = 5000

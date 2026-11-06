@@ -8,7 +8,11 @@ from sqlmodel import col, func, select
 from app import crud
 from app.api.deps import AdminUser, OptionalUser, SessionDep, is_admin
 from app.api.docs import errors
-from app.core.transactions import commit_with_conflicts
+from app.core.transactions import (
+    ASSIGNMENT_LOCK,
+    acquire_transaction_lock,
+    commit_with_conflicts,
+)
 from app.models import (
     Artifact,
     ArtifactContentPublic,
@@ -187,6 +191,7 @@ def update_artifact(
     Đổi `site_id`: Site mới phải tồn tại và đang bật (409 nếu bị ẩn); nếu hiện vật
     đang gắn Beacon thì phải gỡ Beacon trước (409) để Beacon và hiện vật luôn cùng Site.
     """
+    acquire_transaction_lock(session, ASSIGNMENT_LOCK)
     artifact = session.get(Artifact, artifact_id)
     if not artifact:
         raise HTTPException(status_code=404, detail="Artifact not found")

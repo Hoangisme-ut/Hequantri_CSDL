@@ -7,6 +7,11 @@ from sqlmodel import col, func, select
 from app import crud
 from app.api.deps import AdminUser, SessionDep, VisitorUser
 from app.api.docs import errors
+from app.core.transactions import (
+    ASSIGNMENT_LOCK,
+    acquire_transaction_lock,
+    commit_with_conflicts,
+)
 from app.models import (
     Artifact,
     Beacon,
@@ -192,12 +197,13 @@ def create_beacon(
     """
     Đăng ký beacon (và có thể gán hiện vật luôn). **Admin**.
     """
+    acquire_transaction_lock(session, ASSIGNMENT_LOCK)
     puuid = beacon_in.proximity_uuid.upper()
     _validate_links(session, beacon_in.site_id, beacon_in.artifact_id)
     _check_identity_unique(session, puuid, beacon_in.major, beacon_in.minor)
     beacon = Beacon.model_validate(beacon_in, update={"proximity_uuid": puuid})
     session.add(beacon)
-    session.commit()
+    commit_with_conflicts(session, "uq_beacon_identity", "uq_beacon_artifact_id")
     session.refresh(beacon)
     return beacon
 
@@ -217,6 +223,7 @@ def update_beacon(
     """
     Cấu hình beacon / gán hoặc gỡ hiện vật (`artifact_id: null` để gỡ). **Admin**.
     """
+    acquire_transaction_lock(session, ASSIGNMENT_LOCK)
     beacon = session.get(Beacon, beacon_id)
     if not beacon:
         raise HTTPException(status_code=404, detail="Beacon not found")
@@ -251,18 +258,19 @@ def update_beacon(
     beacon.sqlmodel_update(data)
     beacon.updated_at = get_datetime_utc()
     session.add(beacon)
-    session.commit()
+    commit_with_conflicts(session, "uq_beacon_identity", "uq_beacon_artifact_id")
     session.refresh(beacon)
     return beacon
 
 
-@router.delete("/{beacon_id}", responses=errors(401, 403, 404))
+@router.delete("/{beacon_id}", responses=errors(401, 403, 404, 409))
 def delete_beacon(
     session: SessionDep, _admin: AdminUser, beacon_id: uuid.UUID
 ) -> Message:
     """
     Tắt beacon (xóa mềm) và gỡ khỏi hiện vật. **Admin**.
     """
+    acquire_transaction_lock(session, ASSIGNMENT_LOCK)
     beacon = session.get(Beacon, beacon_id)
     if not beacon:
         raise HTTPException(status_code=404, detail="Beacon not found")
