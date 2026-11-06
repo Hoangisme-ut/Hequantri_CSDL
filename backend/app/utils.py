@@ -16,6 +16,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+class EmailDeliveryError(RuntimeError):
+    """Sanitized error for callers that explicitly check delivery."""
+
+
 @dataclass
 class EmailData:
     html_content: str
@@ -36,7 +40,11 @@ def send_email(
     email_to: str,
     subject: str = "",
     html_content: str = "",
+    raise_on_failure: bool = False,
 ) -> None:
+    # Opt-in checks preserve behavior of other callers (such as /utils/test-email).
+    if raise_on_failure and not settings.emails_enabled:
+        raise EmailDeliveryError("Email service is not configured")
     assert settings.emails_enabled, "no provided configuration for email variables"
     assert settings.EMAILS_FROM_EMAIL  # For type checker
     message = emails.message.Message(
@@ -53,8 +61,15 @@ def send_email(
         smtp_options["user"] = settings.SMTP_USER
     if settings.SMTP_PASSWORD:
         smtp_options["password"] = settings.SMTP_PASSWORD
-    response = message.send(to=email_to, smtp=smtp_options)
-    logger.info(f"send email result: {response}")
+    try:
+        response = message.send(to=email_to, smtp=smtp_options)
+    except Exception:
+        if raise_on_failure:
+            raise EmailDeliveryError("Email delivery failed") from None
+        raise
+    if raise_on_failure and not response.success:
+        raise EmailDeliveryError("Email delivery failed")
+    logger.info("Email transport status: %s", response.status_code)
 
 
 def generate_test_email(email_to: str) -> EmailData:

@@ -1,3 +1,4 @@
+import logging
 import uuid
 from typing import Any
 
@@ -26,9 +27,10 @@ from app.models import (
     UserUpdate,
     UserUpdateMe,
 )
-from app.utils import generate_new_account_email, send_email
+from app.utils import EmailDeliveryError, generate_new_account_email, send_email
 
 router = APIRouter(prefix="/users", tags=["users"])
+logger = logging.getLogger(__name__)
 
 
 @router.get(
@@ -76,11 +78,17 @@ def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
         email_data = generate_new_account_email(
             email_to=user_in.email, username=user_in.email, password=user_in.password
         )
-        send_email(
-            email_to=user_in.email,
-            subject=email_data.subject,
-            html_content=email_data.html_content,
-        )
+        try:
+            send_email(
+                email_to=user_in.email,
+                subject=email_data.subject,
+                html_content=email_data.html_content,
+                raise_on_failure=True,
+            )
+        except EmailDeliveryError:
+            # The account is already committed; notification failure is not a
+            # failed creation and must not encourage a duplicate client retry.
+            logger.warning("New account email delivery failed after user creation")
     return user
 
 

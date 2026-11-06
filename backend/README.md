@@ -218,6 +218,7 @@ Once you are done, regenerate the templates used by the application:
 ```console
 $ bun run email:export
 ```
+
 ## User management and Heritage roles
 
 User management remains restricted to `is_superuser=true`. A user with the
@@ -227,6 +228,13 @@ continue to synchronize the role to `admin`/`visitor`; conflicting explicit
 assignments return 409 before any mutation. Null roles retain the existing
 fallback (superuser -> admin, other users -> visitor). Existing inconsistent
 records are not silently migrated by profile/password updates.
+
+Password recovery preserves HTTP 200 and the same generic message for both
+registered and unknown addresses, including SMTP failures or missing SMTP
+configuration. Delivery failures are logged without recipient/token details;
+200 is not a delivery receipt. Failed welcome-email delivery does not undo an
+already-created user. Delivery checks are enabled for these two flows without
+changing other email endpoints. No automatic mail retry/queue is introduced.
 
 # Media metadata API
 
