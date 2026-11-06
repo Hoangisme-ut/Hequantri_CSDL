@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as ForbiddenRouteImport } from './routes/forbidden'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PreviewRouteImport } from './routes/preview'
 import { Route as RecoverPasswordRouteImport } from './routes/recover-password'
@@ -32,6 +33,11 @@ import { Route as LayoutSitesSiteIdRouteImport } from './routes/_layout/sites.$s
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForbiddenRoute = ForbiddenRouteImport.update({
+  id: '/forbidden',
+  path: '/forbidden',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -132,6 +138,7 @@ const LayoutSitesSiteIdRoute = LayoutSitesSiteIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
+  '/forbidden': typeof ForbiddenRoute
   '/login': typeof LoginRoute
   '/preview': typeof PreviewRouteWithChildren
   '/recover-password': typeof RecoverPasswordRoute
@@ -152,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/sites/$siteId': typeof LayoutSitesSiteIdRoute
 }
 export interface FileRoutesByTo {
+  '/forbidden': typeof ForbiddenRoute
   '/login': typeof LoginRoute
   '/recover-password': typeof RecoverPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -174,6 +182,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_layout': typeof LayoutRouteWithChildren
+  '/forbidden': typeof ForbiddenRoute
   '/login': typeof LoginRoute
   '/preview': typeof PreviewRouteWithChildren
   '/recover-password': typeof RecoverPasswordRoute
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/forbidden'
     | '/login'
     | '/preview'
     | '/recover-password'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/sites/$siteId'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/forbidden'
     | '/login'
     | '/recover-password'
     | '/reset-password'
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_layout'
+    | '/forbidden'
     | '/login'
     | '/preview'
     | '/recover-password'
@@ -262,6 +274,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
+  ForbiddenRoute: typeof ForbiddenRoute
   LoginRoute: typeof LoginRoute
   PreviewRoute: typeof PreviewRouteWithChildren
   RecoverPasswordRoute: typeof RecoverPasswordRoute
@@ -276,6 +289,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof LayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forbidden': {
+      id: '/forbidden'
+      path: '/forbidden'
+      fullPath: '/forbidden'
+      preLoaderRoute: typeof ForbiddenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -472,6 +492,7 @@ const PreviewRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
+  ForbiddenRoute: ForbiddenRoute,
   LoginRoute: LoginRoute,
   PreviewRoute: PreviewRouteWithChildren,
   RecoverPasswordRoute: RecoverPasswordRoute,

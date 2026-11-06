@@ -9,6 +9,9 @@ import {
   MessageSquare,
   Search,
   UsersRound,
+  ChevronLeft,
+  ChevronRight,
+  Star,
 } from "lucide-react"
 import { useState } from "react"
 
@@ -25,10 +28,28 @@ import {
   Table,
   TableBody,
   TableHead,
+  TableCell,
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
 import { BeaconManagement } from "@/components/Beacons/BeaconManagement"
+
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
+
+import type {
+  FeedbackReviewPublic,
+  FeedbackStatus,
+} from "@/client"
+
+import {
+  feedbackKeys,
+  feedbackService,
+} from "@/services/feedback"
+
 
 function ScreenCard({
   title,
@@ -170,92 +191,510 @@ export function AnalyticsScreen() {
   )
 }
 
+
+type ModerationStatus = "approved" | "rejected"
+
+const PAGE_SIZE = 10
+
+function formatFeedbackDate(value?: string | null) {
+  if (!value) return "—"
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return "—"
+
+  return date.toLocaleString("vi-VN", {
+    dateStyle: "short",
+    timeStyle: "short",
+  })
+}
+
+function getStatusLabel(status?: string | null) {
+  switch (status) {
+    case "pending":
+      return "Pending"
+    case "approved":
+      return "Approved"
+    case "rejected":
+      return "Rejected"
+    default:
+      return "Unknown"
+  }
+}
+
+function FeedbackStatusBadge({
+  status,
+}: {
+  status?: string | null
+}) {
+  return (
+    <Badge
+      variant={
+        status === "approved"
+          ? "default"
+          : status === "rejected"
+            ? "destructive"
+            : "secondary"
+      }
+    >
+      {getStatusLabel(status)}
+    </Badge>
+  )
+}
+
 export function FeedbackScreen() {
+  const queryClient = useQueryClient()
+
+  const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | FeedbackStatus
+  >("all")
+  const [page, setPage] = useState(0)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  const filters = {
+    q: search.trim() || undefined,
+    status:
+      statusFilter === "all" ? undefined : statusFilter,
+    skip: page * PAGE_SIZE,
+    limit: PAGE_SIZE,
+  }
+
+  // Lấy danh sách phản hồi
+  const feedbackQuery = useQuery({
+    queryKey: feedbackKeys.list(filters),
+    queryFn: () => feedbackService.list(filters),
+  })
+
+  // Duyệt hoặc từ chối phản hồi
+  const moderationMutation = useMutation({
+    mutationFn: ({
+      id,
+      status,
+    }: {
+      id: string
+      status: ModerationStatus
+    }) =>
+      feedbackService.updateStatus(id, { status }),
+
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: feedbackKeys.all,
+      })
+    },
+  })
+
+  const feedbacks = feedbackQuery.data?.data ?? []
+  const totalCount = feedbackQuery.data?.count ?? 0
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+
+  const selectedFeedback: FeedbackReviewPublic | null =
+    feedbacks.find((item) => item.id === selectedId) ??
+    feedbacks[0] ??
+    null
+
+  const pendingCount = feedbacks.filter(
+    (item) => item.status === "pending",
+  ).length
+
+  const approvedCount = feedbacks.filter(
+    (item) => item.status === "approved",
+  ).length
+
+  const rejectedCount = feedbacks.filter(
+    (item) => item.status === "rejected",
+  ).length
+
+  function handleFilterChange(value: "all" | FeedbackStatus) {
+    setStatusFilter(value)
+    setPage(0)
+    setSelectedId(null)
+    moderationMutation.reset()
+  }
+
+  function handleSearchChange(value: string) {
+    setSearch(value)
+    setPage(0)
+    setSelectedId(null)
+  }
+
+  function handleModeration(status: ModerationStatus) {
+    if (!selectedFeedback) return
+
+    moderationMutation.mutate({
+      id: selectedFeedback.id,
+      status,
+    })
+  }
+
   return (
     <div className="flex flex-col gap-4 md:gap-5">
+      {/* Search and filters */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[210px] flex-1 sm:max-w-xs">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+
           <Input
             className="pl-9"
             placeholder="Search feedback..."
             aria-label="Search feedback"
-            disabled
+            value={search}
+            onChange={(event) =>
+              handleSearchChange(event.target.value)
+            }
           />
         </div>
-        <DisabledFilter label="All sites" />
+
         <div className="flex flex-wrap gap-1 sm:ml-auto">
-          {["All", "Pending", "Approved", "Rejected"].map((label) => (
-            <Button key={label} variant="outline" size="sm" disabled>
+          {(
+            [
+              ["all", "All"],
+              ["pending", "Pending"],
+              ["approved", "Approved"],
+              ["rejected", "Rejected"],
+            ] as const
+          ).map(([value, label]) => (
+            <Button
+              key={value}
+              variant={
+                statusFilter === value ? "default" : "outline"
+              }
+              size="sm"
+              onClick={() => handleFilterChange(value)}
+            >
               {label}
             </Button>
           ))}
         </div>
       </div>
+
+      {/* Summary */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Badge variant="secondary">— Pending</Badge>
-        <Badge variant="secondary">— Approved</Badge>
-        <Badge variant="secondary">— Rejected</Badge>
-        <span className="text-muted-foreground">
-          No submission data connected
+        <Badge variant="secondary">
+          {pendingCount} Pending
+        </Badge>
+
+        <Badge variant="secondary">
+          {approvedCount} Approved
+        </Badge>
+
+        <Badge variant="secondary">
+          {rejectedCount} Rejected
+        </Badge>
+
+        <span className="text-xs text-muted-foreground">
+          Showing {feedbacks.length} of {totalCount} matching
+          submissions on this page
         </span>
       </div>
+
+      {/* Main content */}
       <div className="grid items-start gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+        {/* Feedback table */}
         <ScreenCard
           title="Visitor Feedback"
           icon={MessageSquare}
-          badge="API pending"
+          badge={`${totalCount} submissions`}
         >
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Visitor</TableHead>
-                  <TableHead>Artifact / Site</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody />
-            </Table>
-          </div>
-          <EmptyState
-            title="No feedback submissions"
-            description="Submissions will appear here after a feedback data source is confirmed."
-            icon={MessageSquare}
-          />
+          {feedbackQuery.isPending ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              Loading feedback...
+            </div>
+          ) : feedbackQuery.isError ? (
+            <EmptyState
+              title="Unable to load feedback"
+              description={feedbackQuery.error.message}
+              icon={CircleAlert}
+            />
+          ) : feedbacks.length === 0 ? (
+            <EmptyState
+              title="No feedback submissions"
+              description="There are no feedback records matching your search or filter."
+              icon={MessageSquare}
+            />
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Visitor</TableHead>
+                      <TableHead>Artifact / Site</TableHead>
+                      <TableHead>Rating</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+
+                  <TableBody>
+                    {feedbacks.map((feedback) => (
+                      <TableRow
+                        key={feedback.id}
+                        onClick={() =>
+                          setSelectedId(feedback.id)
+                        }
+                        className={`cursor-pointer ${
+                          selectedFeedback?.id === feedback.id
+                            ? "bg-muted"
+                            : ""
+                        }`}
+                      >
+                        <TableCell>
+                          <div className="min-w-[130px]">
+                            <p className="font-medium">
+                              {feedback.visitor_name ||
+                                "Anonymous"}
+                            </p>
+                            <p className="max-w-[160px] truncate text-xs text-muted-foreground">
+                              {feedback.visitor_email}
+                            </p>
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          <div className="min-w-[130px]">
+                            <p className="font-medium">
+                              {feedback.artifact_title ||
+                                feedback.artifact_code}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {feedback.site_name}
+                            </p>
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          <span className="whitespace-nowrap">
+                            {feedback.rating}/5
+                          </span>
+                        </TableCell>
+
+                        <TableCell>
+                          <FeedbackStatusBadge
+                            status={feedback.status}
+                          />
+                        </TableCell>
+
+                        <TableCell className="whitespace-nowrap text-xs">
+                          {formatFeedbackDate(
+                            feedback.created_at,
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination */}
+              <div className="flex items-center justify-between border-t border-border/70 px-4 py-3">
+                <span className="text-xs text-muted-foreground">
+                  Page {page + 1} of {Math.max(totalPages, 1)}
+                </span>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === 0 || feedbackQuery.isFetching}
+                    onClick={() => {
+                      setPage((current) => current - 1)
+                      setSelectedId(null)
+                    }}
+                  >
+                    <ChevronLeft />
+                    Previous
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      page + 1 >= totalPages ||
+                      feedbackQuery.isFetching
+                    }
+                    onClick={() => {
+                      setPage((current) => current + 1)
+                      setSelectedId(null)
+                    }}
+                  >
+                    Next
+                    <ChevronRight />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </ScreenCard>
+
+        {/* Detail and moderation */}
         <div className="flex flex-col gap-4">
           <ScreenCard
             title="Submission Detail"
             icon={FileText}
-            badge="No selection"
+            badge={
+              selectedFeedback ? "Selected" : "No selection"
+            }
           >
-            <EmptyState
-              title="Select a submission"
-              description="Choose a feedback record to review its details and moderation options."
-              icon={FileText}
-            />
+            {!selectedFeedback ? (
+              <EmptyState
+                title="Select a submission"
+                description="Choose a feedback record to review its details."
+                icon={FileText}
+              />
+            ) : (
+              <div className="flex flex-col gap-4 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="font-semibold">
+                      {selectedFeedback.visitor_name ||
+                        "Anonymous"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedFeedback.visitor_email}
+                    </p>
+                  </div>
+
+                  <FeedbackStatusBadge
+                    status={selectedFeedback.status}
+                  />
+                </div>
+
+                <div className="grid gap-3 rounded-lg border border-border/70 p-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Artifact
+                    </p>
+                    <p className="text-sm font-medium">
+                      {selectedFeedback.artifact_title ||
+                        selectedFeedback.artifact_code}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedFeedback.artifact_code}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Site
+                    </p>
+                    <p className="text-sm font-medium">
+                      {selectedFeedback.site_name}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Submitted at
+                    </p>
+                    <p className="text-sm">
+                      {formatFeedbackDate(
+                        selectedFeedback.created_at,
+                      )}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Feedback ID
+                    </p>
+                    <p className="break-all text-xs">
+                      {selectedFeedback.id}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">
+                    Rating
+                  </p>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: 5 }).map((_, index) => (
+                      <Star
+                        key={index}
+                        className={`size-5 ${
+                          index < selectedFeedback.rating
+                            ? "fill-yellow-400 text-yellow-400"
+                            : "text-muted-foreground"
+                        }`}
+                      />
+                    ))}
+
+                    <span className="ml-2 text-sm font-medium">
+                      {selectedFeedback.rating}/5
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">
+                    Comment
+                  </p>
+
+                  <div className="min-h-20 whitespace-pre-wrap rounded-lg bg-muted/50 p-3 text-sm">
+                    {selectedFeedback.comment ||
+                      "No comment provided."}
+                  </div>
+                </div>
+              </div>
+            )}
           </ScreenCard>
+
           <Card className="gap-0 border-border/70 bg-card shadow-sm">
             <CardHeader className="border-b border-border/70 px-5 py-3">
-              <CardTitle className="text-sm">Moderation actions</CardTitle>
+              <CardTitle className="text-sm">
+                Moderation actions
+              </CardTitle>
             </CardHeader>
+
             <CardContent className="flex flex-wrap gap-2 p-4">
-              <Input
-                className="min-w-[180px] flex-1"
-                placeholder="Rejection reason"
-                disabled
-              />
-              <Button disabled>Approve</Button>
-              <Button variant="destructive" disabled>
-                Reject
+              <Button
+                disabled={
+                  !selectedFeedback ||
+                  selectedFeedback.status !== "pending" ||
+                  moderationMutation.isPending
+                }
+                onClick={() => handleModeration("approved")}
+              >
+                {moderationMutation.isPending &&
+                moderationMutation.variables?.status === "approved"
+                  ? "Approving..."
+                  : "Approve"}
+              </Button>
+
+              <Button
+                variant="destructive"
+                disabled={
+                  !selectedFeedback ||
+                  selectedFeedback.status !== "pending" ||
+                  moderationMutation.isPending
+                }
+                onClick={() => handleModeration("rejected")}
+              >
+                {moderationMutation.isPending &&
+                moderationMutation.variables?.status === "rejected"
+                  ? "Rejecting..."
+                  : "Reject"}
               </Button>
             </CardContent>
           </Card>
+
+          {moderationMutation.isError && (
+            <p className="text-sm text-destructive">
+              {moderationMutation.error.message}
+            </p>
+          )}
+
+          {moderationMutation.isSuccess && (
+            <p className="text-sm text-muted-foreground">
+              Feedback status updated successfully.
+            </p>
+          )}
+
           <p className="text-xs text-muted-foreground">
-            Moderation actions are disabled until a feedback API is confirmed.
+            Only pending submissions can be approved or rejected.
+            Rejection reasons are not supported by the current API.
           </p>
         </div>
       </div>

@@ -30,7 +30,7 @@ api_router.include_router(favorites.router)
 api_router.include_router(feedbacks.router)
 api_router.include_router(visits.router)
 api_router.include_router(media.router)
-
+api_router.include_router(feedback.router)
 
 if settings.FASTAPI_ENV == "development":
     api_router.include_router(private.router)
