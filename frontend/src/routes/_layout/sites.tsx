@@ -5,11 +5,12 @@ import {
   Outlet,
   useRouterState,
 } from "@tanstack/react-router"
-import { MapPin, Pencil, Plus, Search, Trash2 } from "lucide-react"
+import { Languages, MapPin, Pencil, Plus, Search, Trash2 } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { EmptyState, ErrorState } from "@/components/Common/AdminPrimitives"
 import { CoverImageField } from "@/components/Sites/CoverImageField"
+import { SiteTranslationDialog } from "@/components/Sites/SiteTranslationDialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -269,7 +270,11 @@ function SiteManagement() {
   const [search, setSearch] = useState("")
   const [editing, setEditing] = useState<Site | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const sitesQuery = useQuery({ queryKey: siteKey, queryFn: sitesService.list })
+  const [translationSite, setTranslationSite] = useState<Site | null>(null)
+  const sitesQuery = useQuery({
+    queryKey: siteKey,
+    queryFn: () => sitesService.list(),
+  })
   const deactivateMutation = useMutation({
     mutationFn: sitesService.deactivate,
     onSuccess: async () => {
@@ -408,6 +413,14 @@ function SiteManagement() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            aria-label={`Translate ${site.name}`}
+                            onClick={() => setTranslationSite(site)}
+                          >
+                            <Languages />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             aria-label={`Edit ${site.name}`}
                             onClick={() => editSite(site)}
                           >
@@ -440,6 +453,13 @@ function SiteManagement() {
         site={editing}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
+      />
+      <SiteTranslationDialog
+        site={translationSite}
+        open={translationSite !== null}
+        onOpenChange={(open) => {
+          if (!open) setTranslationSite(null)
+        }}
       />
     </div>
   )

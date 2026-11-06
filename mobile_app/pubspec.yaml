@@ -38,6 +38,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   dchs_flutter_beacon: ^0.6.10
   http: ^1.6.0
+  shared_preferences: ^2.5.6
 
 dev_dependencies:
   flutter_test:
@@ -62,6 +63,7 @@ flutter:
     - assets/images/onboarding/welcome_temple_of_literature.jpg
     - assets/images/onboarding/welcome_hoi_an.jpg
     - assets/images/onboarding/welcome_thien_mu_pagoda.jpg
+    - assets/images/google/g-logo.png
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

@@ -45,7 +45,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('all Home and Profile beacon entries open Task 4', (
+  testWidgets('authenticated Home and Profile beacon entries open Task 4', (
     WidgetTester tester,
   ) async {
     final client = _FakeAuthHttpClient();
@@ -53,10 +53,18 @@ void main() {
     try {
       await openLogin(tester, client);
 
-      final demo = find.byKey(const Key('login-demo-preview'));
-      await tester.ensureVisible(demo);
+      await tester.enterText(
+        find.byKey(const Key('login-email')),
+        'visitor@example.com',
+      );
+      await tester.enterText(
+        find.byKey(const Key('login-password')),
+        'password123',
+      );
+      final submit = find.byKey(const Key('login-submit'));
+      await tester.ensureVisible(submit);
       await tester.pumpAndSettle();
-      await tester.tap(demo);
+      await tester.tap(submit);
       await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('Thuyết minh iBeacon'));
@@ -76,7 +84,7 @@ void main() {
       );
 
       expect(simulation.readToken, isNotNull);
-      expect(simulation.readToken!(), isNull);
+      expect(simulation.readToken!()?.accessToken, 'test-token');
 
       await goBackFromBeaconTools(tester);
 
@@ -108,7 +116,7 @@ void main() {
       await goBackFromBeaconTools(tester);
 
       expect(find.byType(ProfilePage), findsOneWidget);
-      expect(client.calls, 0);
+      expect(client.calls, 1);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
     }

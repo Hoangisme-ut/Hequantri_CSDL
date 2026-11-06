@@ -2,7 +2,7 @@
 
 import { type Client, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { artifactsCreateArtifactData, artifactsCreateArtifactErrors, artifactsCreateArtifactResponses, artifactsDeleteArtifactData, artifactsDeleteArtifactErrors, artifactsDeleteArtifactResponses, artifactsDeleteTranslationData, artifactsDeleteTranslationErrors, artifactsDeleteTranslationResponses, artifactsReadArtifactData, artifactsReadArtifactErrors, artifactsReadArtifactResponses, artifactsReadArtifactsData, artifactsReadArtifactsErrors, artifactsReadArtifactsResponses, artifactsReadTranslationsData, artifactsReadTranslationsErrors, artifactsReadTranslationsResponses, artifactsUpdateArtifactData, artifactsUpdateArtifactErrors, artifactsUpdateArtifactResponses, artifactsUpsertTranslationData, artifactsUpsertTranslationErrors, artifactsUpsertTranslationResponses, beaconsCreateBeaconData, beaconsCreateBeaconErrors, beaconsCreateBeaconResponses, beaconsDeleteBeaconData, beaconsDeleteBeaconErrors, beaconsDeleteBeaconResponses, beaconsReadBeaconData, beaconsReadBeaconErrors, beaconsReadBeaconResponses, beaconsReadBeaconsData, beaconsReadBeaconsErrors, beaconsReadBeaconsResponses, beaconsResolveBeaconData, beaconsResolveBeaconErrors, beaconsResolveBeaconResponses, beaconsUpdateBeaconData, beaconsUpdateBeaconErrors, beaconsUpdateBeaconResponses, itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, languagesCreateLanguageData, languagesCreateLanguageErrors, languagesCreateLanguageResponses, languagesDeleteLanguageData, languagesDeleteLanguageErrors, languagesDeleteLanguageResponses, languagesReadLanguagesData, languagesReadLanguagesResponses, languagesUpdateLanguageData, languagesUpdateLanguageErrors, languagesUpdateLanguageResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, mediaCreateMediaData, mediaCreateMediaErrors, mediaCreateMediaResponses, mediaDeleteMediaData, mediaDeleteMediaErrors, mediaDeleteMediaResponses, mediaReadMediaData, mediaReadMediaErrors, mediaReadMediaListData, mediaReadMediaListErrors, mediaReadMediaListResponses, mediaReadMediaResponses, mediaUpdateMediaData, mediaUpdateMediaErrors, mediaUpdateMediaResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, sitesCreateSiteData, sitesCreateSiteErrors, sitesCreateSiteResponses, sitesDeleteSiteData, sitesDeleteSiteErrors, sitesDeleteSiteResponses, sitesReadSiteData, sitesReadSiteErrors, sitesReadSiteResponses, sitesReadSitesData, sitesReadSitesErrors, sitesReadSitesResponses, sitesUpdateSiteData, sitesUpdateSiteErrors, sitesUpdateSiteResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
+import type { artifactsCreateArtifactData, artifactsCreateArtifactErrors, artifactsCreateArtifactResponses, artifactsDeleteArtifactData, artifactsDeleteArtifactErrors, artifactsDeleteArtifactResponses, artifactsDeleteTranslationData, artifactsDeleteTranslationErrors, artifactsDeleteTranslationResponses, artifactsReadArtifactData, artifactsReadArtifactErrors, artifactsReadArtifactResponses, artifactsReadArtifactsData, artifactsReadArtifactsErrors, artifactsReadArtifactsResponses, artifactsReadTranslationsData, artifactsReadTranslationsErrors, artifactsReadTranslationsResponses, artifactsUpdateArtifactData, artifactsUpdateArtifactErrors, artifactsUpdateArtifactResponses, artifactsUpsertTranslationData, artifactsUpsertTranslationErrors, artifactsUpsertTranslationResponses, beaconsCreateBeaconData, beaconsCreateBeaconErrors, beaconsCreateBeaconResponses, beaconsDeleteBeaconData, beaconsDeleteBeaconErrors, beaconsDeleteBeaconResponses, beaconsReadBeaconData, beaconsReadBeaconErrors, beaconsReadBeaconResponses, beaconsReadBeaconsData, beaconsReadBeaconsErrors, beaconsReadBeaconsResponses, beaconsResolveBeaconData, beaconsResolveBeaconErrors, beaconsResolveBeaconResponses, beaconsUpdateBeaconData, beaconsUpdateBeaconErrors, beaconsUpdateBeaconResponses, favoritesAddFavoriteData, favoritesAddFavoriteErrors, favoritesAddFavoriteResponses, favoritesReadMyFavoritesData, favoritesReadMyFavoritesErrors, favoritesReadMyFavoritesResponses, favoritesRemoveFavoriteData, favoritesRemoveFavoriteErrors, favoritesRemoveFavoriteResponses, feedbackReadFeedbacksData, feedbackReadFeedbacksErrors, feedbackReadFeedbacksResponses, feedbackUpdateFeedbackStatusData, feedbackUpdateFeedbackStatusErrors, feedbackUpdateFeedbackStatusResponses, itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, languagesCreateLanguageData, languagesCreateLanguageErrors, languagesCreateLanguageResponses, languagesDeleteLanguageData, languagesDeleteLanguageErrors, languagesDeleteLanguageResponses, languagesReadLanguagesData, languagesReadLanguagesResponses, languagesUpdateLanguageData, languagesUpdateLanguageErrors, languagesUpdateLanguageResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, mediaCreateMediaData, mediaCreateMediaErrors, mediaCreateMediaResponses, mediaDeleteMediaData, mediaDeleteMediaErrors, mediaDeleteMediaResponses, mediaReadMediaData, mediaReadMediaErrors, mediaReadMediaListData, mediaReadMediaListErrors, mediaReadMediaListResponses, mediaReadMediaResponses, mediaUpdateMediaData, mediaUpdateMediaErrors, mediaUpdateMediaResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, sitesCreateSiteData, sitesCreateSiteErrors, sitesCreateSiteResponses, sitesDeleteSiteData, sitesDeleteSiteErrors, sitesDeleteSiteResponses, sitesReadSiteData, sitesReadSiteErrors, sitesReadSiteResponses, sitesReadSitesData, sitesReadSitesErrors, sitesReadSitesResponses, sitesUpdateSiteData, sitesUpdateSiteErrors, sitesUpdateSiteResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses, visitsReadMyVisitsData, visitsReadMyVisitsErrors, visitsReadMyVisitsResponses, visitsRecordVisitData, visitsRecordVisitErrors, visitsRecordVisitResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -36,7 +36,7 @@ export class LoginService {
             }
         });
     }
-    
+
     /**
      * Test Token
      *
@@ -50,7 +50,7 @@ export class LoginService {
             ...options
         });
     }
-    
+
     /**
      * Recover Password
      *
@@ -63,7 +63,7 @@ export class LoginService {
             ...options
         });
     }
-    
+
     /**
      * Reset Password
      *
@@ -80,7 +80,7 @@ export class LoginService {
             }
         });
     }
-    
+
     /**
      * Recover Password Html Content
      *
@@ -110,7 +110,7 @@ export class UsersService {
             ...options
         });
     }
-    
+
     /**
      * Create User
      *
@@ -128,7 +128,7 @@ export class UsersService {
             }
         });
     }
-    
+
     /**
      * Delete User Me
      *
@@ -142,11 +142,11 @@ export class UsersService {
             ...options
         });
     }
-    
+
     /**
      * Read User Me
      *
-     * Get current user.
+     * Get current user with role information.
      */
     public static readUserMe<ThrowOnError extends boolean = true>(options?: Options<usersReadUserMeData, ThrowOnError>) {
         return (options?.client ?? client).get<usersReadUserMeResponses, unknown, ThrowOnError>({
@@ -156,7 +156,7 @@ export class UsersService {
             ...options
         });
     }
-    
+
     /**
      * Update User Me
      *
@@ -174,7 +174,7 @@ export class UsersService {
             }
         });
     }
-    
+
     /**
      * Update Password Me
      *
@@ -192,7 +192,7 @@ export class UsersService {
             }
         });
     }
-    
+
     /**
      * Register User
      *
@@ -209,7 +209,7 @@ export class UsersService {
             }
         });
     }
-    
+
     /**
      * Delete User
      *
@@ -223,7 +223,7 @@ export class UsersService {
             ...options
         });
     }
-    
+
     /**
      * Read User By Id
      *
@@ -237,7 +237,7 @@ export class UsersService {
             ...options
         });
     }
-    
+
     /**
      * Update User
      *
@@ -271,7 +271,7 @@ export class UtilsService {
             ...options
         });
     }
-    
+
     /**
      * Health Check
      */
@@ -298,7 +298,7 @@ export class ItemsService {
             ...options
         });
     }
-    
+
     /**
      * Create Item
      *
@@ -316,7 +316,7 @@ export class ItemsService {
             }
         });
     }
-    
+
     /**
      * Delete Item
      *
@@ -330,7 +330,7 @@ export class ItemsService {
             ...options
         });
     }
-    
+
     /**
      * Read Item
      *
@@ -344,7 +344,7 @@ export class ItemsService {
             ...options
         });
     }
-    
+
     /**
      * Update Item
      *
@@ -377,7 +377,7 @@ export class LanguagesService {
             ...options
         });
     }
-    
+
     /**
      * Create Language
      *
@@ -395,7 +395,7 @@ export class LanguagesService {
             }
         });
     }
-    
+
     /**
      * Delete Language
      *
@@ -409,7 +409,7 @@ export class LanguagesService {
             ...options
         });
     }
-    
+
     /**
      * Update Language
      *
@@ -444,7 +444,7 @@ export class SitesService {
             ...options
         });
     }
-    
+
     /**
      * Create Site
      *
@@ -462,7 +462,7 @@ export class SitesService {
             }
         });
     }
-    
+
     /**
      * Delete Site
      *
@@ -476,7 +476,7 @@ export class SitesService {
             ...options
         });
     }
-    
+
     /**
      * Read Site
      *
@@ -490,7 +490,7 @@ export class SitesService {
             ...options
         });
     }
-    
+
     /**
      * Update Site
      *
@@ -524,11 +524,12 @@ export class ArtifactsService {
             ...options
         });
     }
-    
+
     /**
      * Create Artifact
      *
      * Tạo hiện vật. **Admin**. Mã `code` không được trùng trong cùng di tích.
+     * Không tạo được hiện vật dưới Site đang bị ẩn (409).
      */
     public static createArtifact<ThrowOnError extends boolean = true>(options: Options<artifactsCreateArtifactData, ThrowOnError>) {
         return (options.client ?? client).post<artifactsCreateArtifactResponses, artifactsCreateArtifactErrors, ThrowOnError>({
@@ -542,7 +543,7 @@ export class ArtifactsService {
             }
         });
     }
-    
+
     /**
      * Delete Artifact
      *
@@ -556,7 +557,7 @@ export class ArtifactsService {
             ...options
         });
     }
-    
+
     /**
      * Read Artifact
      *
@@ -571,11 +572,14 @@ export class ArtifactsService {
             ...options
         });
     }
-    
+
     /**
      * Update Artifact
      *
      * Sửa hiện vật (cả bật lại `is_active`). **Admin**.
+     *
+     * Đổi `site_id`: Site mới phải tồn tại và đang bật (409 nếu bị ẩn); nếu hiện vật
+     * đang gắn Beacon thì phải gỡ Beacon trước (409) để Beacon và hiện vật luôn cùng Site.
      */
     public static updateArtifact<ThrowOnError extends boolean = true>(options: Options<artifactsUpdateArtifactData, ThrowOnError>) {
         return (options.client ?? client).put<artifactsUpdateArtifactResponses, artifactsUpdateArtifactErrors, ThrowOnError>({
@@ -589,7 +593,6 @@ export class ArtifactsService {
             }
         });
     }
-    
     /**
      * Read Translations
      *
@@ -603,7 +606,7 @@ export class ArtifactsService {
             ...options
         });
     }
-    
+
     /**
      * Delete Translation
      *
@@ -617,7 +620,7 @@ export class ArtifactsService {
             ...options
         });
     }
-    
+
     /**
      * Upsert Translation
      *
@@ -628,84 +631,6 @@ export class ArtifactsService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/artifacts/{artifact_id}/translations/{language_id}',
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        });
-    }
-}
-
-export class MediaService {
-    /**
-     * Read Media List
-     *
-     * List all media metadata for an artifact. Admin only.
-     */
-    public static readMediaList<ThrowOnError extends boolean = true>(options: Options<mediaReadMediaListData, ThrowOnError>) {
-        return (options.client ?? client).get<mediaReadMediaListResponses, mediaReadMediaListErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/artifacts/{artifact_id}/media',
-            ...options
-        });
-    }
-    
-    /**
-     * Create Media
-     *
-     * Save an HTTP(S) media URL and metadata; no file upload or download.
-     */
-    public static createMedia<ThrowOnError extends boolean = true>(options: Options<mediaCreateMediaData, ThrowOnError>) {
-        return (options.client ?? client).post<mediaCreateMediaResponses, mediaCreateMediaErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/artifacts/{artifact_id}/media',
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        });
-    }
-    
-    /**
-     * Delete Media
-     *
-     * Delete metadata only; the remote file is not modified.
-     */
-    public static deleteMedia<ThrowOnError extends boolean = true>(options: Options<mediaDeleteMediaData, ThrowOnError>) {
-        return (options.client ?? client).delete<mediaDeleteMediaResponses, mediaDeleteMediaErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/artifacts/{artifact_id}/media/{media_id}',
-            ...options
-        });
-    }
-    
-    /**
-     * Read Media
-     */
-    public static readMedia<ThrowOnError extends boolean = true>(options: Options<mediaReadMediaData, ThrowOnError>) {
-        return (options.client ?? client).get<mediaReadMediaResponses, mediaReadMediaErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/artifacts/{artifact_id}/media/{media_id}',
-            ...options
-        });
-    }
-    
-    /**
-     * Update Media
-     *
-     * Update supplied fields; null clears caption or language_id.
-     */
-    public static updateMedia<ThrowOnError extends boolean = true>(options: Options<mediaUpdateMediaData, ThrowOnError>) {
-        return (options.client ?? client).put<mediaUpdateMediaResponses, mediaUpdateMediaErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/artifacts/{artifact_id}/media/{media_id}',
             ...options,
             headers: {
                 'Content-Type': 'application/json',
@@ -731,7 +656,6 @@ export class BeaconsService {
             ...options
         });
     }
-    
     /**
      * Delete Beacon
      *
@@ -745,7 +669,6 @@ export class BeaconsService {
             ...options
         });
     }
-    
     /**
      * Read Beacon
      *
@@ -759,7 +682,7 @@ export class BeaconsService {
             ...options
         });
     }
-    
+
     /**
      * Update Beacon
      *
@@ -777,7 +700,7 @@ export class BeaconsService {
             }
         });
     }
-    
+
     /**
      * Read Beacons
      *
@@ -791,7 +714,7 @@ export class BeaconsService {
             ...options
         });
     }
-    
+
     /**
      * Create Beacon
      *
@@ -802,6 +725,221 @@ export class BeaconsService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/beacons/',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+}
+
+export class FavoritesService {
+    /**
+     * Read My Favorites
+     *
+     * Danh sách hiện vật yêu thích **của tôi** (mới nhất trước, có phân trang).
+     * **Visitor / Admin** (cần đăng nhập).
+     *
+     * Hiện vật đang bị ẩn (hoặc thuộc Site bị ẩn) không hiện trong danh sách;
+     * bản ghi yêu thích vẫn được giữ và hiện lại khi hiện vật được bật lại.
+     */
+    public static readMyFavorites<ThrowOnError extends boolean = true>(options?: Options<favoritesReadMyFavoritesData, ThrowOnError>) {
+        return (options?.client ?? client).get<favoritesReadMyFavoritesResponses, favoritesReadMyFavoritesErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/favorites/me',
+            ...options
+        });
+    }
+
+    /**
+     * Add Favorite
+     *
+     * Thêm hiện vật vào yêu thích. **Visitor / Admin** (cần đăng nhập).
+     *
+     * - Tạo mới: **201**.
+     * - Đã yêu thích rồi: **200**, trả lại bản ghi cũ, **không tạo trùng**.
+     */
+    public static addFavorite<ThrowOnError extends boolean = true>(options: Options<favoritesAddFavoriteData, ThrowOnError>) {
+        return (options.client ?? client).post<favoritesAddFavoriteResponses, favoritesAddFavoriteErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/favorites/',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+
+    /**
+     * Remove Favorite
+     *
+     * Bỏ hiện vật khỏi yêu thích **của tôi**. **Visitor / Admin** (cần đăng nhập).
+     * Chỉ xóa được bản ghi của chính mình.
+     */
+    public static removeFavorite<ThrowOnError extends boolean = true>(options: Options<favoritesRemoveFavoriteData, ThrowOnError>) {
+        return (options.client ?? client).delete<favoritesRemoveFavoriteResponses, favoritesRemoveFavoriteErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/favorites/{artifact_id}',
+            ...options
+        });
+    }
+}
+
+export class VisitsService {
+    /**
+     * Record Visit
+     *
+     * Ghi **một lượt xem** hiện vật cho người dùng đang đăng nhập.
+     * **Visitor / Admin** (cần đăng nhập).
+     *
+     * Quy tắc thống nhất với app (BR-05):
+     * - App chỉ gọi khi **hiện nội dung** hiện vật (vào vùng beacon mới),
+     * **không** gọi mỗi lần nhận tín hiệu BLE.
+     * - Server chặn thêm một lớp: cùng người dùng + cùng hiện vật trong
+     * **300 giây** chỉ tính 1 lượt: trả **200** với bản ghi cũ (không tạo mới);
+     * lượt mới trả **201**.
+     * - `beacon_id` (nếu gửi) phải là beacon đang gắn đúng hiện vật này.
+     * - `language_id` bỏ trống thì lấy ngôn ngữ ưa thích của người dùng / mặc định.
+     */
+    public static recordVisit<ThrowOnError extends boolean = true>(options: Options<visitsRecordVisitData, ThrowOnError>) {
+        return (options.client ?? client).post<visitsRecordVisitResponses, visitsRecordVisitErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/visits/',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+
+    /**
+     * Read My Visits
+     *
+     * Lịch sử tham quan **của tôi** (mới nhất trước, có phân trang).
+     * **Visitor / Admin** (cần đăng nhập). Chỉ trả dữ liệu của chính người gọi.
+     *
+     * Hiện vật đang bị ẩn (hoặc thuộc Site bị ẩn) không hiện trong lịch sử.
+     */
+    public static readMyVisits<ThrowOnError extends boolean = true>(options?: Options<visitsReadMyVisitsData, ThrowOnError>) {
+        return (options?.client ?? client).get<visitsReadMyVisitsResponses, visitsReadMyVisitsErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/visits/me',
+            ...options
+        });
+    }
+}
+
+export class MediaService {
+    /**
+     * Read Media List
+     *
+     * List all media metadata for an artifact. Admin only.
+     */
+    public static readMediaList<ThrowOnError extends boolean = true>(options: Options<mediaReadMediaListData, ThrowOnError>) {
+        return (options.client ?? client).get<mediaReadMediaListResponses, mediaReadMediaListErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}/media',
+            ...options
+        });
+    }
+
+    /**
+     * Create Media
+     *
+     * Save an HTTP(S) media URL and metadata; no file upload or download.
+     */
+    public static createMedia<ThrowOnError extends boolean = true>(options: Options<mediaCreateMediaData, ThrowOnError>) {
+        return (options.client ?? client).post<mediaCreateMediaResponses, mediaCreateMediaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}/media',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+
+    /**
+     * Delete Media
+     *
+     * Delete metadata only; the remote file is not modified.
+     */
+    public static deleteMedia<ThrowOnError extends boolean = true>(options: Options<mediaDeleteMediaData, ThrowOnError>) {
+        return (options.client ?? client).delete<mediaDeleteMediaResponses, mediaDeleteMediaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}/media/{media_id}',
+            ...options
+        });
+    }
+
+    /**
+     * Read Media
+     */
+    public static readMedia<ThrowOnError extends boolean = true>(options: Options<mediaReadMediaData, ThrowOnError>) {
+        return (options.client ?? client).get<mediaReadMediaResponses, mediaReadMediaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}/media/{media_id}',
+            ...options
+        });
+    }
+
+    /**
+     * Update Media
+     *
+     * Update supplied fields; null clears caption or language_id.
+     */
+    public static updateMedia<ThrowOnError extends boolean = true>(options: Options<mediaUpdateMediaData, ThrowOnError>) {
+        return (options.client ?? client).put<mediaUpdateMediaResponses, mediaUpdateMediaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/artifacts/{artifact_id}/media/{media_id}',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+}
+
+export class FeedbackService {
+    /**
+     * Read Feedbacks
+     *
+     * Retrieve feedback records with visitor and artifact information. **Admin**.
+     */
+    public static readFeedbacks<ThrowOnError extends boolean = true>(options?: Options<feedbackReadFeedbacksData, ThrowOnError>) {
+        return (options?.client ?? client).get<feedbackReadFeedbacksResponses, feedbackReadFeedbacksErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/feedback/',
+            ...options
+        });
+    }
+
+    /**
+     * Update Feedback Status
+     *
+     * Approve or reject a feedback record. **Admin**.
+     */
+    public static updateFeedbackStatus<ThrowOnError extends boolean = true>(options: Options<feedbackUpdateFeedbackStatusData, ThrowOnError>) {
+        return (options.client ?? client).patch<feedbackUpdateFeedbackStatusResponses, feedbackUpdateFeedbackStatusErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/feedback/{feedback_id}/status',
             ...options,
             headers: {
                 'Content-Type': 'application/json',

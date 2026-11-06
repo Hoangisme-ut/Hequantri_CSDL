@@ -79,4 +79,4 @@ app.add_middleware(
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 if FRONTEND_DIR.exists():
-    app.frontend("/", directory=FRONTEND_DIR)
+    app.frontend("/", directory=FRONTEND_DIR, fallback="index.html")

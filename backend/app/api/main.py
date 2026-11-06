@@ -33,6 +33,5 @@ api_router.include_router(feedback.router)
 api_router.include_router(visits.router)
 api_router.include_router(media.router)
 
-
 if settings.FASTAPI_ENV == "development":
     api_router.include_router(private.router)
