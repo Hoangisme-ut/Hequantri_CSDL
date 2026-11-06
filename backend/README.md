@@ -18,9 +18,7 @@ counts across groups must not be summed to infer a global unique count.
 `top-artifacts` accepts `limit` (1–100); `sites` accepts `skip` and `limit`
 (1–200). Each endpoint aggregates in one SQL query instead of loading events.
 
-## Requirements
-
-### Token compatibility and reset replay protection
+## Token compatibility and reset replay protection
 
 New JWTs carry `purpose=access` or `purpose=password_reset`. Legacy access
 tokens without purpose remain valid with a UUID subject and expiry. Legacy
@@ -34,6 +32,49 @@ changes do **not** revoke existing access sessions or other unused recovery
 links; access tokens expire under the existing policy. Global revocation or
 credential-version enforcement requires a separately approved session policy.
 Consumed-token records are retained; no automatic destructive cleanup is added.
+
+## Feedback API
+
+Authenticated Visitors/Admins can POST `/api/v1/feedback/` with `artifact_id`,
+`rating` (1–5), and optional `comment`. The server assigns ownership and
+`pending` status. The artifact and its site must be visible. GET `/feedback/me`
+returns only the caller's submissions. GET `/feedback/{id}` permits the owner
+or an Admin; other users receive 404 regardless of moderation status.
+
+Admin-only GET `/feedback/` supports `status`, `artifact_id`, `user_id`, `skip`,
+and `limit`. PATCH `/feedback/{id}/status` accepts `pending`, `approved`, or
+`rejected`. No public feedback feed is exposed. Migration `b2c3d4e5f6a7` adds
+rating/status CHECK constraints; invalid legacy rows stop the migration for
+review instead of being changed or deleted automatically.
+
+## SQL Server verification for phases 2, 4 and 5
+
+The normal test suite includes `test_backend_sqlserver_flow.py` (API calls
+equivalent to Admin/Visitor actions, Unicode round trips, resolve, favorites,
+visits, feedback, analytics) and `test_sqlserver_schema.py` (Alembic head,
+trusted CHECK constraints, unique/filtered indexes, NVARCHAR and foreign keys).
+These are backend integration tests, not browser or Flutter UI tests.
+
+Use the isolated test provisioning/identity checks below, migrate a **fresh**
+test database, then run `coverage run -m pytest -p no:cacheprovider tests` and
+`coverage report --fail-under=90`. Migration execution and schema inspection
+must target that verified test database, never the application database.
+
+Concurrency tests use separate SQL Server connections and widen the former
+read/write race windows. Visit deduplication keeps a rolling 300-second window
+with a transaction lock per user/artifact. Artifact updates and Beacon
+assignment writes share one bounded transaction lock; Language writes share
+another. Locks are acquired before reading mutable content rows. This favors
+correctness for Admin writes; high-volume write throughput has not been load
+tested. Database constraints remain the final protection against uniqueness
+violations. Only recognized duplicate constraints are mapped to HTTP 409.
+
+Query-count tests compare pages of 1 and 5 rows: Artifact list uses 6 SELECTs
+in both cases, Favorites/Visit History use 7 in both cases (including auth).
+Analytics executes one aggregate query per endpoint. These measurements do not
+claim production latency or query-plan improvements.
+
+## Requirements
 
 * [Docker](https://www.docker.com/).
 * [uv](https://docs.astral.sh/uv/) for Python package and environment management.
