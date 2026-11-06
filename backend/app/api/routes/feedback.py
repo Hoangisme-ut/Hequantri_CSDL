@@ -1,9 +1,11 @@
 import uuid
+from enum import StrEnum
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import exists, or_
-from sqlmodel import col, func, select
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import SQLModel, col, func, select
 
 from app import crud
 from app.api.deps import AdminUser, SessionDep, VisitorUser, is_admin
@@ -18,20 +20,57 @@ from app.models import (
     FeedbackReviewsPublic,
     FeedbacksPublic,
     FeedbackStatus,
-    FeedbackStatusUpdate,
     Language,
     Site,
     User,
+    get_datetime_utc,
 )
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
+
+
+# ---------------------------------------------------------------------------
+# Web Admin cũ dùng trạng thái "rejected"; ERD mới lưu trạng thái này là
+# "hidden". Hai lớp enum/schema dưới đây giữ nguyên hợp đồng API cũ, còn phần
+# ánh xạ sang DB nằm trong các helper.
+# ---------------------------------------------------------------------------
+class LegacyFeedbackStatus(StrEnum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class LegacyFeedbackStatusUpdate(SQLModel):
+    status: LegacyFeedbackStatus
+
+
+_LEGACY_TO_DB = {LegacyFeedbackStatus.REJECTED.value: FeedbackStatus.HIDDEN.value}
+_DB_TO_LEGACY = {FeedbackStatus.HIDDEN.value: LegacyFeedbackStatus.REJECTED.value}
+
+
+def _to_db_status(status: LegacyFeedbackStatus) -> str:
+    return _LEGACY_TO_DB.get(status.value, status.value)
+
+
+def _to_legacy_status(status: str) -> str:
+    return _DB_TO_LEGACY.get(status, status)
+
+
+def _feedback_public(row: Feedback) -> FeedbackPublic:
+    """Serialize without mutating the ORM row (hidden <-> rejected is API-only)."""
+    return FeedbackPublic.model_validate(row).model_copy(
+        update={"status": _to_legacy_status(row.status)}
+    )
 
 
 # --------------------------------- Visitor ---------------------------------
 
 
 @router.post(
-    "/", response_model=FeedbackPublic, status_code=201, responses=errors(401, 403, 404)
+    "/",
+    response_model=FeedbackPublic,
+    status_code=201,
+    responses=errors(401, 403, 404, 409),
 )
 def submit_feedback(
     session: SessionDep, current_user: VisitorUser, body: FeedbackCreate
@@ -39,13 +78,25 @@ def submit_feedback(
     """Submit a feedback for a visible artifact. Visitor / Authenticated user."""
     if not crud.get_visible_artifact(session=session, artifact_id=body.artifact_id):
         raise HTTPException(status_code=404, detail="Artifact not found")
+    existing = session.exec(
+        select(Feedback).where(
+            col(Feedback.user_id) == current_user.id,
+            col(Feedback.artifact_id) == body.artifact_id,
+        )
+    ).first()
+    if existing is not None:
+        raise HTTPException(status_code=409, detail="Feedback already exists")
     feedback = Feedback.model_validate(
         body, update={"user_id": current_user.id, "status": FeedbackStatus.PENDING}
     )
     session.add(feedback)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Feedback already exists") from None
     session.refresh(feedback)
-    return feedback
+    return _feedback_public(feedback)
 
 
 @router.get("/me", response_model=FeedbacksPublic, responses=errors(401, 403))
@@ -67,9 +118,7 @@ def my_feedback(
         .offset(skip)
         .limit(limit)
     ).all()
-    return FeedbacksPublic(
-        data=[FeedbackPublic.model_validate(row) for row in rows], count=count
-    )
+    return FeedbacksPublic(data=[_feedback_public(row) for row in rows], count=count)
 
 
 @router.get(
@@ -82,7 +131,7 @@ def read_feedback(
     row = session.get(Feedback, feedback_id)
     if row is None or (row.user_id != current_user.id and not is_admin(current_user)):
         raise HTTPException(status_code=404, detail="Feedback not found")
-    return row
+    return _feedback_public(row)
 
 
 # ---------------------------------- Admin ----------------------------------
@@ -96,7 +145,7 @@ def read_feedback(
 def read_feedbacks(
     session: SessionDep,
     _admin: AdminUser,
-    status: FeedbackStatus | None = Query(
+    status: LegacyFeedbackStatus | None = Query(
         default=None,
         description="Filter by status: pending, approved, or rejected",
     ),
@@ -113,8 +162,7 @@ def read_feedbacks(
     conditions: list[Any] = []
 
     if status is not None:
-        status_val = status.value if hasattr(status, "value") else str(status)
-        conditions.append(col(Feedback.status) == status_val)
+        conditions.append(col(Feedback.status) == _to_db_status(status))
 
     if artifact_id is not None:
         conditions.append(col(Feedback.artifact_id) == artifact_id)
@@ -181,7 +229,7 @@ def read_feedbacks(
 
         results.append(
             FeedbackReviewPublic(
-                **FeedbackPublic.model_validate(feedback).model_dump(),
+                **_feedback_public(feedback).model_dump(),
                 visitor_name=user.full_name,
                 visitor_email=user.email,
                 artifact_code=artifact.code,
@@ -202,26 +250,16 @@ def moderate_feedback(
     session: SessionDep,
     _admin: AdminUser,
     feedback_id: uuid.UUID,
-    body: FeedbackStatusUpdate,
+    body: LegacyFeedbackStatusUpdate,
 ) -> Any:
     """Approve, reject, or reset a feedback record. Admin only."""
     row = session.get(Feedback, feedback_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Feedback not found")
 
-    status_val = (
-        body.status.value if hasattr(body.status, "value") else str(body.status)
-    )
-    status_val = status_val.strip().lower()
-    allowed_statuses = {s.value for s in FeedbackStatus}
-    if status_val not in allowed_statuses:
-        raise HTTPException(
-            status_code=422,
-            detail="Status must be 'pending', 'approved', or 'rejected'",
-        )
-
-    row.status = status_val
+    row.status = _to_db_status(body.status)
+    row.updated_at = get_datetime_utc()
     session.add(row)
     session.commit()
     session.refresh(row)
-    return row
+    return _feedback_public(row)

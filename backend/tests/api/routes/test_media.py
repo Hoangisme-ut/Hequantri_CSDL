@@ -21,7 +21,9 @@ from tests.utils.heritage import purge_sites
 
 
 @pytest.fixture
-def media_api(db: Session) -> Generator[tuple[TestClient, FastAPI, Artifact, Language, Language, Beacon]]:
+def media_api(
+    db: Session,
+) -> Generator[tuple[TestClient, FastAPI, Artifact, Language, Language, Beacon]]:
     """Set up a minimal FastAPI app wired to the shared SQL Server test session.
 
     Seed data (Site, Artifact, Beacon, translations) is created in the same
@@ -49,7 +51,11 @@ def media_api(db: Session) -> Generator[tuple[TestClient, FastAPI, Artifact, Lan
         minor=2,
     )
     db.add(beacon)
-    db.add(ArtifactTranslation(artifact_id=artifact.id, language_id=vi.id, title="Artifact"))
+    db.add(
+        ArtifactTranslation(
+            artifact_id=artifact.id, language_id=vi.id, title="Artifact"
+        )
+    )
     db.commit()
     db.refresh(site)
     db.refresh(artifact)
@@ -178,7 +184,9 @@ def test_missing_links_and_wrong_artifact(media_api: Any, db: Session) -> None:
     assert (
         client.put(f"{path}/{created['id']}", json=missing_language).status_code == 404
     )
-    other = Artifact(site_id=artifact.site_id, code=f"OTHER-{uuid.uuid4().hex[:6].upper()}")
+    other = Artifact(
+        site_id=artifact.site_id, code=f"OTHER-{uuid.uuid4().hex[:6].upper()}"
+    )
     db.add(other)
     db.commit()
     for artifact_id in (uuid.uuid4(), other.id):

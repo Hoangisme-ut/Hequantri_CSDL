@@ -56,6 +56,13 @@ OPENAPI_TAGS = [
         "description": "Hiện vật yêu thích của người dùng đang đăng nhập.",
     },
     {
+        "name": "feedbacks",
+        "description": (
+            "Đánh giá / phản hồi hiện vật. Visitor gửi và đọc của mình; admin duyệt "
+            "(approved) hoặc ẩn (hidden); khách chỉ thấy comment đã duyệt."
+        ),
+    },
+    {
         "name": "visits",
         "description": "Ghi lượt xem và lịch sử tham quan của người dùng đang đăng nhập.",
     },
@@ -79,4 +86,4 @@ app.add_middleware(
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 if FRONTEND_DIR.exists():
-    app.frontend("/", directory=FRONTEND_DIR, fallback="index.html")
+    app.frontend("/", directory=FRONTEND_DIR)

@@ -2,9 +2,14 @@
 
 Revision ID: b2c3d4e5f6a7
 Revises: a1b2c3d4e5f6
-"""
 
-from alembic import op
+.. note::
+   Ràng buộc ``ck_feedback_rating`` / ``ck_feedback_status`` giờ do revision
+   ERD ``e5f6a7b8c9d0`` tạo (status ``pending/approved/hidden`` + unique
+   ``(user_id, artifact_id)`` + ``updated_at``). Revision này được giữ lại để
+   các database đã từng chạy nó vẫn có revision id hợp lệ, nhưng không còn
+   tạo ràng buộc trùng tên nữa.
+"""
 
 revision = "b2c3d4e5f6a7"
 down_revision = "a1b2c3d4e5f6"
@@ -13,14 +18,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # WITH CHECK is SQL Server's default: invalid legacy rows stop migration;
-    # no rows are silently repaired or removed.
-    op.create_check_constraint("ck_feedback_rating", "feedback", "rating BETWEEN 1 AND 5")
-    op.create_check_constraint(
-        "ck_feedback_status", "feedback", "status IN ('pending', 'approved', 'rejected')"
-    )
+    # No-op: e5f6a7b8c9d0 owns the ERD feedback constraints.
+    pass
 
 
 def downgrade() -> None:
-    op.drop_constraint("ck_feedback_status", "feedback", type_="check")
-    op.drop_constraint("ck_feedback_rating", "feedback", type_="check")
+    # No-op: e5f6a7b8c9d0 owns the ERD feedback constraints.
+    pass
