@@ -7,6 +7,7 @@ from sqlmodel import col, func, select
 from app import crud
 from app.api.deps import SessionDep, VisitorUser
 from app.api.docs import errors
+from app.core.transactions import acquire_transaction_lock
 from app.models import (
     Artifact,
     Beacon,
@@ -27,7 +28,7 @@ router = APIRouter(prefix="/visits", tags=["visits"])
     response_model=VisitLogPublic,
     status_code=status.HTTP_201_CREATED,
     responses={
-        **errors(401, 403, 404, 400),
+        **errors(401, 403, 404, 400, 409),
         200: {
             "description": (
                 f"Đã có lượt xem hiện vật này trong {crud.VISIT_DEDUP_SECONDS} giây "
@@ -56,6 +57,7 @@ def record_visit(
     - `beacon_id` (nếu gửi) phải là beacon đang gắn đúng hiện vật này.
     - `language_id` bỏ trống thì lấy ngôn ngữ ưa thích của người dùng / mặc định.
     """
+    acquire_transaction_lock(session, f"visit:{current_user.id}:{visit_in.artifact_id}")
     artifact = crud.get_visible_artifact(
         session=session, artifact_id=visit_in.artifact_id
     )
@@ -64,17 +66,20 @@ def record_visit(
 
     if visit_in.beacon_id is not None:
         beacon = session.get(Beacon, visit_in.beacon_id)
-        if not beacon:
+        if not beacon or not beacon.is_active:
             raise HTTPException(status_code=404, detail="Beacon not found")
-        if beacon.artifact_id != artifact.id:
+        if beacon.artifact_id != artifact.id or beacon.site_id != artifact.site_id:
             raise HTTPException(
                 status_code=400, detail="Beacon không gắn với hiện vật này"
             )
 
     language_id = visit_in.language_id
     if language_id is not None:
-        if not session.get(Language, language_id):
+        selected_language = session.get(Language, language_id)
+        if not selected_language:
             raise HTTPException(status_code=404, detail="Language not found")
+        if not selected_language.is_active:
+            raise HTTPException(status_code=400, detail="Language is inactive")
     else:
         language = crud.resolve_language(
             session=session, lang_code=None, user=current_user
