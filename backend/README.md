@@ -1,5 +1,23 @@
 # FastAPI Project - Backend
 
+## Visit analytics
+
+Admin-only GET endpoints under `/api/v1/analytics`: `overview`, `visits`,
+`top-artifacts`, and `sites`. `views` counts VisitLog rows; `unique_users` counts
+distinct recorded user IDs within each result group. These are content views,
+not physical visitors, visits to a site, or audio interactions.
+
+Optional `from` and `to` parameters require timezone offsets and use UTC
+`[from, to)` boundaries. Omitted boundaries are unbounded. `site_id` filters
+using the artifact's **current** site; historical site assignments are not
+stored. Daily results contain only days with recorded views and exclude legacy
+rows with null timestamps. Overview/rankings without time filters include those
+rows. Hidden artifacts/sites remain in historical aggregates. Unique user
+counts across groups must not be summed to infer a global unique count.
+
+`top-artifacts` accepts `limit` (1–100); `sites` accepts `skip` and `limit`
+(1–200). Each endpoint aggregates in one SQL query instead of loading events.
+
 ## Requirements
 
 * [Docker](https://www.docker.com/).
