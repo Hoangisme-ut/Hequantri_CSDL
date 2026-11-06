@@ -735,10 +735,16 @@ class FeedbackCreate(SQLModel):
 
 
 class FeedbackStatusUpdate(SQLModel):
-    status: str = Field(max_length=20)  # FeedbackStatus
+    status: FeedbackStatus
 
 
 class Feedback(SQLModel, table=True):
+    __table_args__ = (
+        CheckConstraint("rating BETWEEN 1 AND 5", name="ck_feedback_rating"),
+        CheckConstraint(
+            "status IN ('pending', 'approved', 'rejected')", name="ck_feedback_status"
+        ),
+    )
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     user_id: uuid.UUID = Field(
         foreign_key="user.id", nullable=False, ondelete="CASCADE"
