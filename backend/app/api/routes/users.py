@@ -1,21 +1,23 @@
+import logging
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import col, delete, func, select
 
 from app import crud
 from app.api.deps import (
-    AdminUser,
     CurrentUser,
     SessionDep,
-    is_admin,
+    get_current_active_superuser,
 )
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
 from app.models import (
     Item,
+    Language,
     Message,
+    Role,
     UpdatePassword,
     User,
     UserCreate,
@@ -26,17 +28,21 @@ from app.models import (
     UserUpdate,
     UserUpdateMe,
 )
-from app.utils import generate_new_account_email, send_email
+from app.utils import EmailDeliveryError, generate_new_account_email, send_email
 
 router = APIRouter(prefix="/users", tags=["users"])
+logger = logging.getLogger(__name__)
 
 
-@router.get("/", response_model=UsersPublic)
+@router.get(
+    "/",
+    dependencies=[Depends(get_current_active_superuser)],
+    response_model=UsersPublic,
+)
 def read_users(
     session: SessionDep,
-    current_user: AdminUser,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1),
 ) -> Any:
     """
     Retrieve users. Admin only.
@@ -53,13 +59,10 @@ def read_users(
     return UsersPublic(data=users_public, count=count)
 
 
-@router.post("/", response_model=UserPublic)
-def create_user(
-    *,
-    session: SessionDep,
-    current_user: AdminUser,
-    user_in: UserCreate,
-) -> Any:
+@router.post(
+    "/", dependencies=[Depends(get_current_active_superuser)], response_model=UserPublic
+)
+def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     """
     Create new user. Admin only.
     """
@@ -77,11 +80,17 @@ def create_user(
             username=user_in.email,
             password=user_in.password,
         )
-        send_email(
-            email_to=user_in.email,
-            subject=email_data.subject,
-            html_content=email_data.html_content,
-        )
+        try:
+            send_email(
+                email_to=user_in.email,
+                subject=email_data.subject,
+                html_content=email_data.html_content,
+                raise_on_failure=True,
+            )
+        except EmailDeliveryError:
+            # The account is already committed; notification failure is not a
+            # failed creation and must not encourage a duplicate client retry.
+            logger.warning("New account email delivery failed after user creation")
     return user
 
 
@@ -106,6 +115,12 @@ def update_user_me(
                 detail="User with this email already exists",
             )
     user_data = user_in.model_dump(exclude_unset=True)
+    if user_in.language_id is not None:
+        language = session.get(Language, user_in.language_id)
+        if language is None:
+            raise HTTPException(status_code=404, detail="Language not found")
+        if not language.is_active:
+            raise HTTPException(status_code=400, detail="Language is inactive")
     current_user.sqlmodel_update(user_data)
     session.add(current_user)
     session.commit()
@@ -171,10 +186,9 @@ def delete_user_me(
     """
     Delete own user. Admin accounts cannot delete themselves.
     """
-    if is_admin(current_user):
+    if current_user.is_superuser:
         raise HTTPException(
-            status_code=403,
-            detail="Administrators are not allowed to delete themselves",
+            status_code=403, detail="Super users are not allowed to delete themselves"
         )
     session.delete(current_user)
     session.commit()
@@ -218,29 +232,26 @@ def read_user_by_id(
     Get own user information or another user's information as Admin.
     """
     user = session.get(User, user_id)
-
-    if user is None:
-        raise HTTPException(
-            status_code=404,
-            detail="User not found",
-        )
-
-    if user.id == current_user.id:
+    if user == current_user:
         return user
-
-    if not is_admin(current_user):
+    if not current_user.is_superuser:
         raise HTTPException(
             status_code=403,
             detail="The user doesn't have enough privileges",
         )
-
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
     return user
 
-@router.patch("/{user_id}", response_model=UserPublic)
+
+@router.patch(
+    "/{user_id}",
+    dependencies=[Depends(get_current_active_superuser)],
+    response_model=UserPublic,
+)
 def update_user(
     *,
     session: SessionDep,
-    current_user: AdminUser,
     user_id: uuid.UUID,
     user_in: UserUpdate,
 ) -> Any:
@@ -265,20 +276,22 @@ def update_user(
                 detail="User with this email already exists",
             )
 
-    db_user = crud.update_user(
-        session=session,
-        db_user=db_user,
-        user_in=user_in,
-    )
-
+    if user_in.role_id is not None and session.get(Role, user_in.role_id) is None:
+        raise HTTPException(status_code=404, detail="Role not found")
+    try:
+        db_user = crud.update_user(
+            session=session,
+            db_user=db_user,
+            user_in=user_in,
+        )
+    except crud.InvalidRoleAssignmentError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     return db_user
 
 
-@router.delete("/{user_id}")
+@router.delete("/{user_id}", dependencies=[Depends(get_current_active_superuser)])
 def delete_user(
-    session: SessionDep,
-    current_user: AdminUser,
-    user_id: uuid.UUID,
+    session: SessionDep, current_user: CurrentUser, user_id: uuid.UUID
 ) -> Message:
     """
     Delete a user. Admin only.
@@ -290,10 +303,9 @@ def delete_user(
             detail="User not found",
         )
 
-    if user.id == current_user.id:
+    if user == current_user:
         raise HTTPException(
-            status_code=403,
-            detail="Administrators are not allowed to delete themselves",
+            status_code=403, detail="Super users are not allowed to delete themselves"
         )
     statement = delete(Item).where(col(Item.owner_id) == user_id)
     session.exec(statement)

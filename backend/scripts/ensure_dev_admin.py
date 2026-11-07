@@ -33,8 +33,7 @@ def main() -> None:
 
     database = make_url(settings.DATABASE_URL)
     is_local_development_database = (
-        database.host in {"db", "localhost", "127.0.0.1"}
-        and database.database == "app"
+        database.host in {"db", "localhost", "127.0.0.1"} and database.database == "app"
     )
     if settings.FASTAPI_ENV != "development" or not is_local_development_database:
         parser.error(
@@ -60,12 +59,16 @@ def main() -> None:
                     is_superuser=True,
                 ),
             )
-            logger.info("Development admin created with an application-hashed password.")
+            logger.info(
+                "Development admin created with an application-hashed password."
+            )
             return
 
         password_matches = verify_password(password, user.hashed_password)[0]
         if password_matches and user.is_active and user.is_superuser:
-            logger.info("Development admin already exists and matches; no changes made.")
+            logger.info(
+                "Development admin already exists and matches; no changes made."
+            )
             return
 
         if not args.reset_existing:

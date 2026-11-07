@@ -29,8 +29,8 @@ router = APIRouter(prefix="/sites", tags=["sites"])
 def read_sites(
     session: SessionDep,
     current_user: OptionalUser,
-    skip: int = 0,
-    limit: int = Query(default=100, le=200),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=200),
     q: str | None = None,
     include_inactive: bool = False,
     lang: Literal["vi", "en"] = "vi",
@@ -242,7 +242,7 @@ def create_site(*, session: SessionDep, _admin: AdminUser, site_in: SiteCreate) 
     session.add(site)
     session.commit()
     session.refresh(site)
-    return site
+    return _localized_site(session, site, "vi")
 
 
 @router.put("/{site_id}", response_model=SitePublic, responses=errors(401, 403, 404))
@@ -253,12 +253,16 @@ def update_site(
     site = session.get(Site, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
-    site.sqlmodel_update(site_in.model_dump(exclude_unset=True))
+    data = site_in.model_dump(exclude_unset=True)
+    for field in ("name", "is_active"):
+        if field in data and data[field] is None:
+            raise HTTPException(status_code=422, detail=f"{field} cannot be null")
+    site.sqlmodel_update(data)
     site.updated_at = get_datetime_utc()
     session.add(site)
     session.commit()
     session.refresh(site)
-    return site
+    return _localized_site(session, site, "vi")
 
 
 @router.delete("/{site_id}", responses=errors(401, 403, 404))
