@@ -174,6 +174,9 @@ class BeaconTestPageState extends State<BeaconTestPage>
   String? _configurationError;
   Beacon? _selectedBeacon;
 
+  // Lưu ngưỡng của các beacon đã resolve trong phiên quét.
+  final Map<String, int?> _rssiThresholds = {};
+
   List<Beacon> _beacons = [];
 
   String _status = 'Chưa bắt đầu quét';
@@ -216,6 +219,7 @@ class BeaconTestPageState extends State<BeaconTestPage>
 
       _contentController = BeaconContentController(
         visitLogService: _visitService,
+        acceptResolvedContent: _acceptResolvedContent,
         clock: widget.clock,
         service: service,
         readToken: () => widget.readToken?.call(),
@@ -259,6 +263,46 @@ class BeaconTestPageState extends State<BeaconTestPage>
   String _beaconKey(Beacon beacon) {
     return '${beacon.proximityUUID.toLowerCase()}:'
         '${beacon.major}:${beacon.minor}';
+  }
+
+  bool _eligible(Beacon beacon) {
+    final threshold = _rssiThresholds[_beaconKey(beacon)];
+
+    return beacon.rssi < 0 && (threshold == null || beacon.rssi >= threshold);
+  }
+
+  bool _acceptResolvedContent(BeaconContent content) {
+    final selected = _selectedBeacon;
+
+    if (!mounted || !_scanning || selected == null) {
+      return false;
+    }
+
+    final key = _beaconKey(selected);
+    _rssiThresholds[key] = content.rssiThreshold;
+
+    // Kiểm tra lại tín hiệu mới nhất sau khi API trả về.
+    final readings = _beacons.where((beacon) => _beaconKey(beacon) == key);
+
+    if (readings.isNotEmpty && content.acceptsRssi(readings.first.rssi)) {
+      _selectedBeacon = readings.first;
+      return true;
+    }
+
+    // Beacon chưa đủ mạnh: không hiển thị nội dung hoặc ghi lượt xem.
+    _selectionExpiryTimer?.cancel();
+    _selectionExpiryTimer = null;
+    _selectedBeacon = null;
+    _lastNotifiedBeaconKey = null;
+    _candidateBeaconKey = null;
+    _candidateHits = 0;
+
+    setState(() {
+      _notificationStatus =
+          'Tín hiệu beacon yếu hơn ngưỡng cho phép. Hãy đến gần hơn.';
+    });
+
+    return false;
   }
 
   @override
@@ -343,9 +387,13 @@ class BeaconTestPageState extends State<BeaconTestPage>
         },
       );
     }
-    if (detectedBeacons.any(
-      (b) => b.rssi < 0 && _beaconKey(b) == _lastNotifiedBeaconKey,
-    )) {
+    final selectedReadings = detectedBeacons.where(
+      (beacon) =>
+          _eligible(beacon) && _beaconKey(beacon) == _lastNotifiedBeaconKey,
+    );
+
+    if (selectedReadings.isNotEmpty) {
+      _selectedBeacon = selectedReadings.first;
       _armSelectionExpiry();
     }
 
@@ -364,9 +412,7 @@ class BeaconTestPageState extends State<BeaconTestPage>
   void _handleBeaconDetection(List<Beacon> detectedBeacons) {
     if (!mounted || !_scanning) return;
 
-    final candidates = detectedBeacons
-        .where((beacon) => beacon.rssi < 0)
-        .toList();
+    final candidates = detectedBeacons.where(_eligible).toList();
 
     if (candidates.isEmpty) {
       _candidateBeaconKey = null;
@@ -494,6 +540,7 @@ class BeaconTestPageState extends State<BeaconTestPage>
       if (!mounted) return;
 
       _cancelExpiryTimers();
+      _rssiThresholds.clear();
       _contentController?.reset();
       _selectedBeacon = null;
       final epoch = ++_scanEpoch;
@@ -980,6 +1027,10 @@ class BeaconTestPageState extends State<BeaconTestPage>
 
   String _localizedNotification(bool isEnglish) {
     if (!isEnglish) return _notificationStatus;
+
+    if (_notificationStatus.startsWith('Tín hiệu beacon yếu')) {
+      return 'Beacon signal is below its threshold. Move closer.';
+    }
     if (_notificationStatus == 'Chưa nhận beacon để thông báo') {
       return 'No beacon notification yet';
     }

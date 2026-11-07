@@ -13,6 +13,7 @@ class BeaconContentController extends ChangeNotifier {
     required this.readToken,
     this.visitLogService,
     this.allowVisitLogging = true,
+    this.acceptResolvedContent,
     DateTime Function()? clock,
     this.minRequestInterval = const Duration(seconds: 3),
   }) : _visitDeduplicator = VisitDeduplicator(clock: clock ?? DateTime.now),
@@ -22,6 +23,11 @@ class BeaconContentController extends ChangeNotifier {
   final AuthToken? Function() readToken;
   final VisitLogService? visitLogService;
   final bool allowVisitLogging;
+
+  /// Màn quét thật dùng callback này để kiểm tra ngưỡng RSSI.
+  /// Simulation không có RSSI đo thực tế nên không truyền callback.
+  final bool Function(BeaconContent content)? acceptResolvedContent;
+
   final Duration minRequestInterval;
   final VisitDeduplicator _visitDeduplicator;
 
@@ -41,6 +47,7 @@ class BeaconContentController extends ChangeNotifier {
   int _revision = 0;
   int _requestCount = 0;
   int _visitRequestsRunning = 0;
+
   String? _visitSessionKey;
   String? _visitError;
   String? _visitErrorArtifactId;
@@ -51,9 +58,12 @@ class BeaconContentController extends ChangeNotifier {
   bool get isSavingVisit => _visitRequestsRunning > 0;
   String? get visitError => _visitError;
   int? get visitErrorStatusCode => _visitErrorStatusCode;
+
   bool get visitErrorIsForCurrentContent =>
       _content != null && _visitErrorArtifactId == _content!.artifactId;
+
   VisitRecordResult? get visitResult => _visitResult;
+
   bool get visitResultIsForCurrentContent =>
       _content != null &&
       _visitResult?.visit.artifactId == _content!.artifactId;
@@ -66,8 +76,8 @@ class BeaconContentController extends ChangeNotifier {
   int get requestCount => _requestCount;
   String? get currentBeaconKey => _selected?.key;
 
-  /// Called after a beacon has been confirmed as the current selection.
-  /// Language changes reload content but do not reset Visit deduplication.
+  /// Nhận beacon đã được màn quét xác nhận.
+  /// Đổi ngôn ngữ không xóa cửa sổ chống ghi lượt xem trùng.
   void receiveBeacon({
     required String proximityUuid,
     required int major,
@@ -82,6 +92,7 @@ class BeaconContentController extends ChangeNotifier {
       minor: minor,
       languageCode: languageCode?.trim(),
     );
+
     if (request.key == _selected?.key) return;
 
     _selected = request;
@@ -101,6 +112,7 @@ class BeaconContentController extends ChangeNotifier {
     _contentToken = null;
     _errorMessage = null;
     _errorStatusCode = null;
+
     notifyListeners();
     _scheduleRequest();
   }
@@ -113,17 +125,20 @@ class BeaconContentController extends ChangeNotifier {
         (_cooldownTimer?.isActive ?? false)) {
       return;
     }
+
     unawaited(_loadContent());
   }
 
   Future<void> _loadContent() async {
     final request = _selected!;
     final revision = _revision;
+
     _pending = false;
     _requestRunning = true;
 
     try {
       final token = readToken();
+
       if (!_isUsableBearer(token)) {
         throw const BeaconApiException(
           'Cần đăng nhập để tải nội dung beacon.',
@@ -132,6 +147,7 @@ class BeaconContentController extends ChangeNotifier {
       }
 
       _requestCount++;
+
       _cooldownTimer?.cancel();
       _cooldownTimer = Timer(minRequestInterval, () {
         _cooldownTimer = null;
@@ -152,16 +168,26 @@ class BeaconContentController extends ChangeNotifier {
           _contentToken = null;
           _errorMessage = 'Phiên đăng nhập đã thay đổi. Vui lòng tải lại.';
           _errorStatusCode = 401;
+        } else if (!(acceptResolvedContent?.call(result) ?? true)) {
+          // Chưa đủ ngưỡng: không đưa nội dung ra giao diện.
+          // Cho phép cùng beacon tải lại khi tín hiệu đủ mạnh.
+          _content = null;
+          _contentToken = null;
+          _selected = null;
+          _errorMessage = null;
+          _errorStatusCode = null;
         } else {
           _content = result;
           _contentToken = token;
           _errorMessage = null;
           _errorStatusCode = null;
+
           if (_visitErrorArtifactId != result.artifactId) {
             _visitError = null;
             _visitErrorArtifactId = null;
             _visitErrorStatusCode = null;
           }
+
           if (_visitResult?.visit.artifactId != result.artifactId) {
             _visitResult = null;
           }
@@ -182,11 +208,13 @@ class BeaconContentController extends ChangeNotifier {
       }
     } finally {
       _requestRunning = false;
+
       if (!_disposed) {
         if (_isCurrent(revision)) {
           _loading = false;
           notifyListeners();
         }
+
         _scheduleRequest();
       }
     }
@@ -194,14 +222,14 @@ class BeaconContentController extends ChangeNotifier {
 
   bool _isCurrent(int revision) => !_disposed && revision == _revision;
 
-  /// The single POST entry point. The panel calls this after rendering content.
-  /// Session and content identity are rechecked immediately before the request.
+  /// Chỉ gọi sau khi nội dung đã được hiển thị.
   Future<void> recordDisplayedContent(
     BeaconContent displayed, {
     int? rssi,
   }) async {
     final visits = visitLogService;
     final resolvedToken = _contentToken;
+
     if (_disposed ||
         !canRecordVisits ||
         visits == null ||
@@ -212,6 +240,7 @@ class BeaconContentController extends ChangeNotifier {
 
     final currentToken = readToken();
     _syncVisitSession(currentToken);
+
     if (resolvedToken == null || !_sameBearer(currentToken, resolvedToken)) {
       _visitError = 'Vui lòng tải lại nội dung bằng phiên đăng nhập hiện tại.';
       _visitErrorArtifactId = displayed.artifactId;
@@ -219,6 +248,7 @@ class BeaconContentController extends ChangeNotifier {
       notifyListeners();
       return;
     }
+
     if (_visitErrorArtifactId == displayed.artifactId && _visitError != null) {
       return;
     }
@@ -231,6 +261,7 @@ class BeaconContentController extends ChangeNotifier {
     _visitErrorArtifactId = null;
     _visitErrorStatusCode = null;
     notifyListeners();
+
     try {
       final result = await visits.record(
         artifactId: displayed.artifactId,
@@ -238,12 +269,14 @@ class BeaconContentController extends ChangeNotifier {
         token: resolvedToken,
         rssi: rssi != null && rssi < 0 ? rssi : null,
       );
+
       _visitDeduplicator.complete(
         reservation,
         succeeded: true,
         visitedAt: result.visit.visitedAt,
         wasCreated: !result.alreadyRecorded,
       );
+
       if (_isCurrentVisitContent(displayed, resolvedToken)) {
         _visitResult = result;
         _visitError = null;
@@ -252,6 +285,7 @@ class BeaconContentController extends ChangeNotifier {
       }
     } on VisitLogException catch (error) {
       _visitDeduplicator.complete(reservation, succeeded: false);
+
       if (_isCurrentVisitContent(displayed, resolvedToken)) {
         _visitError = error.message;
         _visitErrorArtifactId = displayed.artifactId;
@@ -259,14 +293,20 @@ class BeaconContentController extends ChangeNotifier {
       }
     } catch (_) {
       _visitDeduplicator.complete(reservation, succeeded: false);
+
       if (_isCurrentVisitContent(displayed, resolvedToken)) {
         _visitError = 'Chưa lưu được lượt xem. Vui lòng thử lại.';
         _visitErrorArtifactId = displayed.artifactId;
         _visitErrorStatusCode = null;
       }
     } finally {
-      if (_visitRequestsRunning > 0) _visitRequestsRunning--;
-      if (!_disposed) notifyListeners();
+      if (_visitRequestsRunning > 0) {
+        _visitRequestsRunning--;
+      }
+
+      if (!_disposed) {
+        notifyListeners();
+      }
     }
   }
 
@@ -278,7 +318,9 @@ class BeaconContentController extends ChangeNotifier {
 
   void _syncVisitSession(AuthToken? token) {
     final nextKey = _isUsableBearer(token) ? token!.accessToken : null;
+
     if (nextKey == _visitSessionKey) return;
+
     _visitSessionKey = nextKey;
     _visitDeduplicator.reset();
     _visitError = null;
@@ -289,22 +331,26 @@ class BeaconContentController extends ChangeNotifier {
 
   void retryVisitLog({int? rssi}) {
     final displayed = _content;
+
     if (_disposed ||
         _visitRequestsRunning > 0 ||
         displayed == null ||
         _visitErrorArtifactId != displayed.artifactId) {
       return;
     }
+
     _visitError = null;
     _visitErrorArtifactId = null;
     _visitErrorStatusCode = null;
+
     unawaited(recordDisplayedContent(displayed, rssi: rssi));
   }
 
-  /// Clears selected content when scanning stops. The 300-second visit window
-  /// remains intact so stop/restart cannot cause an immediate duplicate.
+  /// Dừng hoặc hết hạn lựa chọn sẽ xóa nội dung.
+  /// Vẫn giữ cửa sổ chống ghi lượt xem trùng trong 300 giây.
   void reset() {
     if (_disposed) return;
+
     _revision++;
     _selected = null;
     _pending = false;
@@ -317,6 +363,7 @@ class BeaconContentController extends ChangeNotifier {
     _visitErrorArtifactId = null;
     _visitErrorStatusCode = null;
     _visitResult = null;
+
     notifyListeners();
   }
 
