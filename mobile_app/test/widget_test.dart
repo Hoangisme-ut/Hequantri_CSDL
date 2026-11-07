@@ -20,10 +20,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(WelcomePage), findsOneWidget);
-    expect(
-      find.text('Nơi lưu giữ tinh hoa hiếu học Việt Nam'),
-      findsOneWidget,
-    );
+    expect(find.text('Nơi lưu giữ tinh hoa hiếu học Việt Nam'), findsOneWidget);
     expect(
       find.text(
         'Văn Miếu – Quốc Tử Giám là di tích lịch sử gắn với truyền thống '
@@ -38,11 +35,9 @@ void main() {
       isA<AssetImage>(),
     );
     expect(
-      (
-        await rootBundle.load(
-          'assets/images/onboarding/welcome_temple_of_literature.jpg',
-        )
-      ).lengthInBytes,
+      (await rootBundle.load(
+        'assets/images/onboarding/welcome_temple_of_literature.jpg',
+      )).lengthInBytes,
       greaterThan(0),
     );
 
@@ -95,9 +90,7 @@ void main() {
         greaterThan(0),
       );
       expect(
-        find.bySemanticsLabel(
-          'Trang ${index + 1} trên ${stories.length}',
-        ),
+        find.bySemanticsLabel('Trang ${index + 1} trên ${stories.length}'),
         findsOneWidget,
       );
 
@@ -124,15 +117,10 @@ void main() {
     await tester.pumpWidget(const MyApp());
     await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.byKey(const Key('welcome-page-content-0')),
-    );
+    await tester.tap(find.byKey(const Key('welcome-page-content-0')));
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Dấu ấn giao thoa của những nền văn hóa'),
-      findsOneWidget,
-    );
+    expect(find.text('Dấu ấn giao thoa của những nền văn hóa'), findsOneWidget);
     expect(find.bySemanticsLabel('Trang 2 trên 3'), findsOneWidget);
   });
 
@@ -177,11 +165,7 @@ void main() {
 
         final exception = tester.takeException();
 
-        expect(
-          exception,
-          isNull,
-          reason: 'Viewport $size, page ${index + 1}',
-        );
+        expect(exception, isNull, reason: 'Viewport $size, page ${index + 1}');
       }
 
       expect(find.byType(LoginPage), findsOneWidget);
@@ -193,11 +177,30 @@ void main() {
   ) async {
     await openAppShell(tester);
 
-    expect(find.text('Quét iBeacon'), findsWidgets);
+    expect(find.text('Thuyết minh Beacon'), findsOneWidget);
     expect(find.text('Chưa bắt đầu quét'), findsOneWidget);
     expect(find.text('Bắt đầu quét'), findsOneWidget);
-    expect(find.byIcon(Icons.bluetooth_searching), findsOneWidget);
-    expect(find.byIcon(Icons.science_outlined), findsOneWidget);
+
+    final navigation = find.byType(NavigationBar);
+
+    expect(navigation, findsOneWidget);
+    expect(tester.widget<NavigationBar>(navigation).destinations, hasLength(2));
+
+    expect(
+      find.descendant(
+        of: navigation,
+        matching: find.byIcon(Icons.bluetooth_searching),
+      ),
+      findsOneWidget,
+    );
+
+    expect(
+      find.descendant(
+        of: navigation,
+        matching: find.byIcon(Icons.science_outlined),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('scan screen scrolls without overflowing on a short display', (
@@ -252,20 +255,22 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      MyApp(
-        appShell: AppShell(
-          stopScanning: () async => false,
-        ),
+      MyApp(appShell: AppShell(stopScanning: () async => false)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.byIcon(Icons.science_outlined),
       ),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.science_outlined));
-    await tester.pumpAndSettle();
-
     expect(find.text('SIMULATION MODE'), findsNothing);
-    expect(find.text('Quét iBeacon'), findsWidgets);
+    expect(find.text('Thuyết minh Beacon'), findsOneWidget);
     expect(find.text('Đã dừng quét'), findsNothing);
+
     expect(
       tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
       0,
@@ -341,25 +346,16 @@ void main() {
     expect(app.themeMode, ThemeMode.system);
 
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
-    addTearDown(
-      tester.platformDispatcher.clearPlatformBrightnessTestValue,
-    );
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
     await openAppShell(tester);
     await tester.tap(find.byIcon(Icons.science_outlined));
     await tester.pumpAndSettle();
 
-    final simulationLabel = tester.widget<Text>(
-      find.text('SIMULATION MODE'),
-    );
-    final activeTheme = Theme.of(
-      tester.element(find.text('SIMULATION MODE')),
-    );
+    final simulationLabel = tester.widget<Text>(find.text('SIMULATION MODE'));
+    final activeTheme = Theme.of(tester.element(find.text('SIMULATION MODE')));
 
     expect(activeTheme.brightness, Brightness.dark);
-    expect(
-      simulationLabel.style?.color,
-      activeTheme.colorScheme.tertiary,
-    );
+    expect(simulationLabel.style?.color, activeTheme.colorScheme.tertiary);
   });
 }
