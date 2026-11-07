@@ -60,8 +60,13 @@ def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any:
         password = user_data["password"]
         hashed_password = get_password_hash(password)
         extra_data["hashed_password"] = hashed_password
-    # [Smart Heritage] đổi is_superuser mà không chỉ định role_id -> đổi role theo
-    if "is_superuser" in user_data and "role_id" not in user_data:
+    # [Smart Heritage] role là nguồn sự thật; is_superuser luôn khớp: admin <=> True
+    if "role_id" in user_data:
+        new_role = session.get(Role, user_data["role_id"])
+        if new_role:
+            extra_data["is_superuser"] = new_role.name == ROLE_ADMIN
+    # đổi is_superuser mà không chỉ định role_id -> đổi role theo
+    elif "is_superuser" in user_data:
         role = get_role_by_name(
             session=session,
             name=ROLE_ADMIN if user_data["is_superuser"] else ROLE_VISITOR,
