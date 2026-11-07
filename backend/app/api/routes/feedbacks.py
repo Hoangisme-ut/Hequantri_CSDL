@@ -2,7 +2,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import ColumnElement, true
+from sqlalchemy import ColumnElement, exists, or_, true
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import col, func, select
 
@@ -13,14 +13,19 @@ from app.models import (
     Artifact,
     ArtifactReviewPublic,
     ArtifactReviewsPublic,
+    ArtifactTranslation,
     Feedback,
     FeedbackCreate,
     FeedbackPublic,
+    FeedbackReviewPublic,
+    FeedbackReviewsPublic,
     FeedbacksPublic,
     FeedbackStatus,
     FeedbackStatusUpdate,
     FeedbackUpdate,
+    Language,
     Site,
+    User,
     get_datetime_utc,
 )
 
@@ -230,7 +235,7 @@ def update_my_feedback(
 
 
 # ---------------------------------- Admin ---------------------------------------
-@router.get("/", response_model=FeedbacksPublic, responses=errors(401, 403, 422))
+@router.get("/", response_model=FeedbackReviewsPublic, responses=errors(401, 403, 422))
 def read_feedbacks(
     session: SessionDep,
     _admin: AdminUser,
@@ -238,31 +243,84 @@ def read_feedbacks(
         default=None, alias="status", description="pending | approved | hidden"
     ),
     artifact_id: uuid.UUID | None = None,
+    q: str | None = Query(
+        default=None,
+        description="Tìm theo tên/email người gửi, mã hiện vật, tên Site hoặc nội dung comment",
+    ),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
 ) -> Any:
     """
-    Danh sách feedback để kiểm duyệt. **Chỉ Admin**.
-    Lọc theo `status` (ví dụ `pending` = đang chờ duyệt) và `artifact_id`; mới nhất trước.
+    Danh sách feedback để kiểm duyệt, kèm thông tin người gửi và hiện vật. **Chỉ Admin**.
+    Lọc theo `status` (ví dụ `pending` = đang chờ duyệt), `artifact_id` và từ khóa `q`;
+    mới nhất trước.
     """
     conditions: list[ColumnElement[bool]] = []
     if status_filter is not None:
         conditions.append(col(Feedback.status) == status_filter.value)
     if artifact_id is not None:
         conditions.append(col(Feedback.artifact_id) == artifact_id)
+    keyword = q.strip() if q else ""
+    if keyword:
+        conditions.append(
+            or_(
+                col(User.full_name).contains(keyword),
+                col(User.email).contains(keyword),
+                col(Artifact.code).contains(keyword),
+                col(Feedback.comment).contains(keyword),
+                col(Site.name).contains(keyword),
+                exists(
+                    select(1)
+                    .select_from(ArtifactTranslation)
+                    .where(
+                        col(ArtifactTranslation.artifact_id) == col(Artifact.id),
+                        col(ArtifactTranslation.title).contains(keyword),
+                    )
+                ),
+            )
+        )
+
     count = session.exec(
-        select(func.count()).select_from(Feedback).where(*conditions)
+        select(func.count())
+        .select_from(Feedback)
+        .join(User, col(User.id) == col(Feedback.user_id))
+        .join(Artifact, col(Artifact.id) == col(Feedback.artifact_id))
+        .join(Site, col(Site.id) == col(Artifact.site_id))
+        .where(*conditions)
     ).one()
-    feedbacks = session.exec(
-        select(Feedback)
+    rows = session.exec(
+        select(Feedback, User, Artifact, Site)
+        .join(User, col(User.id) == col(Feedback.user_id))
+        .join(Artifact, col(Artifact.id) == col(Feedback.artifact_id))
+        .join(Site, col(Site.id) == col(Artifact.site_id))
         .where(*conditions)
         .order_by(col(Feedback.created_at).desc(), col(Feedback.id))
         .offset(skip)
         .limit(limit)
     ).all()
-    return FeedbacksPublic(
-        data=[FeedbackPublic.model_validate(f) for f in feedbacks], count=count
-    )
+
+    results: list[FeedbackReviewPublic] = []
+    for feedback, user, artifact, site in rows:
+        # tiêu đề hiện vật theo ngôn ngữ mặc định (không có thì để trống)
+        title = session.exec(
+            select(ArtifactTranslation.title)
+            .join(Language, col(Language.id) == col(ArtifactTranslation.language_id))
+            .where(
+                col(ArtifactTranslation.artifact_id) == artifact.id,
+                col(Language.is_default) == true(),
+            )
+        ).first()
+        results.append(
+            FeedbackReviewPublic(
+                **FeedbackPublic.model_validate(feedback).model_dump(),
+                visitor_name=user.full_name,
+                visitor_email=user.email,
+                artifact_code=artifact.code,
+                artifact_title=title,
+                site_name=site.name,
+            )
+        )
+    return FeedbackReviewsPublic(data=results, count=count)
 
 
 @router.patch(

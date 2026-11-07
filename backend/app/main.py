@@ -66,6 +66,10 @@ OPENAPI_TAGS = [
         "name": "visits",
         "description": "Ghi lượt xem và lịch sử tham quan của người dùng đang đăng nhập.",
     },
+    {
+        "name": "dashboard",
+        "description": "Thống kê tổng quan (Site/Artifact/Beacon, lượt xem theo ngày, top hiện vật, theo ngôn ngữ). Chỉ Admin.",
+    },
 ]
 
 app = FastAPI(
