@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, Self
 
 from pydantic import EmailStr, field_validator, model_validator
 from sqlalchemy import CheckConstraint, Index, Unicode, UniqueConstraint, text
@@ -19,6 +19,17 @@ def _examples(*examples: dict[str, Any]) -> Any:
 
 def get_datetime_utc() -> datetime:
     return datetime.now(UTC)
+
+
+def _reject_explicit_null(model: SQLModel, *fields: str) -> None:
+    """PATCH/PUT: trường bắt buộc có giá trị thì không được gửi `null` rõ ràng.
+
+    Bỏ trống trường = giữ nguyên (hợp lệ); gửi `"x": null` = muốn xóa giá trị,
+    không hợp lệ với cột NOT NULL -> 422 thay vì lỗi 500 từ DB.
+    """
+    for name in fields:
+        if name in model.model_fields_set and getattr(model, name) is None:
+            raise ValueError(f"{name} must not be null")
 
 
 # Shared properties
@@ -49,11 +60,25 @@ class UserUpdate(SQLModel):
     password: str | None = Field(default=None, min_length=8, max_length=128)
     role_id: uuid.UUID | None = None  # [Smart Heritage] admin gán role
 
+    @model_validator(mode="after")
+    def _no_explicit_null(self) -> Self:
+        # full_name được phép null (xóa tên); các trường còn lại là bắt buộc có giá trị
+        _reject_explicit_null(
+            self, "email", "is_active", "is_superuser", "password", "role_id"
+        )
+        return self
+
 
 class UserUpdateMe(SQLModel):
     full_name: str | None = Field(default=None, max_length=255)
     email: EmailStr | None = Field(default=None, max_length=255)
     language_id: uuid.UUID | None = None  # [Smart Heritage] ngôn ngữ ưa thích
+
+    @model_validator(mode="after")
+    def _no_explicit_null(self) -> Self:
+        # full_name và language_id được phép null (xóa tên / bỏ ngôn ngữ ưa thích)
+        _reject_explicit_null(self, "email")
+        return self
 
 
 class UpdatePassword(SQLModel):
@@ -94,6 +119,7 @@ class UserPublic(UserBase):
 class UsersPublic(SQLModel):
     data: list[UserPublic]
     count: int
+
 
 class UserMePublic(UserPublic):
     role_name: str
@@ -186,6 +212,20 @@ class LanguageBase(SQLModel):
 
 
 class LanguageCreate(LanguageBase):
+    @field_validator("code", "name")
+    @classmethod
+    def _not_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("must not be blank")
+        return value
+
+    @model_validator(mode="after")
+    def _default_must_be_active(self) -> Self:
+        if self.is_default and not self.is_active:
+            raise ValueError("Ngôn ngữ mặc định phải đang bật (is_active = true)")
+        return self
+
     model_config = _examples(
         {
             "code": "en",
@@ -201,6 +241,21 @@ class LanguageUpdate(SQLModel):
     name: str | None = Field(default=None, max_length=100)
     is_active: bool | None = None
     is_default: bool | None = None
+
+    @field_validator("code", "name")
+    @classmethod
+    def _not_blank(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        value = value.strip()
+        if not value:
+            raise ValueError("must not be blank")
+        return value
+
+    @model_validator(mode="after")
+    def _no_explicit_null(self) -> Self:
+        _reject_explicit_null(self, "code", "name", "is_active", "is_default")
+        return self
 
 
 class Language(LanguageBase, table=True):
@@ -954,7 +1009,6 @@ class Token(SQLModel):
 # Contents of JWT token
 class TokenPayload(SQLModel):
     sub: str | None = None
-
 
 
 class NewPassword(SQLModel):

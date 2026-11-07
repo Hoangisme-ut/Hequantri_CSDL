@@ -5,12 +5,11 @@ from sqlalchemy import ColumnElement, true
 from sqlmodel import col, func, select
 
 from app import crud
-from app.api.deps import SessionDep, VisitorUser
+from app.api.deps import SessionDep, VisitorUser, get_active_language_or_error
 from app.api.docs import errors
 from app.models import (
     Artifact,
     Beacon,
-    Language,
     Site,
     VisitDetailPublic,
     VisitLog,
@@ -73,8 +72,7 @@ def record_visit(
 
     language_id = visit_in.language_id
     if language_id is not None:
-        if not session.get(Language, language_id):
-            raise HTTPException(status_code=404, detail="Language not found")
+        get_active_language_or_error(session, language_id)
     else:
         language = crud.resolve_language(
             session=session, lang_code=None, user=current_user
