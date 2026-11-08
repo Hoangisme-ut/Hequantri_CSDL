@@ -95,7 +95,7 @@ class VisitHistoryResult {
   final int count;
 }
 
-/// P2 VisitLog contract. User identity comes exclusively from the Bearer token.
+/// Temporary VisitLog contract pending P2 confirmation; identity uses the token.
 class VisitLogService {
   VisitLogService({required Uri baseUrl, http.Client? client})
     : _baseUrl = _validateBaseUrl(baseUrl),
@@ -132,7 +132,7 @@ class VisitLogService {
         'artifact_id': artifactId,
         'beacon_id': beaconId,
         'rssi': ?rssi,
-        // language_id omitted: P2 resolves user preference/default language.
+        // language_id omitted: backend resolves user preference/default language.
         // duration_seconds omitted: no viewing duration has been measured.
       },
     );

@@ -1,0 +1,202 @@
+check for added large files..............................................Passed
+check toml...............................................................Passed
+check yaml...............................................................Passed
+fix end of files.........................................................Passed
+trim trailing whitespace.................................................Passed
+typos....................................................................Passed
+biome check..........................................(no files to check)Skipped
+ruff check...............................................................Passed
+ruff format..............................................................Passed
+mypy check...............................................................Failed
+- hook id: local-mypy
+- exit code: 1
+
+  backend\app\seed_sample_data.py:283: error: Argument 2 to "Media" has incompatible type "**dict[str, int | str | UUID | None]"; expected "str"  [arg-type]
+  backend\app\seed_sample_data.py:283: error: Argument 2 to "Media" has incompatible type "**dict[str, int | str | UUID | None]"; expected "str | None"  [arg-type]
+  backend\app\seed_sample_data.py:283: error: Argument 2 to "Media" has incompatible type "**dict[str, int | str | UUID | None]"; expected "int"  [arg-type]
+  backend\app\seed_sample_data.py:283: error: Argument 2 to "Media" has incompatible type "**dict[str, int | str | UUID | None]"; expected "UUID"  [arg-type]
+  backend\app\seed_sample_data.py:283: error: Argument 2 to "Media" has incompatible type "**dict[str, int | str | UUID | None]"; expected "UUID | None"  [arg-type]
+  backend\app\seed_sample_data.py:283: error: Argument 2 to "Media" has incompatible type "**dict[str, int | str | UUID | None]"; expected "datetime | None"  [arg-type]
+  backend\app\seed_sample_data.py:283: error: Argument 2 to "Media" has incompatible type "**dict[str, int | str | UUID | None]"; expected "Artifact | None"  [arg-type]
+  backend\app\seed_sample_data.py:283: error: Argument 2 to "Media" has incompatible type "**dict[str, int | str | UUID | None]"; expected "Language | None"  [arg-type]
+  backend\app\api\routes\sites.py:55: error: Argument 2 to "_localized_sites" has incompatible type "Sequence[Site]"; expected "list[Site]"  [arg-type]
+  backend\app\api\routes\sites.py:132: error: Argument 2 to "join" of "Select" has incompatible type "bool"; expected "ColumnElement[Any] | _HasClauseElement[Any] | SQLCoreOperations[Any] | ExpressionElementRole[Any] | TypedColumnsClauseRole[Any] | Callable[[], ColumnElement[Any]] | LambdaElement | OnClauseRole | None"  [arg-type]
+  backend\app\api\routes\dashboard.py:162: error: Argument 3 to "_count" has incompatible type "Mapped[bool]"; expected "ColumnElement[bool]"  [arg-type]
+  backend\app\api\routes\dashboard.py:166: error: Argument 3 to "_count" has incompatible type "Mapped[bool]"; expected "ColumnElement[bool]"  [arg-type]
+  backend\app\api\routes\dashboard.py:170: error: Argument 3 to "_count" has incompatible type "Mapped[bool]"; expected "ColumnElement[bool]"  [arg-type]
+  backend\app\api\routes\dashboard.py:250: error: No overload variant of "select" matches argument types "Mapped[UUID]", "Mapped[UUID]", "Mapped[str]", "Mapped[bool]", "count"  [call-overload]
+  backend\app\api\routes\dashboard.py:250: note: Possible overload variants:
+  backend\app\api\routes\dashboard.py:250: note:     def [_T0] select(TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], /) -> SelectOfScalar[_T0]
+  backend\app\api\routes\dashboard.py:250: note:     def [_TScalar_0: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None)] select(_TScalar_0, /) -> SelectOfScalar[_TScalar_0]
+  backend\app\api\routes\dashboard.py:250: note:     def [_T0, _T1] select(TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], /) -> Select[tuple[_T0, _T1]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_T0, _TScalar_1: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None)] select(TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], _TScalar_1, /) -> Select[tuple[_T0, _TScalar_1]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_TScalar_0: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _T1] select(_TScalar_0, TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], /) -> Select[tuple[_TScalar_0, _T1]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_TScalar_0: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _TScalar_1: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None)] select(_TScalar_0, _TScalar_1, /) -> Select[tuple[_TScalar_0, _TScalar_1]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_T0, _T1, _T2] select(TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], /) -> Select[tuple[_T0, _T1, _T2]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_T0, _T1, _TScalar_2: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None)] select(TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], _TScalar_2, /) -> Select[tuple[_T0, _T1, _TScalar_2]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_T0, _TScalar_1: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _T2] select(TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], _TScalar_1, TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], /) -> Select[tuple[_T0, _TScalar_1, _T2]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_T0, _TScalar_1: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _TScalar_2: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None)] select(TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], _TScalar_1, _TScalar_2, /) -> Select[tuple[_T0, _TScalar_1, _TScalar_2]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_TScalar_0: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _T1, _T2] select(_TScalar_0, TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], /) -> Select[tuple[_TScalar_0, _T1, _T2]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_TScalar_0: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _T1, _TScalar_2: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None)] select(_TScalar_0, TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], _TScalar_2, /) -> Select[tuple[_TScalar_0, _T1, _TScalar_2]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_TScalar_0: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _TScalar_1: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _T2] select(_TScalar_0, _TScalar_1, TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], /) -> Select[tuple[_TScalar_0, _TScalar_1, _T2]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_TScalar_0: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _TScalar_1: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _TScalar_2: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None)] select(_TScalar_0, _TScalar_1, _TScalar_2, /) -> Select[tuple[_TScalar_0, _TScalar_1, _TScalar_2]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_T0, _T1, _T2, _T3] select(TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_T0, _T1, _T2, _T3]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_T0, _T1, _T2, _TScalar_3: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None)] select(TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], _TScalar_3, /) -> Select[tuple[_T0, _T1, _T2, _TScalar_3]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_T0, _T1, _TScalar_2: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _T3] select(TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], _TScalar_2, TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_T0, _T1, _TScalar_2, _T3]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_T0, _T1, _TScalar_2: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _TScalar_3: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None)] select(TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], _TScalar_2, _TScalar_3, /) -> Select[tuple[_T0, _T1, _TScalar_2, _TScalar_3]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_T0, _TScalar_1: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _T2, _T3] select(TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], _TScalar_1, TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_T0, _TScalar_1, _T2, _T3]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_T0, _TScalar_1: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _T2, _TScalar_3: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None)] select(TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], _TScalar_1, TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], _TScalar_3, /) -> Select[tuple[_T0, _TScalar_1, _T2, _TScalar_3]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_T0, _TScalar_1: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _TScalar_2: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _T3] select(TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], _TScalar_1, _TScalar_2, TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_T0, _TScalar_1, _TScalar_2, _T3]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_T0, _TScalar_1: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _TScalar_2: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _TScalar_3: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None)] select(TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], _TScalar_1, _TScalar_2, _TScalar_3, /) -> Select[tuple[_T0, _TScalar_1, _TScalar_2, _TScalar_3]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_TScalar_0: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _T1, _T2, _T3] select(_TScalar_0, TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_TScalar_0, _T1, _T2, _T3]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_TScalar_0: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _T1, _T2, _TScalar_3: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None)] select(_TScalar_0, TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], _TScalar_3, /) -> Select[tuple[_TScalar_0, _T1, _T2, _TScalar_3]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_TScalar_0: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _T1, _TScalar_2: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _T3] select(_TScalar_0, TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], _TScalar_2, TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_TScalar_0, _T1, _TScalar_2, _T3]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_TScalar_0: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _T1, _TScalar_2: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _TScalar_3: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None)] select(_TScalar_0, TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], _TScalar_2, _TScalar_3, /) -> Select[tuple[_TScalar_0, _T1, _TScalar_2, _TScalar_3]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_TScalar_0: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _TScalar_1: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _T2, _T3] select(_TScalar_0, _TScalar_1, TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_TScalar_0, _TScalar_1, _T2, _T3]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_TScalar_0: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _TScalar_1: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _T2, _TScalar_3: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None)] select(_TScalar_0, _TScalar_1, TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], _TScalar_3, /) -> Select[tuple[_TScalar_0, _TScalar_1, _T2, _TScalar_3]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_TScalar_0: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _TScalar_1: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _TScalar_2: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _T3] select(_TScalar_0, _TScalar_1, _TScalar_2, TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_TScalar_0, _TScalar_1, _TScalar_2, _T3]]
+  backend\app\api\routes\dashboard.py:250: note:     def [_TScalar_0: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _TScalar_1: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _TScalar_2: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None), _TScalar_3: (Column[Any], Sequence[Any], Mapping[Any, Any], UUID, datetime, float, int, bool, bytes, str, None)] select(_TScalar_0, _TScalar_1, _TScalar_2, _TScalar_3, /) -> Select[tuple[_TScalar_0, _TScalar_1, _TScalar_2, _TScalar_3]]
+  Found 14 errors in 3 files (checked 48 source files)
+ty check.................................................................Failed
+- hook id: local-ty
+- exit code: 1
+
+  error[invalid-argument-type]: Argument to function `_count` is incorrect
+     --> backend\app\api\routes\dashboard.py:162:42
+      |
+  162 |             active=_count(session, Site, col(Site.is_active)),
+      |                                          ^^^^^^^^^^^^^^^^^^^ Expected `ColumnElement[bool]`, found `Mapped[bool]`
+  info: Function defined here
+     --> backend\app\api\routes\dashboard.py:133:5
+      |
+  133 | def _count(session: SessionDep, model: Any, *conditions: ColumnElement[bool]) -> int:
+      |     ^^^^^^                                  -------------------------------- Parameter declared here
+
+  error[invalid-argument-type]: Argument to function `_count` is incorrect
+     --> backend\app\api\routes\dashboard.py:166:46
+      |
+  166 |             active=_count(session, Artifact, col(Artifact.is_active)),
+      |                                              ^^^^^^^^^^^^^^^^^^^^^^^ Expected `ColumnElement[bool]`, found `Mapped[bool]`
+  info: Function defined here
+     --> backend\app\api\routes\dashboard.py:133:5
+      |
+  133 | def _count(session: SessionDep, model: Any, *conditions: ColumnElement[bool]) -> int:
+      |     ^^^^^^                                  -------------------------------- Parameter declared here
+
+  error[invalid-argument-type]: Argument to function `_count` is incorrect
+     --> backend\app\api\routes\dashboard.py:170:44
+      |
+  170 |             active=_count(session, Beacon, col(Beacon.is_active)),
+      |                                            ^^^^^^^^^^^^^^^^^^^^^ Expected `ColumnElement[bool]`, found `Mapped[bool]`
+  info: Function defined here
+     --> backend\app\api\routes\dashboard.py:133:5
+      |
+  133 | def _count(session: SessionDep, model: Any, *conditions: ColumnElement[bool]) -> int:
+      |     ^^^^^^                                  -------------------------------- Parameter declared here
+
+  error[no-matching-overload]: No overload of function `select` matches arguments
+     --> backend\app\api\routes\dashboard.py:250:9
+      |
+  250 | /         select(
+  251 | |             col(Artifact.id),
+  252 | |             col(Artifact.site_id),
+  253 | |             col(Artifact.code),
+  254 | |             col(Artifact.is_active),
+  255 | |             visit_count,
+  256 | |         )
+      | |_________^
+  info: First overload defined here
+     --> .venv\Lib\site-packages\sqlmodel\sql\_expression_select_gen.py:105:1
+      |
+  105 | / @overload
+  106 | | def select(ent0: _TCCA[_T0], /) -> SelectOfScalar[_T0]: ...
+      | |___________________________________________________________^ First overload defined here
+  info: Possible overloads for function `select`:
+  info:   [_T0](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], /) -> SelectOfScalar[_T0]
+  info:   [_TScalar_0](ent0: _TScalar_0, /) -> SelectOfScalar[_TScalar_0]
+  info:   [_T0, _T1](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], /) -> Select[tuple[_T0, _T1]]
+  info:   [_T0, _TScalar_1](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], entity_1: _TScalar_1, /) -> Select[tuple[_T0, _TScalar_1]]
+  info:   [_TScalar_0, _T1](entity_0: _TScalar_0, ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], /) -> Select[tuple[_TScalar_0, _T1]]
+  info:   [_TScalar_0, _TScalar_1](entity_0: _TScalar_0, entity_1: _TScalar_1, /) -> Select[tuple[_TScalar_0, _TScalar_1]]
+  info:   [_T0, _T1, _T2](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], /) -> Select[tuple[_T0, _T1, _T2]]
+  info:   [_T0, _T1, _TScalar_2](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], entity_2: _TScalar_2, /) -> Select[tuple[_T0, _T1, _TScalar_2]]
+  info:   [_T0, _TScalar_1, _T2](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], entity_1: _TScalar_1, ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], /) -> Select[tuple[_T0, _TScalar_1, _T2]]
+  info:   [_T0, _TScalar_1, _TScalar_2](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], entity_1: _TScalar_1, entity_2: _TScalar_2, /) -> Select[tuple[_T0, _TScalar_1, _TScalar_2]]
+  info:   [_TScalar_0, _T1, _T2](entity_0: _TScalar_0, ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], /) -> Select[tuple[_TScalar_0, _T1, _T2]]
+  info:   [_TScalar_0, _T1, _TScalar_2](entity_0: _TScalar_0, ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], entity_2: _TScalar_2, /) -> Select[tuple[_TScalar_0, _T1, _TScalar_2]]
+  info:   [_TScalar_0, _TScalar_1, _T2](entity_0: _TScalar_0, entity_1: _TScalar_1, ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], /) -> Select[tuple[_TScalar_0, _TScalar_1, _T2]]
+  info:   [_TScalar_0, _TScalar_1, _TScalar_2](entity_0: _TScalar_0, entity_1: _TScalar_1, entity_2: _TScalar_2, /) -> Select[tuple[_TScalar_0, _TScalar_1, _TScalar_2]]
+  info:   [_T0, _T1, _T2, _T3](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], ent3: TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_T0, _T1, _T2, _T3]]
+  info:   [_T0, _T1, _T2, _TScalar_3](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], entity_3: _TScalar_3, /) -> Select[tuple[_T0, _T1, _T2, _TScalar_3]]
+  info:   [_T0, _T1, _TScalar_2, _T3](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], entity_2: _TScalar_2, ent3: TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_T0, _T1, _TScalar_2, _T3]]
+  info:   [_T0, _T1, _TScalar_2, _TScalar_3](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], entity_2: _TScalar_2, entity_3: _TScalar_3, /) -> Select[tuple[_T0, _T1, _TScalar_2, _TScalar_3]]
+  info:   [_T0, _TScalar_1, _T2, _T3](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], entity_1: _TScalar_1, ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], ent3: TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_T0, _TScalar_1, _T2, _T3]]
+  info:   [_T0, _TScalar_1, _T2, _TScalar_3](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], entity_1: _TScalar_1, ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], entity_3: _TScalar_3, /) -> Select[tuple[_T0, _TScalar_1, _T2, _TScalar_3]]
+  info:   [_T0, _TScalar_1, _TScalar_2, _T3](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], entity_1: _TScalar_1, entity_2: _TScalar_2, ent3: TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_T0, _TScalar_1, _TScalar_2, _T3]]
+  info:   [_T0, _TScalar_1, _TScalar_2, _TScalar_3](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], entity_1: _TScalar_1, entity_2: _TScalar_2, entity_3: _TScalar_3, /) -> Select[tuple[_T0, _TScalar_1, _TScalar_2, _TScalar_3]]
+  info:   [_TScalar_0, _T1, _T2, _T3](entity_0: _TScalar_0, ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], ent3: TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_TScalar_0, _T1, _T2, _T3]]
+  info:   [_TScalar_0, _T1, _T2, _TScalar_3](entity_0: _TScalar_0, ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], entity_3: _TScalar_3, /) -> Select[tuple[_TScalar_0, _T1, _T2, _TScalar_3]]
+  info:   [_TScalar_0, _T1, _TScalar_2, _T3](entity_0: _TScalar_0, ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], entity_2: _TScalar_2, ent3: TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_TScalar_0, _T1, _TScalar_2, _T3]]
+  info:   [_TScalar_0, _T1, _TScalar_2, _TScalar_3](entity_0: _TScalar_0, ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], entity_2: _TScalar_2, entity_3: _TScalar_3, /) -> Select[tuple[_TScalar_0, _T1, _TScalar_2, _TScalar_3]]
+  info:   [_TScalar_0, _TScalar_1, _T2, _T3](entity_0: _TScalar_0, entity_1: _TScalar_1, ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], ent3: TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_TScalar_0, _TScalar_1, _T2, _T3]]
+  info:   [_TScalar_0, _TScalar_1, _T2, _TScalar_3](entity_0: _TScalar_0, entity_1: _TScalar_1, ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], entity_3: _TScalar_3, /) -> Select[tuple[_TScalar_0, _TScalar_1, _T2, _TScalar_3]]
+  info:   [_TScalar_0, _TScalar_1, _TScalar_2, _T3](entity_0: _TScalar_0, entity_1: _TScalar_1, entity_2: _TScalar_2, ent3: TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_TScalar_0, _TScalar_1, _TScalar_2, _T3]]
+  info:   [_TScalar_0, _TScalar_1, _TScalar_2, _TScalar_3](entity_0: _TScalar_0, entity_1: _TScalar_1, entity_2: _TScalar_2, entity_3: _TScalar_3, /) -> Select[tuple[_TScalar_0, _TScalar_1, _TScalar_2, _TScalar_3]]
+  info: Overload implementation defined here
+     --> .venv\Lib\site-packages\sqlmodel\sql\_expression_select_gen.py:383:5
+      |
+  383 | def select(*entities: Any) -> Select | SelectOfScalar:
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  error[invalid-argument-type]: Argument to function `_localized_sites` is incorrect
+    --> backend\app\api\routes\sites.py:55:55
+     |
+  55 |     return SitesPublic(data=_localized_sites(session, sites, lang), count=count)
+     |                                                       ^^^^^ Expected `list[Site]`, found `Sequence[Site]`
+  info: Function defined here
+    --> backend\app\api\routes\sites.py:76:5
+     |
+  76 | def _localized_sites(
+     |     ^^^^^^^^^^^^^^^^
+  77 |     session: SessionDep, sites: list[Site], lang: str
+     |                          ----------------- Parameter declared here
+
+  error[invalid-argument-type]: Argument to bound method `Select.join` is incorrect
+     --> backend\app\api\routes\sites.py:132:25
+      |
+  132 |         .join(Language, SiteTranslation.language_id == Language.id)
+      |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected `SQLCoreOperations[Any] | _HasClauseElement[Any] | TypedColumnsClauseRole[Any] | ... omitted 4 union elements`, found `bool`
+  info: type `bool` is not assignable to any element of the union `SQLCoreOperations[Any] | _HasClauseElement[Any] | TypedColumnsClauseRole[Any] | ... omitted 4 union elements`
+  info: ├── type `bool` is not assignable to protocol `_HasClauseElement[Any]`
+  info: │   └── protocol member `__clause_element__` is not defined on type `bool`
+  info: └── ... omitted 6 union elements without additional context
+  info: Method defined here
+      --> .venv\Lib\site-packages\sqlalchemy\sql\selectable.py:5526:9
+       |
+  5526 |     def join(
+       |         ^^^^
+  5527 |         self,
+  5528 |         target: _JoinTargetArgument,
+  5529 |         onclause: Optional[_OnClauseArgument] = None,
+       |         -------------------------------------------- Parameter declared here
+
+  error[invalid-argument-type]: Argument is incorrect
+     --> backend\app\seed_sample_data.py:283:44
+      |
+  283 |                 media = Media(id=media_id, **values)
+      |                                            ^^^^^^^^ Expected `LaxDatetime | None`, found `UUID | None | str | int`
+  info: element `UUID` of union `UUID | None | str | int` is not assignable to `bytes | date | float | ... omitted 3 union elements`
+
+  error[invalid-argument-type]: Argument is incorrect
+     --> backend\app\seed_sample_data.py:283:44
+      |
+  283 |                 media = Media(id=media_id, **values)
+      |                                            ^^^^^^^^ Expected `LaxDatetime | None`, found `UUID | None | str | int`
+  info: element `UUID` of union `UUID | None | str | int` is not assignable to `bytes | date | float | ... omitted 3 union elements`
+
+  Found 8 diagnostics
+Generate Frontend SDK................................(no files to check)Skipped
+add date to latest release header....................(no files to check)Skipped
+zizmor...................................................................Passed
+
+exit_code=1

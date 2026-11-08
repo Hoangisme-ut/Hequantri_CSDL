@@ -323,7 +323,7 @@ void main() {
     },
   );
 
-  testWidgets('an inactive panel waits until its tab becomes visible', (
+  testWidgets('showing a beacon preview tab does not start a visit', (
     tester,
   ) async {
     final contents = _Contents();
@@ -356,7 +356,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(visits.artifacts, ['artifact-1']);
+    expect(visits.artifacts, isEmpty);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
@@ -394,7 +394,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('a covered route waits until the content screen is current', (
+  testWidgets('uncovering a beacon preview does not start a visit', (
     tester,
   ) async {
     final contents = _Contents();
@@ -431,11 +431,11 @@ void main() {
     expect(visits.artifacts, isEmpty);
     navigator.currentState!.pop();
     await tester.pumpAndSettle();
-    expect(visits.artifacts, ['artifact-1']);
+    expect(visits.artifacts, isEmpty);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('confirmed real scan logs A and B once with measured RSSI', (
+  testWidgets('confirmed real scan previews A and B without recording visits', (
     tester,
   ) async {
     final contents = _Contents();
@@ -475,7 +475,7 @@ void main() {
       for (var i = 0; i < 5; i++) {
         await emit(1);
       }
-      expect(visits.artifacts, ['artifact-1']);
+      expect(visits.artifacts, isEmpty);
       await tester.pump(const Duration(seconds: 3));
       await emit(2);
       await emit(2);
@@ -483,11 +483,11 @@ void main() {
       await emit(2);
       contents.pending.last.complete(_content(2));
       await tester.pumpAndSettle();
-      expect(visits.artifacts, ['artifact-1', 'artifact-2']);
-      expect(visits.signals, [-50, -50]);
+      expect(visits.artifacts, isEmpty);
+      expect(visits.signals, isEmpty);
       await tester.runAsync(() => key.currentState!.stopScanningIfNeeded());
       await tester.pump();
-      expect(visits.artifacts.length, 2);
+      expect(visits.artifacts, isEmpty);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       await source.close();

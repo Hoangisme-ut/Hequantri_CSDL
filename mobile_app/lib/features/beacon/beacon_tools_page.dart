@@ -170,7 +170,6 @@ class BeaconTestPageState extends State<BeaconTestPage>
   VisitorApi? _visitorApi;
   SiteApi? _siteApi;
   bool _ownsVisitorApi = false;
-  BeaconContent? _scheduledVisitContent;
   String? _configurationError;
   Beacon? _selectedBeacon;
 
@@ -742,10 +741,15 @@ class BeaconTestPageState extends State<BeaconTestPage>
       descriptionEn: content.description ?? '',
       imageUrl: content.coverImageUrl ?? '',
     );
+    final visitRssi = _selectedBeacon?.rssi;
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            ArtifactDetailPage(artifact: artifact, visitorApi: _visitorApi),
+        builder: (_) => ArtifactDetailPage(
+          artifact: artifact,
+          visitorApi: _visitorApi,
+          visitBeaconId: content.beaconId,
+          visitRssi: visitRssi,
+        ),
       ),
     );
   }
@@ -813,30 +817,6 @@ class BeaconTestPageState extends State<BeaconTestPage>
       builder: (context, child) {
         final content = controller.content;
         final error = controller.errorMessage;
-        final contentToken = controller.contentToken;
-        if (content != null &&
-            contentToken != null &&
-            !controller.isLoading &&
-            widget.isActive &&
-            !identical(_scheduledVisitContent, content)) {
-          _scheduledVisitContent = content;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!_isVisibleResolvedContent(content, contentToken)) {
-              if (identical(_scheduledVisitContent, content)) {
-                _scheduledVisitContent = null;
-              }
-              return;
-            }
-            // Controller -> VisitLogService is the sole real-scan POST path.
-            unawaited(
-              controller.recordDisplayedContent(
-                content,
-                rssi: _selectedBeacon?.rssi,
-              ),
-            );
-          });
-        }
-
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

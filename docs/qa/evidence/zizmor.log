@@ -1,0 +1,20 @@
+No findings to report. Good job! (5 ignored, 57 suppressed)
+ INFO zizmor: 🌈 zizmor v1.30.1
+ INFO audit: zizmor: 🌈 completed .github\workflows\add-to-project.yml
+ INFO audit: zizmor: 🌈 completed .github\workflows\bump-pre-commit-hooks.yml
+ INFO audit: zizmor: 🌈 completed .github\workflows\create-draft-release.yml
+ INFO audit: zizmor: 🌈 completed .github\workflows\deploy-docker-compose.yml
+ INFO audit: zizmor: 🌈 completed .github\workflows\deploy.yml
+ INFO audit: zizmor: 🌈 completed .github\workflows\detect-conflicts.yml
+ INFO audit: zizmor: 🌈 completed .github\workflows\guard-dependencies.yml
+ INFO audit: zizmor: 🌈 completed .github\workflows\issue-manager.yml
+ INFO audit: zizmor: 🌈 completed .github\workflows\playwright.yml
+ INFO audit: zizmor: 🌈 completed .github\workflows\pre-commit.yml
+ INFO audit: zizmor: 🌈 completed .github\workflows\prepare-release.yml
+ INFO audit: zizmor: 🌈 completed .github\workflows\smokeshow.yml
+ INFO audit: zizmor: 🌈 completed .github\workflows\test-backend.yml
+ INFO audit: zizmor: 🌈 completed .github\workflows\test-docker-compose.yml
+ INFO audit: zizmor: 🌈 completed .github\workflows\test-flutter.yml
+ INFO audit: zizmor: 🌈 completed .github\workflows\zizmor.yml
+
+exit_code=0

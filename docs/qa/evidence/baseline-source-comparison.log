@@ -1,0 +1,4 @@
+git diff --exit-code origin/main -- backend/app
+exit_code=0
+No production backend source differs from baseline 00efd84ba58f5e5597e79090dc9ef437665b3ac9.
+Baseline archived source with same venv: mypy14 errors/3files; ty8 diagnostics.

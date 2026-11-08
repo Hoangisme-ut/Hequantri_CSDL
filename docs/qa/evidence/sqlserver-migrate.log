@@ -1,0 +1,16 @@
+INFO  [alembic.runtime.migration] Context impl MSSQLImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 475b2d4c150f, init
+INFO  [alembic.runtime.migration] Running upgrade 475b2d4c150f -> 2af237ad3b09, Add Smart Heritage tables
+INFO  [alembic.runtime.migration] Running upgrade 2af237ad3b09 -> c3a91f5e7d20, nvarchar cho tiếng Việt, Language.is_default, updated_at, Artifact unique theo site
+INFO  [alembic.runtime.migration] Running upgrade c3a91f5e7d20 -> 7d6e9a4b2c1f, Complete Beacon and Media schema from the final ERD.
+INFO  [alembic.runtime.migration] Running upgrade 7d6e9a4b2c1f -> a1b2c3d4e5f6, Add Site update timestamp from the ERD.
+INFO  [alembic.runtime.migration] Running upgrade a1b2c3d4e5f6 -> b2c3d4e5f6a7, Validate feedback rating/status without modifying existing rows.
+INFO  [alembic.runtime.migration] Running upgrade b2c3d4e5f6a7 -> c3d4e5f6a7b8, Remember consumed reset tokens without invalidating existing access tokens.
+INFO  [alembic.runtime.migration] Running upgrade a1b2c3d4e5f6 -> b734c0d91e2a, Add independent per-language Site translations.
+INFO  [alembic.runtime.migration] Running upgrade a1b2c3d4e5f6 -> e5f6a7b8c9d0, Feedback theo ERD: status pending/approved/hidden, rating 1-5, unique user+artifact, updated_at.
+INFO  [alembic.runtime.migration] Running upgrade b734c0d91e2a, e5f6a7b8c9d0 -> c8d9e0f1a2b3, Merge the feedback and site-translation migration branches.
+INFO  [alembic.runtime.migration] Running upgrade b734c0d91e2a, c3d4e5f6a7b8 -> ab0ca64f8ea9, merge_site_translation_and_feedback_heads
+INFO  [alembic.runtime.migration] Running upgrade ab0ca64f8ea9, c8d9e0f1a2b3 -> f7a8b9c0d1e2, Merge the legacy feedback branch with the ERD feedback branch.
+
+exit_code=0
