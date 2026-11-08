@@ -457,7 +457,7 @@ void main() {
       'ASCII': 'a' * 2000,
       'Vietnamese diacritics': 'ế' * 2000,
       'astral emoji': '😀' * 1500,
-      'exact 2000 code point boundary': 'a' * 499 + 'ế' + '😀' * 1500,
+      'exact 2000 code point boundary': '${'a' * 499}ế${'😀' * 1500}',
     };
 
     for (final entry in acceptedComments.entries) {
