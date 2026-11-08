@@ -1,0 +1,18 @@
+git branch --show-current
+fix/visitlog-flutter-ci-e2e-acceptance
+
+git rev-parse HEAD
+00efd84ba58f5e5597e79090dc9ef437665b3ac9
+
+git rev-parse origin/main
+00efd84ba58f5e5597e79090dc9ef437665b3ac9
+
+git symbolic-ref refs/remotes/origin/HEAD
+refs/remotes/origin/main
+
+git remote -v
+origin	https://github.com/Hoangisme-ut/Hequantri_CSDL.git (fetch)
+origin	https://github.com/Hoangisme-ut/Hequantri_CSDL.git (push)
+
+Fetch origin succeeded before branch creation. Remote HEAD verified as main.
+Initial untracked file docs/backend-audit-plan-2026-11-06.md was preserved and excluded.

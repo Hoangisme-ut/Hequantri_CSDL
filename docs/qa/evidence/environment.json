@@ -1,0 +1,24 @@
+{
+  "date": "2026-11-08",
+  "timezone": "Asia/Saigon",
+  "python": "3.14.8",
+  "flutter": "3.47.7",
+  "dart": "3.13.5",
+  "node": "26.8.2",
+  "sqlserver": "SQL Server 2022 container",
+  "qa_database": "test_acceptance_7c7c86e0",
+  "qa_container": "heritage-qa-7c7c86e0",
+  "qa_container_state": "stopped after acceptance; database retained",
+  "origins": {
+    "api": "http://127.0.0.1:8011",
+    "web": "http://localhost:5174",
+    "media": "http://127.0.0.1:8091"
+  },
+  "flutter_devices": [
+    "Windows desktop",
+    "Chrome",
+    "Edge"
+  ],
+  "android_ios_device_available": false,
+  "uvicorn_shared_socket_two_workers": "BLOCKED: WinError 10022; live acceptance used one worker; independent process lock test passed"
+}

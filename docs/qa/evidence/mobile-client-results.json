@@ -1,0 +1,54 @@
+{
+  "checks": [
+    {
+      "id": "MB-01-client",
+      "status": "PASS",
+      "detail": "Real Site list includes Web-created Site ID"
+    },
+    {
+      "id": "MB-02-client",
+      "status": "PASS",
+      "detail": "Real Artifact list includes Web-created Artifact ID"
+    },
+    {
+      "id": "MB-03-05-client",
+      "status": "PASS",
+      "detail": "Flutter received updated Web text and correct vi/en translations"
+    },
+    {
+      "id": "MB-06-decode",
+      "status": "PASS",
+      "detail": "Actual HTTP JPEG bytes decoded by Flutter engine; device display unverified"
+    },
+    {
+      "id": "MB-08-client",
+      "status": "PASS",
+      "detail": "Beacon resolves Web mapping without recording an incidental visit"
+    },
+    {
+      "id": "FAV-HIST-01",
+      "status": "PASS",
+      "detail": "Favorite/History persist after re-login, replay is reused, user B has no private records"
+    },
+    {
+      "id": "SQL-favorite-added",
+      "status": "PASS",
+      "detail": "Direct SQL Server SELECT assertions passed"
+    },
+    {
+      "id": "SQL-favorite-removed",
+      "status": "PASS",
+      "detail": "Direct SQL Server SELECT assertions passed"
+    },
+    {
+      "id": "MB-09-client",
+      "status": "PASS",
+      "detail": "Real 404 mapped to the expected client error; UI error rendering covered separately"
+    }
+  ],
+  "user_id": "8f965b36-a57d-4a26-8069-5404581cf47d",
+  "artifact_id": "dc628799-63ff-463b-a216-b0a7b7634afd",
+  "site_id": "7a7dce5e-3530-4a47-972b-7c10d7852f59",
+  "visit_id": "1d94cf44-2f3a-429b-84f3-1b416a80eaf8",
+  "visited_at_utc": "2026-11-08T03:30:31.648Z"
+}

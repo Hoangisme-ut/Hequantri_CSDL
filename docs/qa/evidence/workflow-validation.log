@@ -1,0 +1,28 @@
+add-to-project.yml: YAML PASS; events=pull_request_target,issues
+bump-pre-commit-hooks.yml: YAML PASS; events=schedule,workflow_dispatch
+create-draft-release.yml: YAML PASS; events=pull_request
+deploy-docker-compose.yml: YAML PASS; events=workflow_dispatch
+deploy.yml: YAML PASS; events=push,workflow_dispatch
+detect-conflicts.yml: YAML PASS; events=push,pull_request_target
+guard-dependencies.yml: YAML PASS; events=pull_request_target
+issue-manager.yml: YAML PASS; events=schedule,issue_comment,issues,pull_request_target,workflow_dispatch
+playwright.yml: YAML PASS; events=push,pull_request,workflow_dispatch
+pre-commit.yml: YAML PASS; events=pull_request
+prepare-release.yml: YAML PASS; events=workflow_dispatch
+smokeshow.yml: YAML PASS; events=workflow_run
+test-backend.yml: YAML PASS; events=push,pull_request
+test-docker-compose.yml: YAML PASS; events=push,pull_request
+test-flutter.yml: YAML PASS; events=push,pull_request,workflow_dispatch
+zizmor.yml: YAML PASS; events=push,pull_request,workflow_dispatch
+Flutter push main: RUN PASS
+Flutter push fix/visitlog-flutter-ci-e2e-acceptance: RUN PASS
+Flutter push feature/mobile-setup: RUN PASS
+Flutter push integration/mobile-navigation-auth: RUN PASS
+Flutter push docs/readme: NO RUN PASS
+Flutter PR into main and workflow_dispatch: RUN PASS; no path-filter skipped required job
+zizmor.yml integration branch main: PASS
+playwright.yml integration branch main: PASS
+deploy.yml integration branch main: PASS
+All 16 YAML files and trigger/config assertions PASS
+
+exit_code=0

@@ -27,12 +27,18 @@ def graph(client, superuser_token_headers, db):
     purge_sites(db, [site["id"]])
 
 
+@pytest.mark.parametrize("requests", [2, 12], ids=["VL-01", "VL-02"])
 def test_concurrent_visits_are_deduplicated(
-    client: TestClient, normal_user_token_headers, graph, db: Session, monkeypatch
+    client: TestClient,
+    normal_user_token_headers,
+    graph,
+    db: Session,
+    monkeypatch,
+    requests,
 ):
     _, artifact, _ = graph
     original = crud.find_recent_visit
-    start = Barrier(2)
+    start = Barrier(requests)
 
     def slow_read(**kwargs):
         result = original(**kwargs)
@@ -49,9 +55,9 @@ def test_concurrent_visits_are_deduplicated(
             json={"artifact_id": artifact["id"]},
         )
 
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        responses = list(pool.map(record, range(2)))
-    assert sorted(r.status_code for r in responses) == [200, 201]
+    with ThreadPoolExecutor(max_workers=requests) as pool:
+        responses = list(pool.map(record, range(requests)))
+    assert sorted(r.status_code for r in responses) == [200] * (requests - 1) + [201]
     assert len({r.json()["id"] for r in responses}) == 1
     rows = db.exec(
         select(VisitLog).where(col(VisitLog.artifact_id) == uuid.UUID(artifact["id"]))
