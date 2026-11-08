@@ -18,26 +18,9 @@ def custom_generate_unique_id(route: APIRoute) -> str:
 if settings.SENTRY_DSN and settings.FASTAPI_ENV != "development":
     sentry_sdk.init(dsn=str(settings.SENTRY_DSN), enable_tracing=True)
 
-API_DESCRIPTION = """
-API backend của **Smart Heritage** (hệ thống du lịch thông minh dùng iBeacon).
-
-**Cách thử trên Swagger**
-1. Gọi `POST /api/v1/login/access-token` (ô `username` là email) để lấy `access_token`.
-2. Bấm **Authorize** (ổ khóa) và dán token.
-
-**Phân quyền**: *Public* (không cần token) · *Visitor* (đã đăng nhập, role `visitor`)
-· *Admin* (role `admin`). Thiếu token -> **401**, sai quyền -> **403**.
-
-**Quy ước chung**
-- Ngôn ngữ: `?lang=vi|en`; bỏ trống thì dùng ngôn ngữ ưa thích của người dùng,
-  rồi đến ngôn ngữ mặc định. Chưa có bản dịch -> dự phòng ngôn ngữ mặc định
-  (`is_fallback = true`).
-- Xóa Site/Artifact/Beacon/Language là **xóa mềm** (`is_active = false`).
-- Site bị ẩn thì hiện vật và beacon của Site đó không hiển thị cho khách.
-- Lỗi trả dạng `{"detail": "..."}`; dữ liệu sai định dạng -> **422**.
-"""
-
 OPENAPI_TAGS = [
+    {"name": "login"},
+    {"name": "users"},
     {
         "name": "languages",
         "description": "Ngôn ngữ hỗ trợ (vi, en...). Public đọc, admin quản lý.",
@@ -47,6 +30,7 @@ OPENAPI_TAGS = [
         "name": "artifacts",
         "description": "Hiện vật và nội dung theo ngôn ngữ (bản dịch, media). Public đọc, admin quản lý.",
     },
+    {"name": "media"},
     {
         "name": "beacons",
         "description": "Beacon iBeacon. App quét gọi `GET /beacons/resolve`; admin quản lý thiết bị.",
@@ -55,6 +39,7 @@ OPENAPI_TAGS = [
         "name": "favorites",
         "description": "Hiện vật yêu thích của người dùng đang đăng nhập.",
     },
+    {"name": "feedback"},
     {
         "name": "feedbacks",
         "description": (
@@ -66,16 +51,20 @@ OPENAPI_TAGS = [
         "name": "visits",
         "description": "Ghi lượt xem và lịch sử tham quan của người dùng đang đăng nhập.",
     },
+    {"name": "analytics"},
     {
         "name": "dashboard",
         "description": "Thống kê tổng quan (Site/Artifact/Beacon, lượt xem theo ngày, top hiện vật, theo ngôn ngữ). Chỉ Admin.",
     },
+    {"name": "items"},
+    {"name": "utils"},
+    {"name": "private"},
 ]
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description=API_DESCRIPTION,
     openapi_tags=OPENAPI_TAGS,
+    swagger_ui_parameters={"operationsSorter": "alpha"},
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     generate_unique_id_function=custom_generate_unique_id,
 )
