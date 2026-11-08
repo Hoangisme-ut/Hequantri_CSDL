@@ -7,6 +7,7 @@ from sqlmodel import col, func, select
 from app import crud
 from app.api.deps import SessionDep, VisitorUser, get_active_language_or_error
 from app.api.docs import errors
+from app.core.transactions import acquire_transaction_lock
 from app.models import (
     Artifact,
     Beacon,
@@ -26,7 +27,7 @@ router = APIRouter(prefix="/visits", tags=["visits"])
     response_model=VisitLogPublic,
     status_code=status.HTTP_201_CREATED,
     responses={
-        **errors(401, 403, 404, 400),
+        **errors(401, 403, 404, 400, 409),
         200: {
             "description": (
                 f"Đã có lượt xem hiện vật này trong {crud.VISIT_DEDUP_SECONDS} giây "
@@ -55,6 +56,7 @@ def record_visit(
     - `beacon_id` (nếu gửi) phải là beacon đang gắn đúng hiện vật này.
     - `language_id` bỏ trống thì lấy ngôn ngữ ưa thích của người dùng / mặc định.
     """
+    acquire_transaction_lock(session, f"visit:{current_user.id}:{visit_in.artifact_id}")
     artifact = crud.get_visible_artifact(
         session=session, artifact_id=visit_in.artifact_id
     )
@@ -63,9 +65,9 @@ def record_visit(
 
     if visit_in.beacon_id is not None:
         beacon = session.get(Beacon, visit_in.beacon_id)
-        if not beacon:
+        if not beacon or not beacon.is_active:
             raise HTTPException(status_code=404, detail="Beacon not found")
-        if beacon.artifact_id != artifact.id:
+        if beacon.artifact_id != artifact.id or beacon.site_id != artifact.site_id:
             raise HTTPException(
                 status_code=400, detail="Beacon không gắn với hiện vật này"
             )
@@ -73,7 +75,6 @@ def record_visit(
     language_id = visit_in.language_id
     if language_id is not None:
         get_active_language_or_error(session, language_id)
-    else:
         language = crud.resolve_language(
             session=session, lang_code=None, user=current_user
         )
@@ -127,7 +128,8 @@ def read_my_visits(
         .where(*conditions)
     ).one()
     visits = session.exec(
-        select(VisitLog)
+        select(VisitLog, Artifact)
+        .select_from(VisitLog)
         .join(Artifact, col(Artifact.id) == col(VisitLog.artifact_id))
         .join(Site, col(Site.id) == col(Artifact.site_id))
         .where(*conditions)
@@ -137,14 +139,14 @@ def read_my_visits(
     ).all()
 
     language = crud.resolve_language(session=session, lang_code=lang, user=current_user)
+    summaries = crud.build_artifact_summaries(
+        session=session,
+        artifacts=[artifact for _, artifact in visits],
+        language=language,
+    )
     items = []
-    for visit in visits:
-        artifact = session.get(Artifact, visit.artifact_id)
-        if artifact is None:  # không xảy ra: đã join ở trên
-            continue
-        summary = crud.build_artifact_summary(
-            session=session, artifact=artifact, language=language
-        )
+    for visit, artifact in visits:
+        summary = summaries[artifact.id]
         items.append(
             VisitDetailPublic.model_validate(visit, update={"artifact": summary})
         )

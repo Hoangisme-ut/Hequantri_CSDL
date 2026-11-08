@@ -60,12 +60,16 @@ class UserUpdate(SQLModel):
     password: str | None = Field(default=None, min_length=8, max_length=128)
     role_id: uuid.UUID | None = None  # [Smart Heritage] admin gán role
 
+    @field_validator("email", "password", "is_active", "is_superuser")
+    @classmethod
+    def reject_null_required(cls, value: Any) -> Any:
+        if value is None:
+            raise ValueError("Field cannot be null")
+        return value
+
     @model_validator(mode="after")
-    def _no_explicit_null(self) -> Self:
-        # full_name được phép null (xóa tên); các trường còn lại là bắt buộc có giá trị
-        _reject_explicit_null(
-            self, "email", "is_active", "is_superuser", "password", "role_id"
-        )
+    def _no_explicit_null_role(self) -> Self:
+        _reject_explicit_null(self, "role_id")
         return self
 
 
@@ -74,11 +78,12 @@ class UserUpdateMe(SQLModel):
     email: EmailStr | None = Field(default=None, max_length=255)
     language_id: uuid.UUID | None = None  # [Smart Heritage] ngôn ngữ ưa thích
 
-    @model_validator(mode="after")
-    def _no_explicit_null(self) -> Self:
-        # full_name và language_id được phép null (xóa tên / bỏ ngôn ngữ ưa thích)
-        _reject_explicit_null(self, "email")
-        return self
+    @field_validator("email")
+    @classmethod
+    def reject_null_email(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("email cannot be null")
+        return value
 
 
 class UpdatePassword(SQLModel):
@@ -219,12 +224,6 @@ class LanguageCreate(LanguageBase):
         if not value:
             raise ValueError("must not be blank")
         return value
-
-    @model_validator(mode="after")
-    def _default_must_be_active(self) -> Self:
-        if self.is_default and not self.is_active:
-            raise ValueError("Ngôn ngữ mặc định phải đang bật (is_active = true)")
-        return self
 
     model_config = _examples(
         {
@@ -859,7 +858,7 @@ class FeedbackUpdate(SQLModel):
         return _clean_comment(value)
 
     @model_validator(mode="after")
-    def _require_a_change(self) -> "FeedbackUpdate":
+    def _require_a_change(self) -> FeedbackUpdate:
         if not self.model_fields_set:
             raise ValueError("Cần gửi ít nhất một trong hai: rating, comment")
         if "rating" in self.model_fields_set and self.rating is None:
@@ -1008,7 +1007,15 @@ class Token(SQLModel):
 
 # Contents of JWT token
 class TokenPayload(SQLModel):
-    sub: str | None = None
+    sub: uuid.UUID
+    purpose: Literal["access"] | None = None
+
+
+class UsedPasswordReset(SQLModel, table=True):
+    """Digest of the authenticated JWT signing input, never the raw token."""
+
+    token_digest: str = Field(primary_key=True, max_length=64)
+    used_at: datetime = Field(default_factory=get_datetime_utc)
 
 
 class NewPassword(SQLModel):

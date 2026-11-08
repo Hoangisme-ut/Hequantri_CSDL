@@ -14,6 +14,17 @@ void main() {
       expect(en.isEnglish, isTrue);
     });
 
+    test('Feedback form labels and result states are localized', () {
+      expect(vi.feedbackTitle, 'Đánh giá hiện vật');
+      expect(en.feedbackTitle, 'Artifact feedback');
+      expect(vi.feedbackCommentLabel, 'Nhận xét (không bắt buộc)');
+      expect(en.feedbackCommentLabel, 'Comment (optional)');
+      expect(vi.feedbackSubmittedPending, contains('chờ quản trị viên duyệt'));
+      expect(en.feedbackSubmittedPending, contains('waiting for admin review'));
+      expect(vi.feedbackAlreadySubmitted, contains('đã gửi đánh giá'));
+      expect(en.feedbackAlreadySubmitted, contains('already submitted'));
+    });
+
     test('welcome & onboarding strings differentiate VI and EN', () {
       expect(vi.welcomeStart, 'Bắt đầu khám phá');
       expect(en.welcomeStart, 'Get Started');

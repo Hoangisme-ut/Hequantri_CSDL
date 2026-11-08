@@ -10,6 +10,29 @@ from sqlmodel import Session
 from tests.utils.heritage import API, create_site, purge_sites
 
 
+@pytest.mark.parametrize("field", ["name", "is_active"])
+def test_site_update_null_required_fields_leave_record_unchanged(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    site_ids: list[str],
+    field: str,
+) -> None:
+    site = create_site(client, superuser_token_headers, description="Can be cleared")
+    site_ids.append(site["id"])
+    url = f"{API}/sites/{site['id']}"
+    response = client.put(url, headers=superuser_token_headers, json={field: None})
+    assert response.status_code == 422
+    assert client.get(url).json() == site
+    cleared = client.put(
+        url, headers=superuser_token_headers, json={"description": None}
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["description"] is None
+    assert cleared.json()["name"] == site["name"]
+    assert cleared.json()["is_active"] is True
+    assert client.put(url, headers=superuser_token_headers, json={}).status_code == 200
+
+
 @pytest.fixture
 def site_ids(db: Session) -> Generator[list[str]]:
     ids: list[str] = []

@@ -76,6 +76,21 @@ Map<String, Object?> _visitMutation(DateTime visitedAt) => {
   'rssi': null,
 };
 
+Map<String, Object?> _feedbackMutation({
+  String artifactId = _artifactId,
+  int rating = 5,
+  String? comment = 'Great artifact',
+}) => {
+  'id': '70000000-0000-0000-0000-000000000001',
+  'user_id': '50000000-0000-0000-0000-000000000001',
+  'artifact_id': artifactId,
+  'rating': rating,
+  'comment': comment,
+  'status': 'pending',
+  'created_at': '2026-11-08T10:00:00Z',
+  'updated_at': null,
+};
+
 void main() {
   test('parses SQL Server UTC-naive visit timestamps as UTC', () async {
     final visit = _visit()..['visited_at'] = '2026-10-31T10:00:00';
@@ -343,6 +358,206 @@ void main() {
     expect(created.visitedAt, backendTime);
     expect(duplicate.visitedAt, backendTime);
     client.close();
+  });
+
+  test(
+    'submits Feedback using the legacy endpoint and response schema',
+    () async {
+      final requests = <http.Request>[];
+      final client = MockClient((request) async {
+        requests.add(request);
+        return http.Response(jsonEncode(_feedbackMutation()), 201);
+      });
+      final api = HttpVisitorApi(
+        baseUrl: Uri.parse('https://api.example.test'),
+        client: client,
+      );
+
+      final feedback = await api.submitFeedback(
+        token: _token,
+        artifactId: _artifactId,
+        rating: 5,
+        comment: '  Great artifact  ',
+      );
+
+      expect(requests.single.method, 'POST');
+      expect(requests.single.url.path, '/api/v1/feedback/');
+      expect(requests.single.headers['Authorization'], 'Bearer visitor-token');
+      expect(requests.single.headers['Content-Type'], 'application/json');
+      expect(jsonDecode(requests.single.body), {
+        'artifact_id': _artifactId,
+        'rating': 5,
+        'comment': 'Great artifact',
+      });
+      expect(feedback.artifactId, _artifactId);
+      expect(feedback.rating, 5);
+      expect(feedback.status, 'pending');
+      expect(feedback.createdAt, DateTime.utc(2026, 11, 8, 10));
+      client.close();
+    },
+  );
+
+  test('omits an empty optional Feedback comment', () async {
+    late http.Request request;
+    final client = MockClient((incoming) async {
+      request = incoming;
+      return http.Response(jsonEncode(_feedbackMutation(comment: null)), 201);
+    });
+    final api = HttpVisitorApi(
+      baseUrl: Uri.parse('https://api.example.test'),
+      client: client,
+    );
+
+    await api.submitFeedback(
+      token: _token,
+      artifactId: _artifactId,
+      rating: 3,
+      comment: '   ',
+    );
+
+    expect(jsonDecode(request.body), {'artifact_id': _artifactId, 'rating': 3});
+    client.close();
+  });
+
+  test('rejects invalid Feedback input without sending a request', () async {
+    var requestCount = 0;
+    final client = MockClient((_) async {
+      requestCount++;
+      return http.Response('{}', 201);
+    });
+    final api = HttpVisitorApi(
+      baseUrl: Uri.parse('https://api.example.test'),
+      client: client,
+    );
+
+    await expectLater(
+      api.submitFeedback(token: _token, artifactId: 'not-a-uuid', rating: 4),
+      throwsA(isA<VisitorApiException>()),
+    );
+    await expectLater(
+      api.submitFeedback(token: _token, artifactId: _artifactId, rating: 0),
+      throwsA(isA<VisitorApiException>()),
+    );
+    await expectLater(
+      api.submitFeedback(
+        token: _token,
+        artifactId: _artifactId,
+        rating: 4,
+        comment: '😀' * 2001,
+      ),
+      throwsA(isA<VisitorApiException>()),
+    );
+
+    expect(requestCount, 0);
+    client.close();
+  });
+
+  group('Feedback comment Unicode code point limit', () {
+    final acceptedComments = <String, String>{
+      'ASCII': 'a' * 2000,
+      'Vietnamese diacritics': 'ế' * 2000,
+      'astral emoji': '😀' * 1500,
+      'exact 2000 code point boundary': 'a' * 499 + 'ế' + '😀' * 1500,
+    };
+
+    for (final entry in acceptedComments.entries) {
+      test('accepts ${entry.key}', () async {
+        final expectedComment = entry.value;
+        final client = MockClient((request) async {
+          final payload = jsonDecode(request.body) as Map<String, dynamic>;
+          return http.Response(
+            jsonEncode(
+              _feedbackMutation(comment: payload['comment'] as String?),
+            ),
+            201,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        });
+        final api = HttpVisitorApi(
+          baseUrl: Uri.parse('https://api.example.test'),
+          client: client,
+        );
+
+        final feedback = await api.submitFeedback(
+          token: _token,
+          artifactId: _artifactId,
+          rating: 5,
+          comment: expectedComment,
+        );
+
+        expect(feedback.comment, expectedComment);
+        expect(feedback.comment!.runes.length, expectedComment.runes.length);
+        if (entry.key == 'astral emoji') {
+          expect(feedback.comment!.runes.length, 1500);
+        }
+        client.close();
+      });
+    }
+
+    test('rejects a comment exceeding 2000 code points', () async {
+      var requestCount = 0;
+      final client = MockClient((_) async {
+        requestCount++;
+        return http.Response('{}', 201);
+      });
+      final api = HttpVisitorApi(
+        baseUrl: Uri.parse('https://api.example.test'),
+        client: client,
+      );
+
+      await expectLater(
+        api.submitFeedback(
+          token: _token,
+          artifactId: _artifactId,
+          rating: 5,
+          comment: '😀' * 2001,
+        ),
+        throwsA(isA<VisitorApiException>()),
+      );
+
+      expect(requestCount, 0);
+      client.close();
+    });
+  });
+
+  test('surfaces duplicate and server Feedback failures', () async {
+    final duplicateClient = MockClient(
+      (_) async => http.Response('{"detail":"Feedback already exists"}', 409),
+    );
+    final duplicateApi = HttpVisitorApi(
+      baseUrl: Uri.parse('https://api.example.test'),
+      client: duplicateClient,
+    );
+    await expectLater(
+      duplicateApi.submitFeedback(
+        token: _token,
+        artifactId: _artifactId,
+        rating: 4,
+      ),
+      throwsA(
+        isA<VisitorApiException>().having(
+          (error) => error.statusCode,
+          'statusCode',
+          409,
+        ),
+      ),
+    );
+    duplicateClient.close();
+
+    final serverClient = MockClient((_) async => http.Response('{}', 500));
+    final serverApi = HttpVisitorApi(
+      baseUrl: Uri.parse('https://api.example.test'),
+      client: serverClient,
+    );
+    await expectLater(
+      serverApi.submitFeedback(
+        token: _token,
+        artifactId: _artifactId,
+        rating: 4,
+      ),
+      throwsA(isA<VisitorApiException>()),
+    );
+    serverClient.close();
   });
 
   test('rejects invalid mutation UUIDs without sending requests', () async {

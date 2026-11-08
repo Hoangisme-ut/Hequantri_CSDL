@@ -1,13 +1,13 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_strings.dart';
+import '../../theme/app_theme.dart';
 import '../auth/auth_session.dart';
 import '../auth/auth_service.dart';
 import '../data/visitor_api_service.dart';
-import '../../theme/app_theme.dart';
+import '../media/backend_media_player.dart';
 import 'artifact.dart';
+import 'artifact_feedback_form.dart';
 
 class ArtifactDetailPage extends StatefulWidget {
   const ArtifactDetailPage({
@@ -37,15 +37,13 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
   bool _didObserveSession = false;
   int _favoriteStateGeneration = 0;
   String? _favoriteError;
+
   VisitorArtifactContent? _remoteContent;
   bool _contentLoading = false;
   String? _contentError;
   String? _loadedContentLanguage;
   String? _loadedContentArtifactId;
   int _contentRequestGeneration = 0;
-  bool _isPlayingAudio = false;
-  double _audioProgress = 0.0;
-  Timer? _audioTimer;
 
   @override
   void initState() {
@@ -57,15 +55,19 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+
     final currentToken = AuthSessionScope.maybeOf(context)?.readToken();
     final sessionChanged =
         _didObserveSession &&
         !_sameAuthToken(_observedSessionToken, currentToken);
+
     _token = currentToken;
     _observedSessionToken = currentToken;
     _didObserveSession = true;
     _visitorApi ??= widget.visitorApi;
+
     final language = AppStrings.of(context).locale.languageCode;
+
     if (_visitorApi != null &&
         _hasBackendId &&
         (language != _loadedContentLanguage ||
@@ -74,16 +76,19 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
       _loadedContentArtifactId = widget.artifact.id;
       _loadRemoteContent(language, artifactId: widget.artifact.id);
     }
+
     if (sessionChanged) {
       _favoriteStateGeneration++;
       _favoriteInitialized = true;
       _isFav = false;
       _favoriteError = null;
+
       if (currentToken != null && _hasBackendId) {
         _loadFavoriteState(currentToken);
       }
     } else if (!_favoriteInitialized) {
       _favoriteInitialized = true;
+
       if (widget.initialIsFavorite == null &&
           currentToken != null &&
           _hasBackendId) {
@@ -95,6 +100,7 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
   @override
   void didUpdateWidget(covariant ArtifactDetailPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+
     if (oldWidget.artifact.id == widget.artifact.id) return;
 
     _contentRequestGeneration++;
@@ -106,12 +112,15 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
     _isFav = widget.initialIsFavorite ?? widget.artifact.isFavorite;
     _favoriteError = null;
     _favoriteStateGeneration++;
+
     final language = AppStrings.of(context).locale.languageCode;
+
     if (_visitorApi != null && _hasBackendId) {
       _loadedContentLanguage = language;
       _loadedContentArtifactId = widget.artifact.id;
       _loadRemoteContent(language, artifactId: widget.artifact.id);
     }
+
     if (!_favoriteInitialized && _token != null && _hasBackendId) {
       _favoriteInitialized = true;
       _loadFavoriteState(_token!);
@@ -125,14 +134,17 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
   Future<void> _loadFavoriteState(AuthToken token) async {
     final api = _visitorApi;
     if (api == null) return;
+
     final session = AuthSessionScope.maybeOf(context);
     final generation = ++_favoriteStateGeneration;
     final artifactId = widget.artifact.id;
     final languageCode = AppStrings.of(context).locale.languageCode;
+
     try {
       var skip = 0;
       var count = 0;
       var isFavorite = false;
+
       do {
         final page = await api.loadFavorites(
           token: token,
@@ -140,6 +152,7 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
           skip: skip,
           limit: 100,
         );
+
         if (!_isCurrentFavoriteStateRequest(
           generation,
           token,
@@ -148,14 +161,19 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
         )) {
           return;
         }
+
         count = page.count;
+
         if (page.items.any((item) => item.artifactId == artifactId)) {
           isFavorite = true;
           break;
         }
+
         if (page.items.isEmpty) break;
+
         skip += page.items.length;
       } while (skip < count);
+
       if (!_isCurrentFavoriteStateRequest(
         generation,
         token,
@@ -164,6 +182,7 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
       )) {
         return;
       }
+
       setState(() => _isFav = isFavorite);
     } on VisitorApiException catch (error) {
       if (_isCurrentFavoriteStateRequest(
@@ -205,6 +224,7 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
 
   bool _sameAuthToken(AuthToken? first, AuthToken? second) {
     if (first == null || second == null) return first == second;
+
     return first.accessToken == second.accessToken &&
         first.tokenType.toLowerCase() == second.tokenType.toLowerCase();
   }
@@ -215,16 +235,20 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
   }) async {
     final api = _visitorApi;
     if (api == null) return;
+
     final generation = ++_contentRequestGeneration;
+
     setState(() {
       _contentLoading = true;
       _contentError = null;
     });
+
     try {
       final content = await api.loadArtifact(
         artifactId: artifactId,
         languageCode: languageCode,
       );
+
       if (_isCurrentContentRequest(generation, artifactId, languageCode)) {
         setState(() {
           _remoteContent = content;
@@ -259,36 +283,11 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
       artifactId == widget.artifact.id &&
       languageCode == AppStrings.of(context).locale.languageCode;
 
-  @override
-  void dispose() {
-    _audioTimer?.cancel();
-    super.dispose();
-  }
-
-  void _toggleAudio() {
-    setState(() => _isPlayingAudio = !_isPlayingAudio);
-
-    if (_isPlayingAudio) {
-      _audioTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
-        setState(() {
-          if (_audioProgress >= 1.0) {
-            _audioProgress = 0.0;
-            _isPlayingAudio = false;
-            timer.cancel();
-          } else {
-            _audioProgress += 0.02;
-          }
-        });
-      });
-    } else {
-      _audioTimer?.cancel();
-    }
-  }
-
   Future<void> _toggleFavorite(bool isEn) async {
     final token = _token;
     final api = _visitorApi;
     final session = AuthSessionScope.maybeOf(context);
+
     if (!_hasBackendId || api == null || token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -305,21 +304,28 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
       );
       return;
     }
+
     if (_favoriteRequestRunning) return;
+
     final nextValue = !_isFav;
+
     setState(() {
       _favoriteRequestRunning = true;
       _favoriteError = null;
     });
+
     try {
       if (nextValue) {
         await api.addFavorite(token: token, artifactId: widget.artifact.id);
       } else {
         await api.removeFavorite(token: token, artifactId: widget.artifact.id);
       }
+
       if (!mounted || !_sameAuthToken(session?.readToken(), token)) return;
+
       setState(() => _isFav = nextValue);
       widget.onFavoriteChanged?.call();
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -338,7 +344,9 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
       if (mounted && _sameAuthToken(session?.readToken(), token)) {
         final message = AppStrings.of(context)
             .visitorApiError(error.statusCode);
+
         setState(() => _favoriteError = message);
+
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(message)));
       }
@@ -346,6 +354,7 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
       if (mounted && _sameAuthToken(session?.readToken(), token)) {
         final message = AppStrings.of(context).favoriteUpdateError;
         setState(() => _favoriteError = message);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -357,7 +366,9 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
         );
       }
     } finally {
-      if (mounted) setState(() => _favoriteRequestRunning = false);
+      if (mounted) {
+        setState(() => _favoriteRequestRunning = false);
+      }
     }
   }
 
@@ -377,7 +388,7 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Hero Image with Overlaid Top Actions
+                // Hero image and top actions.
                 Stack(
                   children: [
                     ClipRRect(
@@ -404,7 +415,6 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                         ),
                       ),
                     ),
-                    // Gradient scrim on top for icons contrast
                     Positioned(
                       top: 0,
                       left: 0,
@@ -473,7 +483,6 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
 
                 const SizedBox(height: AppSpacing.medium),
 
-                // Main Content Sheet
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.large,
@@ -481,7 +490,7 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Category Badge
+                      // Category.
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,
@@ -501,9 +510,10 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                           ),
                         ),
                       ),
+
                       const SizedBox(height: AppSpacing.small),
 
-                      // Title
+                      // Title.
                       Text(
                         _remoteContent?.title ??
                             widget.artifact.getTitle(isEn ? 'en' : 'vi'),
@@ -513,14 +523,16 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                           height: 1.25,
                         ),
                       ),
+
                       if (_favoriteError != null)
                         Text(
                           _favoriteError!,
                           style: TextStyle(color: colorScheme.error),
                         ),
+
                       const SizedBox(height: 6),
 
-                      // Period
+                      // Period.
                       Row(
                         children: [
                           const Icon(
@@ -539,126 +551,25 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: AppSpacing.large),
-
-                      // Audio Guide Player Widget
-                      Container(
-                        padding: const EdgeInsets.all(AppSpacing.medium),
-                        decoration: BoxDecoration(
-                          color: colorScheme.surface,
-                          borderRadius: BorderRadius.circular(AppRadii.medium),
-                          border: Border.all(color: HeritagePalette.border),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x06000000),
-                              blurRadius: 8,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                Material(
-                                  color: HeritagePalette.primaryNavy,
-                                  shape: const CircleBorder(),
-                                  child: InkWell(
-                                    customBorder: const CircleBorder(),
-                                    onTap: _toggleAudio,
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(10),
-                                      child: Icon(
-                                        _isPlayingAudio
-                                            ? Icons.pause_rounded
-                                            : Icons.play_arrow_rounded,
-                                        color: Colors.white,
-                                        size: 24,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.small),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Text(
-                                            isEn
-                                                ? 'iBeacon Audio Guide'
-                                                : 'Thuyết minh tự động',
-                                            style: theme.textTheme.bodyMedium
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.bold,
-                                                  color: HeritagePalette
-                                                      .primaryNavy,
-                                                ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 1.5,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFDCFCE7),
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                            ),
-                                            child: const Text(
-                                              'HD Audio',
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFF166534),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        _isPlayingAudio
-                                            ? (isEn
-                                                  ? 'Playing audio guide...'
-                                                  : 'Đang phát thuyết minh...')
-                                            : (isEn
-                                                  ? 'Tap to play audio guide'
-                                                  : 'Nhấn để nghe thuyết minh'),
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              color:
-                                                  HeritagePalette.secondaryText,
-                                              fontSize: 11.5,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: AppSpacing.small),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(
-                                AppRadii.pill,
-                              ),
-                              child: LinearProgressIndicator(
-                                value: _audioProgress,
-                                backgroundColor: HeritagePalette.background,
-                                color: HeritagePalette.actionBlue,
-                                minHeight: 5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
 
                       const SizedBox(height: AppSpacing.large),
 
-                      // Structured Specs Section
+                      // Real audio/video from backend media URLs.
+                      if (_contentLoading)
+                        const LinearProgressIndicator()
+                      else if (_contentError == null)
+                        BackendMediaPlayer(
+                          key: ValueKey(
+                            'media:${widget.artifact.id}:'
+                            '${strings.locale.languageCode}',
+                          ),
+                          media: _remoteContent?.media ?? const [],
+                          isEnglish: isEn,
+                        ),
+
+                      const SizedBox(height: AppSpacing.large),
+
+                      // Structured information.
                       Container(
                         padding: const EdgeInsets.all(AppSpacing.medium),
                         decoration: BoxDecoration(
@@ -713,7 +624,7 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
 
                       const SizedBox(height: AppSpacing.large),
 
-                      // Description Section
+                      // Description.
                       Text(
                         isEn ? 'Description' : 'Mô tả chi tiết',
                         style: theme.textTheme.titleMedium?.copyWith(
@@ -721,7 +632,9 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                           color: HeritagePalette.primaryNavy,
                         ),
                       ),
+
                       const SizedBox(height: AppSpacing.small),
+
                       Text(
                         _contentLoading
                             ? (isEn
@@ -738,15 +651,17 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                           color: HeritagePalette.bodyText,
                         ),
                       ),
+
                       if (_contentError != null)
                         TextButton.icon(
                           onPressed: () => _loadRemoteContent(
-                            isEn ? 'en' : 'vi',
+                            strings.locale.languageCode,
                             artifactId: widget.artifact.id,
                           ),
                           icon: const Icon(Icons.refresh),
                           label: Text(isEn ? 'Retry' : 'Thử lại'),
                         ),
+
                       if (_remoteContent?.isFallback == true)
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
@@ -756,6 +671,7 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                                 : 'Nội dung đang dùng ngôn ngữ dự phòng',
                           ),
                         ),
+
                       if (_remoteContent?.historyContent?.trim().isNotEmpty ==
                           true) ...[
                         const SizedBox(height: AppSpacing.medium),
@@ -772,6 +688,12 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                           style: theme.textTheme.bodyMedium,
                         ),
                       ],
+
+                      const SizedBox(height: AppSpacing.large),
+                      ArtifactFeedbackForm(
+                        artifactId: widget.artifact.id,
+                        api: _visitorApi,
+                      ),
                     ],
                   ),
                 ),
@@ -779,7 +701,7 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
             ),
           ),
 
-          // Pinned Bottom Favorite Action Bar
+          // Bottom favorite action.
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
