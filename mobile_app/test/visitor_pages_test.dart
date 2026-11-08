@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_application_1/features/artifacts/artifact_detail_page.dart';
 import 'package:flutter_application_1/features/artifacts/artifact.dart';
+import 'package:flutter_application_1/features/artifacts/artifact_feedback_form.dart';
 import 'package:flutter_application_1/features/auth/auth_service.dart';
 import 'package:flutter_application_1/features/auth/auth_session.dart';
 import 'package:flutter_application_1/features/data/visitor_api_service.dart';
@@ -14,6 +15,7 @@ import 'package:flutter_application_1/l10n/app_strings.dart';
 
 const _token = AuthToken(accessToken: 'widget-test-token', tokenType: 'bearer');
 const _artifactId = '20000000-0000-0000-0000-000000000001';
+const _otherArtifactId = '20000000-0000-0000-0000-000000000002';
 
 void main() {
   testWidgets(
@@ -304,6 +306,180 @@ void main() {
     expect(find.byIcon(Icons.favorite), findsNothing);
   });
 
+  testWidgets('Feedback form requires a signed-in visitor', (tester) async {
+    final api = _FakeVisitorApi();
+    await tester.pumpWidget(
+      _appWithSession(
+        AuthSession(),
+        Scaffold(
+          body: ArtifactFeedbackForm(artifactId: _artifactId, api: api),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(AppStrings(Locale('vi')).feedbackSignInRequired),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('feedback-submit')), findsNothing);
+    expect(api.feedbackCalls, 0);
+  });
+
+  testWidgets(
+    'Feedback submit sends current artifact and shows pending state',
+    (tester) async {
+      final api = _FakeVisitorApi();
+      final session = AuthSession()..authenticate(_token);
+      await tester.pumpWidget(
+        _appWithSession(
+          session,
+          Scaffold(
+            body: ArtifactFeedbackForm(artifactId: _artifactId, api: api),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('feedback-rating-4')));
+      await tester.enterText(
+        find.byKey(const ValueKey('feedback-comment')),
+        'Worth visiting',
+      );
+      await tester.tap(find.byKey(const ValueKey('feedback-submit')));
+      await tester.pumpAndSettle();
+
+      expect(api.feedbackCalls, 1);
+      expect(api.feedbackArtifactId, _artifactId);
+      expect(api.feedbackRating, 4);
+      expect(api.feedbackComment, 'Worth visiting');
+      expect(api.feedbackToken?.accessToken, _token.accessToken);
+      expect(
+        find.text(AppStrings(Locale('vi')).feedbackSubmittedPending),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('Feedback duplicate is shown as an error, not success', (
+    tester,
+  ) async {
+    final api = _FakeVisitorApi()
+      ..feedbackFailure = const VisitorApiException(
+        'Feedback already exists',
+        statusCode: 409,
+      );
+    final session = AuthSession()..authenticate(_token);
+    await tester.pumpWidget(
+      _appWithSession(
+        session,
+        Scaffold(
+          body: ArtifactFeedbackForm(artifactId: _artifactId, api: api),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('feedback-rating-3')));
+    await tester.tap(find.byKey(const ValueKey('feedback-submit')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(AppStrings(Locale('vi')).feedbackAlreadySubmitted),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('feedback-submitted')), findsNothing);
+    expect(api.feedbackCalls, 1);
+  });
+
+  testWidgets('Feedback form resets after changing artifacts', (tester) async {
+    final api = _FakeVisitorApi();
+    final session = AuthSession()..authenticate(_token);
+    Widget feedbackForm(String artifactId) => ArtifactFeedbackForm(
+      key: const ValueKey('reused-feedback-form'),
+      artifactId: artifactId,
+      api: api,
+    );
+
+    await tester.pumpWidget(
+      _appWithSession(session, Scaffold(body: feedbackForm(_artifactId))),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('feedback-rating-4')));
+    await tester.enterText(
+      find.byKey(const ValueKey('feedback-comment')),
+      'Feedback for artifact A',
+    );
+    await tester.tap(find.byKey(const ValueKey('feedback-submit')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(AppStrings(Locale('vi')).feedbackSubmittedPending),
+      findsOneWidget,
+    );
+
+    await tester.pumpWidget(
+      _appWithSession(session, Scaffold(body: feedbackForm(_otherArtifactId))),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('feedback-submitted')), findsNothing);
+    expect(find.byKey(const ValueKey('feedback-rating-4')), findsOneWidget);
+    expect(find.byIcon(Icons.star_rounded), findsNothing);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('feedback-comment')))
+          .controller!
+          .text,
+      isEmpty,
+    );
+    expect(api.feedbackArtifactId, _artifactId);
+  });
+
+  testWidgets('late Feedback response is ignored after changing artifacts', (
+    tester,
+  ) async {
+    final api = _DeferredFeedbackVisitorApi();
+    final session = AuthSession()..authenticate(_token);
+    Widget feedbackForm(String artifactId) => ArtifactFeedbackForm(
+      key: const ValueKey('reused-feedback-form'),
+      artifactId: artifactId,
+      api: api,
+    );
+
+    await tester.pumpWidget(
+      _appWithSession(session, Scaffold(body: feedbackForm(_artifactId))),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('feedback-rating-5')));
+    await tester.tap(find.byKey(const ValueKey('feedback-submit')));
+    await tester.pump();
+    expect(api.feedbackRequests, hasLength(1));
+
+    await tester.pumpWidget(
+      _appWithSession(session, Scaffold(body: feedbackForm(_otherArtifactId))),
+    );
+    await tester.pumpAndSettle();
+    api.feedbackRequests.single.completer.complete(
+      VisitorFeedback(
+        id: '70000000-0000-0000-0000-000000000001',
+        userId: '50000000-0000-0000-0000-000000000001',
+        artifactId: _artifactId,
+        rating: 5,
+        status: 'pending',
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('feedback-submitted')), findsNothing);
+    expect(
+      find.text(AppStrings(Locale('vi')).feedbackSubmittedPending),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('feedback-submit')), findsOneWidget);
+    expect(find.byIcon(Icons.star_rounded), findsNothing);
+  });
+
   testWidgets('Favorites load from API and reflect a successful removal', (
     tester,
   ) async {
@@ -482,7 +658,13 @@ class _FakeVisitorApi implements VisitorApi {
   int favoriteLoads = 0;
   int visitLoads = 0;
   int removeCalls = 0;
+  int feedbackCalls = 0;
+  String? feedbackArtifactId;
+  int? feedbackRating;
+  String? feedbackComment;
+  AuthToken? feedbackToken;
   VisitorApiException? favoriteFailure;
+  VisitorApiException? feedbackFailure;
   Completer<void>? pendingMutation;
 
   @override
@@ -594,6 +776,31 @@ class _FakeVisitorApi implements VisitorApi {
     artifactId: _artifactId,
     wasCreated: true,
   );
+
+  @override
+  Future<VisitorFeedback> submitFeedback({
+    required AuthToken token,
+    required String artifactId,
+    required int rating,
+    String? comment,
+  }) async {
+    feedbackCalls++;
+    feedbackArtifactId = artifactId;
+    feedbackRating = rating;
+    feedbackComment = (comment?.trim().isEmpty ?? true)
+        ? null
+        : comment?.trim();
+    feedbackToken = token;
+    if (feedbackFailure case final error?) throw error;
+    return VisitorFeedback(
+      id: '70000000-0000-0000-0000-000000000001',
+      userId: '50000000-0000-0000-0000-000000000001',
+      artifactId: artifactId,
+      rating: rating,
+      comment: feedbackComment,
+      status: 'pending',
+    );
+  }
 }
 
 class _DeferredVisitorApi extends _FakeVisitorApi {
@@ -642,6 +849,32 @@ class _DeferredVisitorApi extends _FakeVisitorApi {
   }) {
     final request = _DeferredArtifactCall(artifactId, languageCode);
     artifactRequests.add(request);
+    return request.completer.future;
+  }
+}
+
+class _DeferredFeedbackVisitorApi extends _FakeVisitorApi {
+  final feedbackRequests = <_DeferredCall<VisitorFeedback>>[];
+
+  @override
+  Future<VisitorFeedback> submitFeedback({
+    required AuthToken token,
+    required String artifactId,
+    required int rating,
+    String? comment,
+  }) {
+    feedbackCalls++;
+    feedbackArtifactId = artifactId;
+    feedbackRating = rating;
+    feedbackComment = comment;
+    feedbackToken = token;
+    final request = _DeferredCall<VisitorFeedback>(
+      token: token,
+      languageCode: 'vi',
+      skip: 0,
+      limit: 0,
+    );
+    feedbackRequests.add(request);
     return request.completer.future;
   }
 }

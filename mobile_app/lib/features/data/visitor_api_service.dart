@@ -260,6 +260,50 @@ class VisitorVisitReceipt {
   }
 }
 
+class VisitorFeedback {
+  const VisitorFeedback({
+    required this.id,
+    required this.userId,
+    required this.artifactId,
+    required this.rating,
+    required this.status,
+    this.comment,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  final String id;
+  final String userId;
+  final String artifactId;
+  final int rating;
+  final String? comment;
+  final String status;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  factory VisitorFeedback.fromJson(Map<String, dynamic> json) {
+    final rating = json['rating'];
+    if (rating is! int || rating < 1 || rating > 5) {
+      throw const FormatException('Feedback response rating must be 1–5.');
+    }
+    final status = json['status'];
+    if (status is! String || status.isEmpty) {
+      throw const FormatException('Feedback response status is required.');
+    }
+
+    return VisitorFeedback(
+      id: _responseUuid(json, 'id'),
+      userId: _responseUuid(json, 'user_id'),
+      artifactId: _responseUuid(json, 'artifact_id'),
+      rating: rating,
+      comment: json['comment'] as String?,
+      status: status,
+      createdAt: _dateOrNull(json['created_at']),
+      updatedAt: _dateOrNull(json['updated_at']),
+    );
+  }
+}
+
 class _FavoriteMutationReceipt {
   const _FavoriteMutationReceipt();
 
@@ -334,6 +378,13 @@ abstract interface class VisitorApi {
     String? beaconId,
     int? rssi,
     int? durationSeconds,
+  });
+
+  Future<VisitorFeedback> submitFeedback({
+    required AuthToken token,
+    required String artifactId,
+    required int rating,
+    String? comment,
   });
 }
 
@@ -614,6 +665,56 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
       _decodeObject(response),
       statusCode: response.statusCode,
     );
+  }
+
+  @override
+  Future<VisitorFeedback> submitFeedback({
+    required AuthToken token,
+    required String artifactId,
+    required int rating,
+    String? comment,
+  }) async {
+    _requireRequestUuid(artifactId, 'artifact_id');
+    if (rating < 1 || rating > 5) {
+      throw const VisitorApiException(
+        'rating must be between 1 and 5.',
+        statusCode: 422,
+      );
+    }
+    final normalizedComment = comment?.trim();
+    if ((normalizedComment?.runes.length ?? 0) > 2000) {
+      throw const VisitorApiException(
+        'comment must not exceed 2000 characters.',
+        statusCode: 422,
+      );
+    }
+
+    final payload = <String, Object>{
+      'artifact_id': artifactId,
+      'rating': rating,
+      if (normalizedComment?.isNotEmpty ?? false) 'comment': normalizedComment!,
+    };
+    final response = await _send(
+      () => _client.post(
+        _uri('/feedback/'),
+        headers: _headers(token, json: true),
+        body: jsonEncode(payload),
+      ),
+    );
+    if (response.statusCode != 201) {
+      throw VisitorApiException(
+        'Unexpected Feedback response status: ${response.statusCode}.',
+        statusCode: response.statusCode,
+      );
+    }
+
+    final feedback = VisitorFeedback.fromJson(_decodeObject(response));
+    if (feedback.artifactId != artifactId || feedback.status != 'pending') {
+      throw const FormatException(
+        'Feedback response does not match the submitted artifact or pending status.',
+      );
+    }
+    return feedback;
   }
 
   void close() {

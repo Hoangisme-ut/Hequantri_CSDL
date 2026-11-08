@@ -7,6 +7,7 @@ import '../auth/auth_service.dart';
 import '../data/visitor_api_service.dart';
 import '../media/backend_media_player.dart';
 import 'artifact.dart';
+import 'artifact_feedback_form.dart';
 
 class ArtifactDetailPage extends StatefulWidget {
   const ArtifactDetailPage({
@@ -687,6 +688,12 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                           style: theme.textTheme.bodyMedium,
                         ),
                       ],
+
+                      const SizedBox(height: AppSpacing.large),
+                      ArtifactFeedbackForm(
+                        artifactId: widget.artifact.id,
+                        api: _visitorApi,
+                      ),
                     ],
                   ),
                 ),
