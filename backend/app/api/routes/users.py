@@ -9,15 +9,17 @@ from app import crud
 from app.api.deps import (
     CurrentUser,
     SessionDep,
+    get_active_language_or_error,
     get_current_active_superuser,
+    get_role_name,
+    get_role_or_404,
+    is_admin,
 )
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
 from app.models import (
     Item,
-    Language,
     Message,
-    Role,
     UpdatePassword,
     User,
     UserCreate,
@@ -103,7 +105,13 @@ def update_user_me(
 ) -> Any:
     """
     Update own user.
+
+    - `language_id` (ngôn ngữ ưa thích) phải tồn tại (404) và đang bật (400);
+      gửi `null` để bỏ ngôn ngữ ưa thích.
+    - `email: null` -> 422. Không đổi được role / quyền qua endpoint này.
     """
+    if user_in.language_id is not None:
+        get_active_language_or_error(session, user_in.language_id)
     if user_in.email:
         existing_user = crud.get_user_by_email(
             session=session,
@@ -115,12 +123,6 @@ def update_user_me(
                 detail="User with this email already exists",
             )
     user_data = user_in.model_dump(exclude_unset=True)
-    if user_in.language_id is not None:
-        language = session.get(Language, user_in.language_id)
-        if language is None:
-            raise HTTPException(status_code=404, detail="Language not found")
-        if not language.is_active:
-            raise HTTPException(status_code=400, detail="Language is inactive")
     current_user.sqlmodel_update(user_data)
     session.add(current_user)
     session.commit()
@@ -166,11 +168,7 @@ def read_user_me(current_user: CurrentUser) -> Any:
     """
     Get current user with role information.
     """
-    role_name = (
-        current_user.role.name
-        if current_user.role is not None
-        else ("admin" if current_user.is_superuser else "visitor")
-    )
+    role_name = get_role_name(current_user)
 
     return UserMePublic(
         **UserPublic.model_validate(current_user).model_dump(),
@@ -230,17 +228,21 @@ def read_user_by_id(
 ) -> Any:
     """
     Get own user information or another user's information as Admin.
+
+    Kiểm tra quyền TRƯỚC khi tra cứu: người không phải admin xem user khác -> 403
+    (không lộ id có tồn tại hay không); admin xem id không có -> 404.
     """
-    user = session.get(User, user_id)
-    if user == current_user:
-        return user
-    if not current_user.is_superuser:
+    if user_id != current_user.id and not is_admin(current_user):
         raise HTTPException(
             status_code=403,
             detail="The user doesn't have enough privileges",
         )
+    user = session.get(User, user_id)
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=404,
+            detail="User not found",
+        )
     return user
 
 
@@ -252,17 +254,45 @@ def read_user_by_id(
 def update_user(
     *,
     session: SessionDep,
+    current_user: CurrentUser,
     user_id: uuid.UUID,
     user_in: UserUpdate,
 ) -> Any:
     """
     Update a user. Admin only.
+
+    Quy tắc quyền: **role là nguồn sự thật**; `is_superuser` luôn khớp (admin <=> true).
+    - Gửi `role_id` -> `is_superuser` tự đồng bộ; `role_id` không tồn tại -> 404.
+    - Gửi cả `role_id` và `is_superuser` mà mâu thuẫn nhau -> 400.
+    - Admin không thể tự hạ quyền hoặc tự vô hiệu hóa chính mình -> 400.
+    - Gửi `null` cho `email` / `is_active` / `is_superuser` / `password` / `role_id` -> 422.
     """
     db_user = session.get(User, user_id)
     if not db_user:
         raise HTTPException(
             status_code=404,
             detail="The user with this id does not exist in the system",
+        )
+    # --- thống nhất role <-> is_superuser ---
+    will_be_admin = is_admin(db_user)
+    if user_in.role_id is not None:
+        role = get_role_or_404(session, user_in.role_id)
+        role_is_admin = role.name == "admin"
+        if user_in.is_superuser is not None and user_in.is_superuser != role_is_admin:
+            raise HTTPException(
+                status_code=400,
+                detail="role_id và is_superuser mâu thuẫn nhau "
+                "(role admin <=> is_superuser = true)",
+            )
+        will_be_admin = role_is_admin
+    elif user_in.is_superuser is not None:
+        will_be_admin = user_in.is_superuser
+    if db_user.id == current_user.id and (
+        not will_be_admin or user_in.is_active is False
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Admin không thể tự hạ quyền hoặc tự vô hiệu hóa chính mình",
         )
     if user_in.email:
         existing_user = crud.get_user_by_email(
@@ -276,8 +306,6 @@ def update_user(
                 detail="User with this email already exists",
             )
 
-    if user_in.role_id is not None and session.get(Role, user_in.role_id) is None:
-        raise HTTPException(status_code=404, detail="Role not found")
     try:
         db_user = crud.update_user(
             session=session,
