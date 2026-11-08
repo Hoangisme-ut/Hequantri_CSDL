@@ -1,5 +1,7 @@
 # Web Admin -> Backend -> Flutter -> SQL Server — 08/11/2026
 
+> Cập nhật theo chỉ dẫn người dùng: áp dụng tạm quy tắc300 giây, chỉ ghi khi người dùng mở nội dung Artifact. **Vẫn chờ P2 xác nhận chính thức.** Source/test mới ở commit `436be108d7cb31825ef25db4021a29c152cd88c0`; xem [bản cập nhật quy tắc tạm thời](visit-rule-provisional-update.md). Kết quả SHA cũ bên dưới là bằng chứng lịch sử.
+
 Nhánh `fix/visitlog-flutter-ci-e2e-acceptance`; commit kiểm thử `672b8796966674156d1874e8361cc75b0fc23c63` áp dụng cho mọi test trong báo cáo. **PASS ở browser + client HTTP Flutter + DB thực; nghiệm thu ứng dụng trên thiết bị thật BLOCKED.**
 
 ## Môi trường và tính an toàn
@@ -19,7 +21,7 @@ Live API dùng một Uvicorn worker vì Windows shared socket hai worker lỗi W
 | Beacon | Admin CRUD thật, chọn Site/Artifact; Flutter BeaconContentService gọi /beacons/resolve; scanner/callback hiển thị có code và widget/unit tests. BLE thật chưa chạy trong phiên này. |
 | User/auth | JWT login/signup API; Backend derives user from token, Admin/Visitor role dependencies. Web login admin thật; Flutter AuthService dùng IoAuthHttpClient thật trong acceptance. |
 | Favorite | POST /favorites/, GET /favorites/me, DELETE /favorites/{artifact}; DB unique(user,artifact); Flutter detail/Favorites dùng API thật. |
-| VisitLog/History | POST /visits/, GET /visits/me; database lock và cửa sổ hiện có; Flutter History API thật. Artifact mở thủ công chưa ghi lượt (BUS-01). |
+| VisitLog/History | POST /visits/, GET /visits/me; database lock và cửa sổ hiện có; Flutter History API thật. Baseline chưa ghi lượt khi mở thủ công; cập nhật mới đã sửa trigger này theo quy tắc tạm thời (VISIT-OPEN-02). |
 | Mock còn tồn tại | sites.mock.ts/beacons.mock.ts, HeritageRepository/mockLocations/sampleArtifacts, legacy ApiService và local simulation còn code. Không dùng chúng trong acceptance; sự tồn tại file mock không chứng minh route production đang dùng mock. |
 | Ngoài phạm vi | Mobile AuthService.requestPasswordRecovery chỉ delay, chưa gọi backend; ghi BUG-OUT-01. Các màn analytics/visitors/preview ngoài luồng này không được chứng nhận. |
 

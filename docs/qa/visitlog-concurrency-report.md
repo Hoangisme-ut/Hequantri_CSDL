@@ -1,5 +1,7 @@
 # VisitLog concurrency — 08/11/2026
 
+> Cập nhật theo chỉ dẫn người dùng: áp dụng tạm quy tắc300 giây, chỉ ghi khi người dùng mở nội dung Artifact. **Vẫn chờ P2 xác nhận chính thức.** Source/test mới ở commit `436be108d7cb31825ef25db4021a29c152cd88c0`; xem [bản cập nhật quy tắc tạm thời](visit-rule-provisional-update.md). Kết quả SHA cũ bên dưới là bằng chứng lịch sử.
+
 - Nhánh: `fix/visitlog-flutter-ci-e2e-acceptance`.
 - Baseline: `00efd84ba58f5e5597e79090dc9ef437665b3ac9`.
 - Commit kiểm thử sau bổ sung: `672b8796966674156d1874e8361cc75b0fc23c63`. SHA này áp dụng cho mọi test sau thay đổi trong báo cáo.
@@ -17,13 +19,13 @@
 | Resolve | `GET /beacons/resolve` trả nội dung/mapping, cập nhật thông tin beacon; không tự ghi VisitLog. |
 | History | `GET /visits/me` lọc user JWT; join Artifact/Site hoạt động; phân trang và dịch theo ngôn ngữ. |
 | Mobile | `BeaconContentController.recordDisplayedContent` và panel callback sau hiển thị; VisitDeduplicator chặn pending/lặp theo artifact, reset khi đổi phiên, dùng visited_at server; không ghi trên mọi packet BLE. |
-| Mở Artifact thủ công | `ArtifactDetailPage` tải nội dung và quản lý Favorite, không có lời gọi ghi VisitLog tương đương beacon. Cần P2 quyết định phạm vi lượt xem (BUS-01). |
+| Mở Artifact thủ công | `ArtifactDetailPage` tải nội dung và quản lý Favorite, ở baseline chưa ghi VisitLog; cập nhật này đã ghi sau khi người dùng mở và render nội dung thành công, theo chỉ dẫn tạm thời. P2 vẫn cần phê duyệt chính thức (BUS-01). |
 
 Khóa SQL đã tồn tại ở baseline (lịch sử gồm commit c44874c). Không tái hiện được ghi trùng trên implementation hiện tại. Không thêm bản vá production trùng lặp, không đổi 300 giây và không thêm migration/constraint. Race check-then-insert vẫn tái hiện được nếu bỏ khóa **chỉ trong negative control của test**: hai connection cùng đọc không có lượt rồi cùng INSERT; SQL lưu hai UUID khác nhau.
 
 ## Quyết định nghiệp vụ
 
-Code/comment BR-05 ghi “thống nhất với app - P4”; tài liệu `docs/api_samples.md` mục 6 mô tả 300 giây. Không tìm thấy phê duyệt chính thức P2 trong tài liệu được khảo sát; đã gửi câu hỏi xác nhận cho người dùng, chưa có trả lời tại thời điểm bàn giao.
+Code/comment BR-05 ghi “thống nhất với app - P4”; tài liệu `docs/api_samples.md` mục 6 mô tả 300 giây. Không tìm thấy phê duyệt chính thức P2 trong tài liệu được khảo sát; người dùng đã thống nhất tạm thời300 giây và chỉ ghi khi mở nội dung Artifact, nhưng chưa công nhận là quyết định chính thức P2.
 
 Đề xuất P2 xác nhận nguyên trạng: bắt đầu khi nội dung beacon được hiển thị; cùng user/artifact trong cửa sổ tính một lượt; đổi ngôn ngữ/phiên hoặc rời rồi quay lại trong cửa sổ vẫn trả lượt cũ; sau cửa sổ tạo lượt mới. P2 cần chốt thêm lượt mở Artifact thủ công có được tính không và có cần session/điều kiện rời vùng thay thời gian không. Đề xuất này **chưa phải quyết định**.
 

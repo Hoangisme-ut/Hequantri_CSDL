@@ -1,5 +1,7 @@
 # Smart Heritage — bàn giao 08/11/2026
 
+> Cập nhật theo chỉ dẫn người dùng: áp dụng tạm quy tắc300 giây, chỉ ghi khi người dùng mở nội dung Artifact. **Vẫn chờ P2 xác nhận chính thức.** Source/test mới ở commit `436be108d7cb31825ef25db4021a29c152cd88c0`; xem [bản cập nhật quy tắc tạm thời](visit-rule-provisional-update.md). Kết quả SHA cũ bên dưới là bằng chứng lịch sử.
+
 ## Git
 
 - Nhánh làm việc: `fix/visitlog-flutter-ci-e2e-acceptance`.
@@ -9,7 +11,11 @@
 - Commit đóng gói báo cáo: chính commit chứa bản báo cáo này; lấy SHA tuyệt đối bằng `git log -1 --format=%H -- docs/qa/final-handover-report.md`. Full SHA bàn giao cũng được trả trong tin nhắn cuối. Không thể nhúng hash của một commit vào chính nội dung của nó.
 - Tệp có sẵn chưa commit `docs/backend-audit-plan-2026-11-06.md` được giữ nguyên và không đưa vào commit tác vụ. Không reset/clean/stash, push, tạo PR hoặc merge.
 
-## Kết quả
+## Kết quả cập nhật theo chỉ dẫn tạm thời
+
+Flutter hiện có **184 test PASS**, analyze sạch; thêm1 live test dùng widget/HTTP thật chứng minh201 lần mở đầu,200 lần mở lại và một row SQL. Đã sửa trigger preview/manual detail; không đổi schema hoặc cửa sổ300 giây. Chưa có stable view_session_id, chưa triển khai ngoại lệ reentry trong300 giây. P2 và các gate còn BLOCKED/FAIL vẫn giữ nguyên. Chi tiết và file mới ở bản cập nhật được liên kết phía trên.
+
+## Kết quả trước cập nhật
 
 | Hạng mục | Kết quả / bằng chứng |
 |---|---|

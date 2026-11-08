@@ -1,5 +1,7 @@
 # Bugs, blockers & business decisions — 08/11/2026
 
+> Cập nhật theo chỉ dẫn người dùng: áp dụng tạm quy tắc300 giây, chỉ ghi khi người dùng mở nội dung Artifact. **Vẫn chờ P2 xác nhận chính thức.** Source/test mới ở commit `436be108d7cb31825ef25db4021a29c152cd88c0`; xem [bản cập nhật quy tắc tạm thời](visit-rule-provisional-update.md). Kết quả SHA cũ bên dưới là bằng chứng lịch sử.
+
 Nhánh `fix/visitlog-flutter-ci-e2e-acceptance`; commit kiểm chứng `672b8796966674156d1874e8361cc75b0fc23c63`. Các mục môi trường/quyết định được phân biệt với lỗi sản phẩm. Không tạo GitHub Issues do yêu cầu chỉ commit local, không push/PR.
 
 | ID | Loại / mức ảnh hưởng | Tái hiện & bằng chứng | Trạng thái / cách xử lý |
@@ -8,7 +10,9 @@ Nhánh `fix/visitlog-flutter-ci-e2e-acceptance`; commit kiểm chứng `672b8796
 | CI-02 | Configuration / Medium | Remote HEAD main; zizmor và deploy push master; playwright còn filter master | **FIXED**: filters main; Flutter PR vào main, push main/feature/fix/integration; static matrix PASS |
 | CI-03 | Verification blocker / High | Commit bàn giao chưa có trên remote, không có GitHub Actions run cùng SHA | **BLOCKED**: người dùng push/tạo PR khi sẵn sàng, xem required checks đúng SHA. Không tuyên bố remote PASS |
 | LINT-01 | Existing type-check errors / High | mypy14 lỗi/3file, ty8 diagnostics trong sites.py/dashboard.py/seed_sample_data.py; archive baseline cùng code và cùng venv tái hiện đúng14/8 | **OPEN / FAIL gate**: có sẵn trước tác vụ; không sửa dashboard/seed ngoài phạm vi, không tắt hook. Logs baseline-mypy.log, baseline-ty.log, pre-commit.log |
-| BUS-01 | Business / High | BR-05/comment P4 và API samples có 300 giây; không có xác nhận P2; manual ArtifactDetailPage không record visit như beacon | **PENDING BUSINESS DECISION**: chốt thời điểm bắt đầu, simultaneous requests, cửa sổ/điều kiện lượt mới, reentry và user/artifact/session; giữ nguyên hành vi, không tự áp thời gian mới |
+| VISIT-OPEN-01 | Product / Medium | Scanner tự ghi sau preview dù chưa bấm mở chi tiết | **FIXED trong cập nhật tạm thời**: preview không POST; mở chi tiết mới ghi; unit/widget + live SQL PASS |
+| VISIT-OPEN-02 | Product / Medium | Manual ArtifactDetailPage không ghi lượt ở baseline | **FIXED trong cập nhật tạm thời**: ghi sau render nội dung thật, token/route guards; không đổi schema |
+| BUS-01 | Business / High | BR-05/comment P4 và API samples có 300 giây; không có xác nhận P2; manual ArtifactDetailPage ở baseline chưa record; cập nhật VISIT-OPEN-02 đã sửa | **PENDING BUSINESS DECISION**: chốt thời điểm bắt đầu, simultaneous requests, cửa sổ/điều kiện lượt mới, reentry và user/artifact/session; giữ nguyên hành vi, không tự áp thời gian mới |
 | ENV-01 | Local setup / Low | flutter pub get đầu tiên exit1 vì symlink Windows; initial log | **RESOLVED trong phiên**: retry sau Flutter commands exit0, không đổi Windows Developer Mode, pubspec hoặc lint/test; lưu cả hai log |
 | ENV-02 | Runtime verification / Medium | Uvicorn workers2 trên Windows share socket WinError10022 | **BLOCKED riêng runtime launcher**: live E2E dùng workers1; VL-07 hai process/app engine độc lập PASS. Xác minh uvicorn workers>=2 trên Linux/runner riêng, không suy diễn runtime Windows đã PASS |
 | ENV-03 | Device verification / High | flutter devices chỉ Windows/Chrome/Edge, không Android/iOS | **BLOCKED**: nghiệm thu UI mobile/BLE/session/locale thật khi có thiết bị; HTTP client thực và unit/widget đã PASS |
@@ -22,7 +26,7 @@ Không mở bug sản phẩm ghi trùng cho implementation hiện tại: baselin
 
 ## Mục chưa chứng nhận
 
-Mở Artifact thủ công ghi lượt hay chỉ Beacon là một phần BUS-01, không tự quyết định đó là bug. Các màn mock/preview/analytics ngoài luồng không được cấp PASS bởi test này. GitHub secrets, production media/CORS/network và thiết bị Mobile thật cần kiểm chứng ở môi trường tương ứng.
+Người dùng đã chỉ dẫn tạm thời mọi lần mở nội dung Artifact đều được xét ghi lượt, kể cả mở thủ công. VISIT-OPEN-01/02 đã xử lý trigger; phê duyệt chính thức P2 vẫn thuộc BUS-01. Các màn mock/preview/analytics ngoài luồng không được cấp PASS bởi test này. GitHub secrets, production media/CORS/network và thiết bị Mobile thật cần kiểm chứng ở môi trường tương ứng.
 
 Runtime regression PASS, nhưng pre-commit tổng thể **FAIL** vì LINT-01 có sẵn. Một deprecation warning Starlette/httpx tồn tại ở baseline và full suite; không tắt hoặc đổi dependency ngoài phạm vi để che warning.
 

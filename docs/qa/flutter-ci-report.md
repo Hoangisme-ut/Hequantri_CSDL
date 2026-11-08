@@ -1,5 +1,7 @@
 # Flutter CI & GitHub Actions — 08/11/2026
 
+> Cập nhật theo chỉ dẫn người dùng: áp dụng tạm quy tắc300 giây, chỉ ghi khi người dùng mở nội dung Artifact. **Vẫn chờ P2 xác nhận chính thức.** Source/test mới ở commit `436be108d7cb31825ef25db4021a29c152cd88c0`; xem [bản cập nhật quy tắc tạm thời](visit-rule-provisional-update.md). Kết quả SHA cũ bên dưới là bằng chứng lịch sử.
+
 Nhánh `fix/visitlog-flutter-ci-e2e-acceptance`; commit kiểm thử `672b8796966674156d1874e8361cc75b0fc23c63` áp dụng cho các test dưới đây. Baseline `00efd84ba58f5e5597e79090dc9ef437665b3ac9`.
 
 **Flutter local/config PASS; pre-commit tổng thể FAIL có sẵn (LINT-01); GitHub Actions tại commit bàn giao BLOCKED (CI-03).** Nhánh chưa push theo yêu cầu, do đó không có run trên GitHub cho commit này; không suy diễn kết quả Actions từ local.
