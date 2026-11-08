@@ -279,6 +279,70 @@ class AppStrings {
       ? 'Could not update favorite. Please retry.'
       : 'Không cập nhật được trạng thái yêu thích. Vui lòng thử lại.';
 
+  String get feedbackTitle =>
+      isEnglish ? 'Artifact feedback' : 'Đánh giá hiện vật';
+
+  String get feedbackPrompt => isEnglish
+      ? 'Share your rating for this artifact.'
+      : 'Chia sẻ đánh giá của bạn về hiện vật này.';
+
+  String get feedbackRatingLabel =>
+      isEnglish ? 'Your rating' : 'Đánh giá của bạn';
+
+  String get feedbackCommentLabel =>
+      isEnglish ? 'Comment (optional)' : 'Nhận xét (không bắt buộc)';
+
+  String get feedbackCommentHint =>
+      isEnglish ? 'Write up to 2000 characters' : 'Viết tối đa 2000 ký tự';
+
+  String get feedbackSubmit => isEnglish ? 'Submit feedback' : 'Gửi đánh giá';
+
+  String get feedbackSubmitting => isEnglish ? 'Submitting…' : 'Đang gửi…';
+
+  String get feedbackSubmittedPending => isEnglish
+      ? 'Your feedback was submitted and is waiting for admin review.'
+      : 'Đã gửi đánh giá. Nội dung đang chờ quản trị viên duyệt.';
+
+  String get feedbackSignInRequired => isEnglish
+      ? 'Sign in to submit feedback.'
+      : 'Vui lòng đăng nhập để gửi đánh giá.';
+
+  String get feedbackApiUnavailable => isEnglish
+      ? 'Feedback service is unavailable. Please try again later.'
+      : 'Dịch vụ đánh giá chưa khả dụng. Vui lòng thử lại sau.';
+
+  String get feedbackRatingRequired => isEnglish
+      ? 'Select a rating from 1 to 5 stars.'
+      : 'Hãy chọn mức đánh giá từ 1 đến 5 sao.';
+
+  String get feedbackAlreadySubmitted => isEnglish
+      ? 'You have already submitted feedback for this artifact.'
+      : 'Bạn đã gửi đánh giá cho hiện vật này.';
+
+  String get feedbackPermissionError => isEnglish
+      ? 'Your account is not allowed to submit feedback.'
+      : 'Tài khoản không được phép gửi đánh giá.';
+
+  String get feedbackArtifactMissing => isEnglish
+      ? 'This artifact is unavailable for feedback.'
+      : 'Không thể gửi đánh giá cho hiện vật này.';
+
+  String get feedbackValidationError => isEnglish
+      ? 'Check the rating and comment, then try again.'
+      : 'Hãy kiểm tra đánh giá và nhận xét rồi thử lại.';
+
+  String get feedbackNetworkError => isEnglish
+      ? 'Could not connect to the server. Check your connection and retry.'
+      : 'Không kết nối được máy chủ. Hãy kiểm tra mạng và thử lại.';
+
+  String get feedbackServerError => isEnglish
+      ? 'The server could not save your feedback. Please retry later.'
+      : 'Máy chủ chưa lưu được đánh giá. Vui lòng thử lại sau.';
+
+  String get feedbackUnexpectedError => isEnglish
+      ? 'Could not submit feedback. Please retry.'
+      : 'Không gửi được đánh giá. Vui lòng thử lại.';
+
   String get beaconContentLoadError => isEnglish
       ? 'Could not load beacon content. Please retry.'
       : 'Không tải được nội dung beacon. Vui lòng thử lại.';

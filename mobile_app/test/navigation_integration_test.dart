@@ -361,4 +361,19 @@ class _FakeVisitorApi implements VisitorApi {
     visitedAt: DateTime.utc(2026, 10, 30),
     wasCreated: true,
   );
+
+  @override
+  Future<VisitorFeedback> submitFeedback({
+    required AuthToken token,
+    required String artifactId,
+    required int rating,
+    String? comment,
+  }) async => VisitorFeedback(
+    id: '70000000-0000-0000-0000-000000000001',
+    userId: userId,
+    artifactId: artifactId,
+    rating: rating,
+    comment: comment,
+    status: 'pending',
+  );
 }
