@@ -1,0 +1,22 @@
+{
+  "phase": "artifact-opened",
+  "status": "PASS",
+  "database": "test_acceptance_7c7c86e0",
+  "artifact": "9b35cf5e-c484-44e8-ab60-a18ee62fa417",
+  "site": "b9ccd448-4662-4af6-8a6d-2b84781f6740",
+  "beacon": "e29f1d2a-19cb-4cf9-963d-471247dc19fc",
+  "user": "2c398454-a25e-472b-919c-219728e2e632",
+  "translations": {
+    "vi": "Trống đồng đã cập nhật từ Web",
+    "en": "Acceptance bronze drum"
+  },
+  "media_urls": [
+    "http://127.0.0.1:8091/van_mieu_welcome.jpg"
+  ],
+  "favorite_count": 1,
+  "visit_count": 1,
+  "visit_id": "7488b0cd-9a08-41ca-98ab-aa59b2055dc1",
+  "visit_beacon_id": null,
+  "rssi": null,
+  "visited_at_utc": "2026-11-08T05:22:50.315000+00:00"
+}

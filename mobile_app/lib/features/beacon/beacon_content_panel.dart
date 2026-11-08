@@ -1,10 +1,8 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import 'beacon_content_controller.dart';
 
-/// Shared by real ranging and Simulation. A visit starts only when visible.
+/// Resolved beacon preview. Discovery/preview alone never starts a visit.
 class BeaconContentPanel extends StatefulWidget {
   const BeaconContentPanel({
     super.key,
@@ -29,23 +27,6 @@ class _BeaconContentPanelState extends State<BeaconContentPanel> {
       final controller = widget.controller;
       final content = controller.content;
       final error = controller.errorMessage;
-
-      if (content != null && !controller.isLoading && widget.isActive) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted ||
-              !context.mounted ||
-              !widget.isActive ||
-              !(ModalRoute.of(context)?.isCurrent ?? true)) {
-            return;
-          }
-          unawaited(
-            widget.controller.recordDisplayedContent(
-              content,
-              rssi: widget.rssi,
-            ),
-          );
-        });
-      }
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -5,3 +5,7 @@ extend-glob = [
     "Main.storyboard",
 ]
 check-file = false
+
+[default.extend-words]
+# Correct Vietnamese word in the existing visit-history copy.
+tham = "tham"

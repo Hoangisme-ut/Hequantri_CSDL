@@ -16,7 +16,7 @@ def main() -> None:
     from tests.db_safety import validate_target, verify_identity
 
     phase = sys.argv[1]
-    assert phase in {"favorite-added", "favorite-removed"}
+    assert phase in {"favorite-added", "favorite-removed", "artifact-opened"}
     token = os.environ["TEST_DATABASE_TOKEN"]
     target = validate_target(
         os.environ["DATABASE_URL"], os.environ["TEST_DATABASE_URL"], token
@@ -83,7 +83,7 @@ def main() -> None:
                 .all()
             )
             assert [str(user).lower() for user in favorites] == (
-                [params["user"]] if phase == "favorite-added" else []
+                [] if phase == "favorite-removed" else [params["user"]]
             )
             visits = (
                 connection.execute(
@@ -99,8 +99,12 @@ def main() -> None:
             visit = visits[0]
             assert str(visit["id"]).lower() == mobile["visit_id"]
             assert str(visit["user_id"]).lower() == params["user"]
-            assert str(visit["beacon_id"]).lower() == params["beacon"]
-            assert visit["visited_at"] is not None and visit["rssi"] == -60
+            if phase == "artifact-opened":
+                assert visit["beacon_id"] is None and visit["rssi"] is None
+            else:
+                assert str(visit["beacon_id"]).lower() == params["beacon"]
+                assert visit["rssi"] == -60
+            assert visit["visited_at"] is not None
             assert visit["visited_at"] == datetime.fromisoformat(
                 mobile["visited_at_utc"]
             )
@@ -115,6 +119,8 @@ def main() -> None:
             "favorite_count": len(favorites),
             "visit_count": len(visits),
             "visit_id": str(visit["id"]),
+            "visit_beacon_id": str(visit["beacon_id"]) if visit["beacon_id"] else None,
+            "rssi": visit["rssi"],
             "visited_at_utc": visit["visited_at"].isoformat(),
         }
         (Path(os.environ["QA_EVIDENCE_DIR"]) / f"sql-{phase}.json").write_text(

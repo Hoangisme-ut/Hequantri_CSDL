@@ -215,7 +215,7 @@ void main() {
   });
 
   testWidgets(
-    'records a visit once after content is resolved, not per BLE signal',
+    'resolved previews and repeated BLE signals never record a visit',
     (WidgetTester tester) async {
       var now = DateTime.utc(2026, 11, 1);
       final source = StreamController<List<Beacon>>.broadcast();
@@ -236,13 +236,13 @@ void main() {
         service.requests.single.complete();
         await tester.pump();
         await tester.pump();
-        expect(visitorApi.visits, hasLength(1));
+        expect(visitorApi.visits, isEmpty);
 
         for (var index = 0; index < 5; index++) {
           await _emit(tester, source, 1);
         }
         await tester.pump();
-        expect(visitorApi.visits, hasLength(1));
+        expect(visitorApi.visits, isEmpty);
 
         // A locale-triggered re-resolve remains in the same backend window.
         await tester.pumpWidget(
@@ -262,7 +262,7 @@ void main() {
         service.requests.last.complete();
         await tester.pump();
         await tester.pump();
-        expect(visitorApi.visits, hasLength(1));
+        expect(visitorApi.visits, isEmpty);
       } finally {
         await tester.pumpWidget(const SizedBox.shrink());
         await source.close();
@@ -333,8 +333,9 @@ void main() {
       // pump the resolve/render/post-frame sequence explicitly.
       await tester.pump();
       await tester.pump();
-      expect(visitorApi.visits, hasLength(1));
-      expect(visitorApi.visits.single, endsWith(':beacon-2:-50'));
+      expect(find.text('Nội dung beacon 1'), findsNothing);
+      expect(find.text('Nội dung beacon 2'), findsOneWidget);
+      expect(visitorApi.visits, isEmpty);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       await source.close();
@@ -342,7 +343,7 @@ void main() {
     }
   });
 
-  testWidgets('inactive beacon tab waits until its content panel is visible', (
+  testWidgets('activating a beacon preview tab does not record a visit', (
     tester,
   ) async {
     final source = StreamController<List<Beacon>>.broadcast();
@@ -375,7 +376,8 @@ void main() {
       );
       await tester.pump();
       await tester.pump();
-      expect(visitorApi.calls, 1);
+      expect(find.text('Nội dung beacon 1'), findsOneWidget);
+      expect(visitorApi.calls, 0);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       await source.close();
@@ -383,7 +385,7 @@ void main() {
     }
   });
 
-  testWidgets('covered beacon route records only after it is visible again', (
+  testWidgets('uncovering a beacon preview route does not record a visit', (
     tester,
   ) async {
     final source = StreamController<List<Beacon>>.broadcast();
@@ -423,7 +425,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump();
-      expect(visitorApi.calls, 1);
+      expect(find.text('Nội dung beacon 1'), findsOneWidget);
+      expect(visitorApi.calls, 0);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       await source.close();
@@ -458,7 +461,7 @@ void main() {
     }
   });
 
-  testWidgets('only one Visit request can be in flight for displayed content', (
+  testWidgets('a preview never starts a potentially pending Visit request', (
     tester,
   ) async {
     final source = StreamController<List<Beacon>>.broadcast();
@@ -475,13 +478,14 @@ void main() {
       await _emit(tester, source, 1);
       service.requests.single.complete();
       await tester.pumpAndSettle();
-      expect(visitorApi.calls, 1);
+      expect(find.text('Nội dung beacon 1'), findsOneWidget);
+      expect(visitorApi.calls, 0);
 
       for (var i = 0; i < 4; i++) {
         await _emit(tester, source, 1);
       }
       await tester.pumpAndSettle();
-      expect(visitorApi.calls, 1);
+      expect(visitorApi.calls, 0);
 
       visitorApi.pending!.complete(_visitReceipt());
       await tester.pumpAndSettle();
@@ -492,7 +496,7 @@ void main() {
     }
   });
 
-  testWidgets('failed Visit request can be retried from the visible panel', (
+  testWidgets('a failing Visit transport cannot affect a beacon preview', (
     tester,
   ) async {
     final source = StreamController<List<Beacon>>.broadcast();
@@ -509,20 +513,15 @@ void main() {
       await _emit(tester, source, 1);
       service.requests.single.complete();
       await tester.pumpAndSettle();
-      expect(visitorApi.calls, 1);
+      expect(visitorApi.calls, 0);
+      expect(find.text('Nội dung beacon 1'), findsOneWidget);
       expect(
         find.text('Không thể kết nối máy chủ. Vui lòng thử lại.'),
-        findsOneWidget,
+        findsNothing,
       );
 
-      final retryButton = find.byType(TextButton);
-      await tester.ensureVisible(retryButton);
-      await tester.pump(const Duration(milliseconds: 500));
-      await tester.tap(retryButton);
-      await tester.pump();
-      await tester.pump();
-      expect(visitorApi.calls, 2);
-      expect(visitorApi.visits, hasLength(1));
+      expect(find.text('Thử lưu lịch sử lại'), findsNothing);
+      expect(visitorApi.visits, isEmpty);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       await source.close();

@@ -230,8 +230,8 @@ void main() {
         await harness.completeLatest(tester);
 
         expect(find.text('Nội dung beacon 1'), findsOneWidget);
-        expect(harness.visits.artifactIds, [_artifactId(1)]);
-        expect(harness.visits.readings, [-70]);
+        expect(harness.visits.artifactIds, isEmpty);
+        expect(harness.visits.readings, isEmpty);
       });
     },
   );
@@ -279,19 +279,19 @@ void main() {
 
         expect(find.text('Nội dung beacon 1'), findsNothing);
         expect(find.text('Nội dung beacon 2'), findsOneWidget);
-        expect(harness.visits.artifactIds, [_artifactId(1), _artifactId(2)]);
+        expect(harness.visits.artifactIds, isEmpty);
       });
     },
   );
 
   testWidgets(
-    'weak readings do not renew selection and reentry does not duplicate visits',
+    'weak readings do not renew selection and reentry previews do not record visits',
     (tester) async {
       await _withScanner(tester, (harness) async {
         await harness.emit(tester, rssi: -55);
         await harness.completeLatest(tester);
 
-        expect(harness.visits.artifactIds, hasLength(1));
+        expect(harness.visits.artifactIds, isEmpty);
 
         await tester.pump(const Duration(seconds: 6));
         await harness.emit(tester, rssi: -90);
@@ -310,8 +310,8 @@ void main() {
 
         expect(find.text('Nội dung beacon 1'), findsOneWidget);
 
-        // Vẫn trong cửa sổ 300 giây nên không POST thêm lượt xem.
-        expect(harness.visits.artifactIds, hasLength(1));
+        // A preview/reentry is not an explicit artifact-open action.
+        expect(harness.visits.artifactIds, isEmpty);
       });
     },
   );

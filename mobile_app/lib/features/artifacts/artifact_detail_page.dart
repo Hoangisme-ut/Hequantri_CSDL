@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_strings.dart';
@@ -15,12 +17,16 @@ class ArtifactDetailPage extends StatefulWidget {
     this.visitorApi,
     this.initialIsFavorite,
     this.onFavoriteChanged,
+    this.visitBeaconId,
+    this.visitRssi,
   });
 
   final Artifact artifact;
   final VisitorApi? visitorApi;
   final bool? initialIsFavorite;
   final VoidCallback? onFavoriteChanged;
+  final String? visitBeaconId;
+  final int? visitRssi;
 
   @override
   State<ArtifactDetailPage> createState() => _ArtifactDetailPageState();
@@ -38,11 +44,16 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
   String? _favoriteError;
 
   VisitorArtifactContent? _remoteContent;
+  AuthToken? _remoteContentToken;
   bool _contentLoading = false;
   String? _contentError;
   String? _loadedContentLanguage;
   String? _loadedContentArtifactId;
   int _contentRequestGeneration = 0;
+  int _viewRevision = 0;
+  final Set<String> _completedViews = {};
+  final Set<String> _pendingViews = {};
+  final Map<String, int?> _failedViews = {};
 
   @override
   void initState() {
@@ -69,7 +80,8 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
 
     if (_visitorApi != null &&
         _hasBackendId &&
-        (language != _loadedContentLanguage ||
+        (sessionChanged ||
+            language != _loadedContentLanguage ||
             widget.artifact.id != _loadedContentArtifactId)) {
       _loadedContentLanguage = language;
       _loadedContentArtifactId = widget.artifact.id;
@@ -102,10 +114,12 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
 
     if (oldWidget.artifact.id == widget.artifact.id) return;
 
+    _viewRevision++;
     _contentRequestGeneration++;
     _loadedContentArtifactId = null;
     _loadedContentLanguage = null;
     _remoteContent = null;
+    _remoteContentToken = null;
     _contentError = null;
     _favoriteInitialized = widget.initialIsFavorite != null;
     _isFav = widget.initialIsFavorite ?? widget.artifact.isFavorite;
@@ -236,6 +250,7 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
     if (api == null) return;
 
     final generation = ++_contentRequestGeneration;
+    final token = _token;
 
     setState(() {
       _contentLoading = true;
@@ -251,6 +266,7 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
       if (_isCurrentContentRequest(generation, artifactId, languageCode)) {
         setState(() {
           _remoteContent = content;
+          _remoteContentToken = token;
           _contentLoading = false;
         });
       }
@@ -281,6 +297,75 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
       generation == _contentRequestGeneration &&
       artifactId == widget.artifact.id &&
       languageCode == AppStrings.of(context).locale.languageCode;
+
+  String _viewKey(VisitorArtifactContent content, AuthToken token) =>
+      '$_viewRevision:${token.accessToken}:${content.id}';
+
+  bool _isVisibleView(VisitorArtifactContent content, AuthToken token) =>
+      mounted &&
+      _hasBackendId &&
+      !_contentLoading &&
+      _contentError == null &&
+      content.id == widget.artifact.id &&
+      identical(content, _remoteContent) &&
+      _sameAuthToken(token, _remoteContentToken) &&
+      _sameAuthToken(token, AuthSessionScope.maybeOf(context)?.readToken()) &&
+      (ModalRoute.of(context)?.isCurrent ?? true);
+
+  void _scheduleOpenedView() {
+    final content = _remoteContent;
+    final token = _remoteContentToken;
+    if (content == null || token == null) return;
+    final key = _viewKey(content, token);
+    if (_completedViews.contains(key) ||
+        _pendingViews.contains(key) ||
+        _failedViews.containsKey(key)) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_isVisibleView(content, token)) {
+        unawaited(_recordOpenedView(content, token));
+      }
+    });
+  }
+
+  Future<void> _recordOpenedView(
+    VisitorArtifactContent content,
+    AuthToken token, {
+    bool retry = false,
+  }) async {
+    final api = _visitorApi;
+    final key = _viewKey(content, token);
+    if (api == null ||
+        !_isVisibleView(content, token) ||
+        _completedViews.contains(key) ||
+        _pendingViews.contains(key) ||
+        (!retry && _failedViews.containsKey(key))) {
+      return;
+    }
+    setState(() {
+      _pendingViews.add(key);
+      _failedViews.remove(key);
+    });
+    try {
+      // Reopening a page sends a new request. SQL Server remains authoritative
+      // for the temporary per-user/per-artifact 300-second window.
+      await api.recordVisit(
+        token: token,
+        artifactId: content.id,
+        beaconId: widget.visitBeaconId,
+        rssi: widget.visitRssi,
+      );
+      _completedViews.add(key);
+    } on VisitorApiException catch (error) {
+      _failedViews[key] = error.statusCode;
+    } catch (_) {
+      _failedViews[key] = null;
+    } finally {
+      _pendingViews.remove(key);
+      if (mounted) setState(() {});
+    }
+  }
 
   Future<void> _toggleFavorite(bool isEn) async {
     final token = _token;
@@ -377,6 +462,12 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
     final colorScheme = theme.colorScheme;
     final strings = AppStrings.of(context);
     final isEn = strings.isEnglish;
+    _scheduleOpenedView();
+    final viewContent = _remoteContent;
+    final viewToken = _remoteContentToken;
+    final viewKey = viewContent != null && viewToken != null
+        ? _viewKey(viewContent, viewToken)
+        : null;
 
     return Scaffold(
       backgroundColor: HeritagePalette.background,
@@ -528,6 +619,30 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
                           _favoriteError!,
                           style: TextStyle(color: colorScheme.error),
                         ),
+
+                      if (viewKey != null &&
+                          _failedViews.containsKey(viewKey) &&
+                          _sameAuthToken(viewToken, _token)) ...[
+                        Text(
+                          strings.visitorApiError(_failedViews[viewKey]),
+                          style: TextStyle(color: colorScheme.error),
+                        ),
+                        TextButton(
+                          key: const Key('retry-artifact-visit'),
+                          onPressed: () => unawaited(
+                            _recordOpenedView(
+                              viewContent!,
+                              viewToken!,
+                              retry: true,
+                            ),
+                          ),
+                          child: Text(
+                            isEn
+                                ? 'Retry saving visit history'
+                                : 'Thử lưu lịch sử lại',
+                          ),
+                        ),
+                      ],
 
                       const SizedBox(height: 6),
 

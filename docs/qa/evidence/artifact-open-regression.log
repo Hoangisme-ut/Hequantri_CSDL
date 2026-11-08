@@ -1,0 +1,335 @@
+Resolving dependencies...
+Downloading packages...
+  code_assets 2.1.0 (2.2.0 available)
+  cupertino_icons 1.0.9 (2.0.0 available)
+  jni 1.1.1 (1.1.2 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  objective_c 9.6.2 (9.6.3 available)
+  test_api 0.7.12 (0.7.15 available)
+Got dependencies!
+6 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+00:00 +0: loading <WORKSPACE>/mobile_app/test/api_config_test.dart
+00:00 +0: <WORKSPACE>/mobile_app/test/api_config_test.dart: Android uses the host loopback address for the emulator
+00:00 +1: <WORKSPACE>/mobile_app/test/api_config_test.dart: desktop default uses localhost and is shared with authentication
+00:00 +2: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: demo clears the authenticated token
+00:00 +3: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: logout clears authentication and demo state
+00:00 +4: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: invalid tokens cannot create an authenticated session
+00:00 +5: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +6: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +7: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +8: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +9: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +10: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +11: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +12: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +13: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +14: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +15: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +16: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +17: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +18: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +19: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +20: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +21: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +22: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +23: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +24: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:00 +25: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:01 +26: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:01 +27: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:01 +28: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:01 +29: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:01 +30: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:01 +31: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:01 +32: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:01 +33: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:01 +34: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:01 +35: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:01 +36: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:01 +37: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:01 +38: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:01 +39: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:01 +40: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:01 +41: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:01 +42: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:02 +43: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:02 +44: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:02 +45: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:02 +46: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:02 +47: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:02 +48: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:02 +49: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:02 +50: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:02 +51: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:02 +52: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:02 +52: <WORKSPACE>/mobile_app/test/beacon_resilience_test.dart: denied startup remains retryable and creates no API request
+RANGING: 1 beacon
+BEACON_CHANGED: fda50693-a4e2-4fb1-afcf-c6eb07647825:1:1, notifications: 1
+00:02 +53: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:02 +54: <WORKSPACE>/mobile_app/test/app_auth_session_test.dart: welcome login and logout preserve the correct session
+00:02 +55: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:02 +56: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:02 +57: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:02 +58: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:02 +58: <WORKSPACE>/mobile_app/test/beacon_resilience_test.dart: Bluetooth off cancels scanning and ignores late content
+RANGING: 1 beacon
+BEACON_CHANGED: fda50693-a4e2-4fb1-afcf-c6eb07647825:1:1, notifications: 1
+00:02 +59: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +60: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +61: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +62: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +63: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +64: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +65: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +66: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +66: <WORKSPACE>/mobile_app/test/beacon_rssi_test.dart: weak packets learn the threshold once and do not display or log content
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:1, notifications: 1
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:1, notifications: 2
+00:03 +67: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +68: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +69: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +70: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +71: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +72: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +73: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +73: <WORKSPACE>/mobile_app/test/beacon_rssi_test.dart: a weaker reading arriving during resolve prevents content activation
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:1, notifications: 1
+RANGING: 1 beacon
+00:03 +74: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +75: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +75: <WORKSPACE>/mobile_app/test/beacon_resilience_test.dart: silent signal loss expires after ten seconds and allows reentry
+RANGING: 1 beacon
+BEACON_CHANGED: fda50693-a4e2-4fb1-afcf-c6eb07647825:1:1, notifications: 1
+RANGING: 1 beacon
+BEACON_CHANGED: fda50693-a4e2-4fb1-afcf-c6eb07647825:1:1, notifications: 2
+00:03 +76: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +77: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +77: <WORKSPACE>/mobile_app/test/beacon_rssi_test.dart: switching from A to B requires three consecutive confirmations
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:1, notifications: 1
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:2, notifications: 2
+00:03 +78: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +79: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +80: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +81: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +82: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +83: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +84: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +84: <WORKSPACE>/mobile_app/test/beacon_scan_content_test.dart: confirmed scan requests content and suppresses duplicates
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:1, notifications: 1
+RANGING: 1 beacon
+RANGING: 1 beacon
+00:03 +85: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:03 +85: <WORKSPACE>/mobile_app/test/beacon_scan_content_test.dart: confirmed scan requests content and suppresses duplicates
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:2, notifications: 2
+00:03 +86: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:04 +86: <WORKSPACE>/mobile_app/test/beacon_resilience_test.dart: brief signal gap retains selection and suppresses the repeated beacon
+RANGING: 1 beacon
+BEACON_CHANGED: fda50693-a4e2-4fb1-afcf-c6eb07647825:1:1, notifications: 1
+RANGING: 0 beacon
+RANGING: 1 beacon
+00:04 +87: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:04 +87: <WORKSPACE>/mobile_app/test/beacon_rssi_test.dart: weak readings do not renew selection and reentry previews do not record visits
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:1, notifications: 1
+RANGING: 1 beacon
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:1, notifications: 2
+00:04 +88: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:04 +88: <WORKSPACE>/mobile_app/test/artifact_visit_trigger_test.dart: beacon preview and repeated signals do not record before opening details
+RANGING: 1 beacon
+BEACON_CHANGED: fda50693-a4e2-4fb1-afcf-c6eb07647825:1:1, notifications: 1
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+00:04 +89: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:04 +90: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:04 +90: <WORKSPACE>/mobile_app/test/beacon_resilience_test.dart: explicit stop retains raw readings and cancels expiry timers
+RANGING: 1 beacon
+BEACON_CHANGED: fda50693-a4e2-4fb1-afcf-c6eb07647825:1:1, notifications: 1
+00:04 +91: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:04 +91: <WORKSPACE>/mobile_app/test/beacon_scan_content_test.dart: resolved previews and repeated BLE signals never record a visit
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:1, notifications: 1
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+00:04 +92: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:04 +93: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:04 +93: <WORKSPACE>/mobile_app/test/beacon_resilience_test.dart: ranging failure is recoverable and closes all listeners
+RANGING: 1 beacon
+BEACON_CHANGED: fda50693-a4e2-4fb1-afcf-c6eb07647825:1:1, notifications: 1
+00:04 +94: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:04 +95: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:04 +95: <WORKSPACE>/mobile_app/test/beacon_scan_content_test.dart: does not record content resolved with a replaced session
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:1, notifications: 1
+00:04 +96: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:04 +97: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: authenticated Home and Profile beacon entries open Task 4
+00:04 +98: <WORKSPACE>/mobile_app/test/home_sites_test.dart: Home shows loading then the empty Sites state
+00:04 +98: <WORKSPACE>/mobile_app/test/beacon_scan_content_test.dart: beacon selection change discards the older resolve result
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:1, notifications: 1
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:2, notifications: 2
+00:04 +99: <WORKSPACE>/mobile_app/test/home_sites_test.dart: Home shows loading then the empty Sites state
+00:04 +100: <WORKSPACE>/mobile_app/test/home_sites_test.dart: Home shows loading then the empty Sites state
+00:04 +100: <WORKSPACE>/mobile_app/test/beacon_scan_content_test.dart: activating a beacon preview tab does not record a visit
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:1, notifications: 1
+00:04 +101: <WORKSPACE>/mobile_app/test/home_sites_test.dart: Home shows loading then the empty Sites state
+00:05 +102: <WORKSPACE>/mobile_app/test/home_sites_test.dart: Home shows loading then the empty Sites state
+00:05 +102: <WORKSPACE>/mobile_app/test/beacon_visit_log_test.dart: Simulation resolves content without recording real visits
+[SIMULATION] Beacon A | UUID: FDA50693-A4E2-4FB1-AFCF-C6EB07647825 | Major: 1 | Minor: 1 | Simulated distance: 1.5 m | Duplicate: false
+[SIMULATION] Beacon A | UUID: FDA50693-A4E2-4FB1-AFCF-C6EB07647825 | Major: 1 | Minor: 1 | Simulated distance: 1.5 m | Duplicate: true
+[SIMULATION] Beacon B | UUID: FDA50693-A4E2-4FB1-AFCF-C6EB07647825 | Major: 1 | Minor: 2 | Simulated distance: 2.0 m | Duplicate: false
+00:05 +103: <WORKSPACE>/mobile_app/test/home_sites_test.dart: Home shows loading then the empty Sites state
+00:05 +104: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: Task 4 opened from Home receives the login token
+00:05 +104: <WORKSPACE>/mobile_app/test/beacon_scan_content_test.dart: uncovering a beacon preview route does not record a visit
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:1, notifications: 1
+00:05 +105: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: Task 4 opened from Home receives the login token
+00:05 +106: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: Task 4 opened from Home receives the login token
+00:05 +106: <WORKSPACE>/mobile_app/test/beacon_scan_content_test.dart: disposed scanner ignores a late resolve callback
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:1, notifications: 1
+00:05 +107: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: Task 4 opened from Home receives the login token
+00:05 +108: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: Task 4 opened from Home receives the login token
+00:05 +108: <WORKSPACE>/mobile_app/test/beacon_scan_content_test.dart: a preview never starts a potentially pending Visit request
+RANGING: 1 beacon
+00:05 +109: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: Task 4 opened from Home receives the login token
+00:05 +109: <WORKSPACE>/mobile_app/test/beacon_scan_content_test.dart: a preview never starts a potentially pending Visit request
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:1, notifications: 1
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+00:05 +110: <WORKSPACE>/mobile_app/test/beacon_navigation_test.dart: Task 4 opened from Home receives the login token
+00:05 +111: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:05 +111: <WORKSPACE>/mobile_app/test/beacon_scan_content_test.dart: a failing Visit transport cannot affect a beacon preview
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:1, notifications: 1
+00:05 +112: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:05 +113: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:05 +113: <WORKSPACE>/mobile_app/test/beacon_visit_log_test.dart: confirmed real scan previews A and B without recording visits
+RANGING: 1 beacon
+BEACON_CHANGED: fda50693-a4e2-4fb1-afcf-c6eb07647825:1:1, notifications: 1
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+BEACON_CHANGED: fda50693-a4e2-4fb1-afcf-c6eb07647825:1:2, notifications: 2
+00:05 +114: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:05 +115: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:05 +115: <WORKSPACE>/mobile_app/test/beacon_scan_content_test.dart: scan ignores stale content and waits before the next request
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:1, notifications: 1
+RANGING: 1 beacon
+RANGING: 1 beacon
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:2, notifications: 2
+00:05 +116: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:06 +116: <WORKSPACE>/mobile_app/test/beacon_scan_content_test.dart: scan requires a token and retry reads the latest token
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:1, notifications: 1
+00:06 +117: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:06 +118: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:06 +119: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:06 +119: <WORKSPACE>/mobile_app/test/beacon_scan_content_test.dart: stopping scan cancels detection and ignores unfinished content
+RANGING: 1 beacon
+BEACON_CHANGED: 11111111-2222-3333-4444-555555555555:1:1, notifications: 1
+00:06 +120: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:06 +121: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:06 +122: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:06 +123: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:06 +124: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:06 +125: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:06 +126: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:06 +127: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:06 +128: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:06 +129: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:06 +130: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:06 +131: <WORKSPACE>/mobile_app/test/login_token_handoff_test.dart: passes the token without calling legacy navigation
+00:06 +132: <WORKSPACE>/mobile_app/test/map_page_test.dart: Map tab uses real Sites and opens their API-backed details
+00:06 +133: <WORKSPACE>/mobile_app/test/map_page_test.dart: Map tab uses real Sites and opens their API-backed details
+00:06 +134: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: MainNavigationScaffold switches across all 5 navigation tabs cleanly
+00:06 +135: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: MainNavigationScaffold switches across all 5 navigation tabs cleanly
+00:06 +136: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: MainNavigationScaffold switches across all 5 navigation tabs cleanly
+00:06 +137: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: MainNavigationScaffold switches across all 5 navigation tabs cleanly
+00:06 +138: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: MainNavigationScaffold switches across all 5 navigation tabs cleanly
+00:06 +139: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: MainNavigationScaffold switches across all 5 navigation tabs cleanly
+00:06 +140: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: MainNavigationScaffold switches across all 5 navigation tabs cleanly
+00:06 +141: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: MainNavigationScaffold switches across all 5 navigation tabs cleanly
+00:06 +142: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: MainNavigationScaffold switches across all 5 navigation tabs cleanly
+00:06 +143: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: MainNavigationScaffold switches across all 5 navigation tabs cleanly
+00:06 +144: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: MainNavigationScaffold switches across all 5 navigation tabs cleanly
+00:06 +145: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: MainNavigationScaffold switches across all 5 navigation tabs cleanly
+00:06 +146: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: MainNavigationScaffold switches across all 5 navigation tabs cleanly
+00:06 +147: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: MainNavigationScaffold switches across all 5 navigation tabs cleanly
+00:06 +148: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: MainNavigationScaffold switches across all 5 navigation tabs cleanly
+00:06 +149: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: MainNavigationScaffold switches across all 5 navigation tabs cleanly
+00:07 +150: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: MainNavigationScaffold switches across all 5 navigation tabs cleanly
+00:07 +151: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: MainNavigationScaffold switches across all 5 navigation tabs cleanly
+00:07 +152: <WORKSPACE>/mobile_app/test/visit_history_page_test.dart: History uses HttpVisitorApi and refreshes backend data
+00:07 +153: <WORKSPACE>/mobile_app/test/visit_history_page_test.dart: History uses HttpVisitorApi and refreshes backend data
+00:07 +154: <WORKSPACE>/mobile_app/test/visit_history_page_test.dart: History uses HttpVisitorApi and refreshes backend data
+00:07 +155: <WORKSPACE>/mobile_app/test/visit_history_page_test.dart: History uses HttpVisitorApi and refreshes backend data
+00:07 +156: <WORKSPACE>/mobile_app/test/visit_history_page_test.dart: History uses HttpVisitorApi and refreshes backend data
+00:07 +157: <WORKSPACE>/mobile_app/test/visit_history_page_test.dart: History uses HttpVisitorApi and refreshes backend data
+00:07 +158: <WORKSPACE>/mobile_app/test/widget_test.dart: Welcome is the opening screen and starts the app
+00:07 +159: <WORKSPACE>/mobile_app/test/widget_test.dart: Welcome is the opening screen and starts the app
+00:07 +160: <WORKSPACE>/mobile_app/test/widget_test.dart: Welcome is the opening screen and starts the app
+00:07 +161: <WORKSPACE>/mobile_app/test/widget_test.dart: Welcome is the opening screen and starts the app
+00:07 +162: <WORKSPACE>/mobile_app/test/widget_test.dart: Welcome is the opening screen and starts the app
+00:08 +163: <WORKSPACE>/mobile_app/test/widget_test.dart: Welcome is the opening screen and starts the app
+00:08 +164: <WORKSPACE>/mobile_app/test/widget_test.dart: Welcome is the opening screen and starts the app
+00:08 +165: <WORKSPACE>/mobile_app/test/widget_test.dart: Welcome is the opening screen and starts the app
+00:08 +166: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: Home page navigates to ArtifactDetailPage and back cleanly
+00:08 +167: <WORKSPACE>/mobile_app/test/visitor_pages_test.dart: Favorites load from API and reflect a successful removal
+00:08 +168: <WORKSPACE>/mobile_app/test/widget_test.dart: onboarding advances through all heritage stories to Login
+00:08 +169: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: Favorites page filters tabs and opens detail screens
+00:08 +170: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: Favorites page filters tabs and opens detail screens
+00:08 +171: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: Favorites page filters tabs and opens detail screens
+00:08 +172: <WORKSPACE>/mobile_app/test/visitor_pages_test.dart: History loads API entries and opens the matching detail
+00:08 +173: <WORKSPACE>/mobile_app/test/widget_test.dart: onboarding fits small and common phone sizes without overflow
+00:08 +174: <WORKSPACE>/mobile_app/test/widget_test.dart: onboarding fits small and common phone sizes without overflow
+00:08 +175: <WORKSPACE>/mobile_app/test/widget_test.dart: onboarding fits small and common phone sizes without overflow
+00:09 +176: <WORKSPACE>/mobile_app/test/widget_test.dart: onboarding fits small and common phone sizes without overflow
+00:09 +177: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: Layout renders on small screen size 320x568 without overflow
+00:09 +178: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: Layout renders on small screen size 320x568 without overflow
+00:09 +179: <WORKSPACE>/mobile_app/test/navigation_integration_test.dart: Layout renders on small screen size 320x568 without overflow
+00:09 +180: <WORKSPACE>/mobile_app/test/widget_test.dart: switches to simulation after scanning stops successfully
+00:09 +181: <WORKSPACE>/mobile_app/test/widget_test.dart: stays on scan tab when stopping scanning is not confirmed
+00:09 +182: <WORKSPACE>/mobile_app/test/widget_test.dart: navigates to simulation and preserves its behavior
+[SIMULATION] Beacon A | UUID: FDA50693-A4E2-4FB1-AFCF-C6EB07647825 | Major: 1 | Minor: 1 | Simulated distance: 1.5 m | Duplicate: false
+[SIMULATION] Beacon A | UUID: FDA50693-A4E2-4FB1-AFCF-C6EB07647825 | Major: 1 | Minor: 1 | Simulated distance: 1.5 m | Duplicate: true
+00:09 +183: <WORKSPACE>/mobile_app/test/widget_test.dart: uses a centralized Material 3 light and dark theme
+00:09 +184: All tests passed!
+exit_code=0

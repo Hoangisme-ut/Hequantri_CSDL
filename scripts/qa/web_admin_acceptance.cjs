@@ -15,7 +15,9 @@ async function main() {
   }
   assert(process.env.QA_ADMIN_EMAIL && process.env.QA_ADMIN_PASSWORD)
   assert(process.env.QA_HANDOFF_FILE, "Set a temporary QA_HANDOFF_FILE outside Git")
-  const evidence = path.resolve(__dirname, "../../docs/qa/evidence")
+  const evidence = process.env.QA_EVIDENCE_DIR
+    ? path.resolve(process.env.QA_EVIDENCE_DIR)
+    : path.resolve(__dirname, "../../docs/qa/evidence")
   fs.mkdirSync(evidence, { recursive: true })
   const browser = await chromium.launch({ headless: true, channel: "chrome" })
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
