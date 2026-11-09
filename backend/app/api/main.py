@@ -5,7 +5,6 @@ from app.api.routes import (
     beacons,
     favorites,
     feedback,
-    items,
     languages,
     login,
     media,
@@ -21,7 +20,6 @@ api_router = APIRouter()
 api_router.include_router(login.router)
 api_router.include_router(users.router)
 api_router.include_router(utils.router)
-api_router.include_router(items.router)
 api_router.include_router(languages.router)
 api_router.include_router(sites.router)
 api_router.include_router(artifacts.router)
