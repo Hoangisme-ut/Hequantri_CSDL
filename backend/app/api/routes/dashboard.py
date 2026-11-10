@@ -4,13 +4,21 @@ from datetime import UTC, date, datetime, time, timedelta
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import ColumnElement, Date, cast
+from sqlalchemy import ColumnElement, Date, Float, cast
 from sqlmodel import SQLModel, col, func, select
 
 from app import crud
 from app.api.deps import AdminUser, SessionDep
 from app.api.docs import errors
-from app.models import Artifact, Beacon, Language, Site, VisitLog
+from app.models import (
+    Artifact,
+    Beacon,
+    Feedback,
+    FeedbackStatus,
+    Language,
+    Site,
+    VisitLog,
+)
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -30,11 +38,17 @@ class VisitStats(SQLModel):
     unique_visitors: int
 
 
+class RatingStats(SQLModel):
+    count: int
+    average: float | None = None  # None khi chưa có đánh giá nào
+
+
 class DashboardSummary(SQLModel):
     sites: InventoryCount
     artifacts: InventoryCount
     beacons: InventoryCount
     visits: VisitStats
+    ratings: RatingStats
     from_date: date | None = None
     to_date: date | None = None
 
@@ -58,6 +72,8 @@ class TopArtifact(SQLModel):
     title: str | None = None
     is_active: bool
     visit_count: int
+    rating_count: int = 0
+    average_rating: float | None = None
 
 
 class TopArtifacts(SQLModel):
@@ -130,6 +146,15 @@ def _visit_conditions(date_range: DateRange) -> list[ColumnElement[bool]]:
     return conditions
 
 
+def _rating_conditions() -> list[ColumnElement[bool]]:
+    """Quy tắc đã chốt: rating tính từ mọi feedback trừ `hidden` (kể cả pending)."""
+    return [col(Feedback.status) != FeedbackStatus.HIDDEN.value]
+
+
+def _average(value: Any) -> float | None:
+    return None if value is None else round(float(value), 2)
+
+
 def _count(session: SessionDep, model: Any, *conditions: ColumnElement[bool]) -> int:
     """Đếm bằng COUNT(*) trong SQL (không đếm số dòng của một trang dữ liệu)."""
     return session.exec(
@@ -151,8 +176,15 @@ def read_summary(
       (`active`, tức `is_active = true`). **Không** phụ thuộc bộ lọc ngày.
     - `visits`: số lượt xem (`total`) và số người xem khác nhau (`unique_visitors`)
       trong khoảng `from_date` - `to_date` (UTC). Bỏ trống = toàn bộ thời gian.
+    - `ratings`: số đánh giá và điểm trung bình (1-5, làm tròn 2 chữ số) của mọi
+      feedback **trừ `hidden`**. **Không** phụ thuộc bộ lọc ngày.
     """
     conditions = _visit_conditions(date_range)
+    rating_count, rating_avg = session.exec(
+        select(func.count(), func.avg(cast(col(Feedback.rating), Float))).where(
+            *_rating_conditions()
+        )
+    ).one()
     unique_visitors = session.exec(
         select(func.count(col(VisitLog.user_id).distinct())).where(*conditions)
     ).one()
@@ -173,6 +205,7 @@ def read_summary(
             total=_count(session, VisitLog, *conditions),
             unique_visitors=unique_visitors,
         ),
+        ratings=RatingStats(count=rating_count, average=_average(rating_avg)),
         from_date=date_range.from_date,
         to_date=date_range.to_date,
     )
@@ -244,6 +277,8 @@ def read_top_artifacts(
     để thứ tự luôn ổn định. `title` theo `lang`, không có thì dùng ngôn ngữ mặc định,
     rồi bản dịch bất kỳ; hiện vật chưa có bản dịch nào thì `title = null`.
     Hiện vật đã ẩn vẫn được tính (xem cờ `is_active`).
+    `rating_count` / `average_rating`: đánh giá của hiện vật, **trừ `hidden`**
+    (không phụ thuộc bộ lọc ngày; chưa có đánh giá thì `0` / `null`).
     """
     visit_count = func.count(col(VisitLog.id))
     rows = session.exec(
@@ -267,12 +302,29 @@ def read_top_artifacts(
         .limit(limit)
     ).all()
 
+    ratings = {
+        artifact_id: (rating_count, rating_avg)
+        for artifact_id, rating_count, rating_avg in session.exec(
+            select(
+                col(Feedback.artifact_id),
+                func.count(),
+                func.avg(cast(col(Feedback.rating), Float)),
+            )
+            .where(
+                col(Feedback.artifact_id).in_([row[0] for row in rows]),
+                *_rating_conditions(),
+            )
+            .group_by(col(Feedback.artifact_id))
+        ).all()
+    }
     language = crud.resolve_language(session=session, lang_code=lang)
+    # một truy vấn chung cho mọi hiện vật trong bảng xếp hạng (không gọi lặp từng dòng)
+    translations = crud.pick_translations(
+        session=session, artifact_ids=[row[0] for row in rows], language=language
+    )
     data: list[TopArtifact] = []
     for artifact_id, site_id, code, is_active, count in rows:
-        translation, _ = crud.pick_translation(
-            session=session, artifact_id=artifact_id, language=language
-        )
+        translation, _ = translations.get(artifact_id, (None, None))
         data.append(
             TopArtifact(
                 artifact_id=artifact_id,
@@ -281,6 +333,8 @@ def read_top_artifacts(
                 title=translation.title if translation else None,
                 is_active=is_active,
                 visit_count=count,
+                rating_count=ratings.get(artifact_id, (0, None))[0],
+                average_rating=_average(ratings.get(artifact_id, (0, None))[1]),
             )
         )
     return TopArtifacts(
