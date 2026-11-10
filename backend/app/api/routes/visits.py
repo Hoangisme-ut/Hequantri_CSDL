@@ -74,7 +74,10 @@ def record_visit(
 
     language_id = visit_in.language_id
     if language_id is not None:
+        # app chọn ngôn ngữ rõ ràng: phải tồn tại (404) và đang bật (400), giữ nguyên
         get_active_language_or_error(session, language_id)
+    else:
+        # bỏ trống: ngôn ngữ ưa thích của người dùng -> ngôn ngữ mặc định
         language = crud.resolve_language(
             session=session, lang_code=None, user=current_user
         )

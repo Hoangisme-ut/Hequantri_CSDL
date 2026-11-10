@@ -45,6 +45,24 @@ def _artifact(
     return artifact
 
 
+def test_visit_keeps_explicit_language_id(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    site_ids: list[str],
+) -> None:
+    """Gửi language_id rõ ràng thì lưu đúng ngôn ngữ đó (không bị thay bằng mặc định)."""
+    artifact = _artifact(client, superuser_token_headers, site_ids, "Bình gốm")
+    en_id = get_language_id(client, "en")
+    created = client.post(
+        f"{API}/visits/",
+        headers=normal_user_token_headers,
+        json={"artifact_id": artifact["id"], "language_id": en_id},
+    )
+    assert created.status_code == 201
+    assert created.json()["language_id"] == en_id
+
+
 def test_record_visit_and_read_history(
     client: TestClient,
     superuser_token_headers: dict[str, str],
