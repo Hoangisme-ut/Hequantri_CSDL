@@ -60,6 +60,12 @@ class UserUpdate(SQLModel):
     password: str | None = Field(default=None, min_length=8, max_length=128)
     role_id: uuid.UUID | None = None  # [Smart Heritage] admin gán role
 
+    model_config = _examples(
+        {"full_name": "Nguyễn Văn A"},
+        {"role_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"},
+        {"is_superuser": True},
+    )
+
     @field_validator("email", "password", "is_active", "is_superuser")
     @classmethod
     def reject_null_required(cls, value: Any) -> Any:
@@ -67,16 +73,19 @@ class UserUpdate(SQLModel):
             raise ValueError("Field cannot be null")
         return value
 
-    @model_validator(mode="after")
-    def _no_explicit_null_role(self) -> Self:
-        _reject_explicit_null(self, "role_id")
-        return self
-
 
 class UserUpdateMe(SQLModel):
     full_name: str | None = Field(default=None, max_length=255)
     email: EmailStr | None = Field(default=None, max_length=255)
     language_id: uuid.UUID | None = None  # [Smart Heritage] ngôn ngữ ưa thích
+
+    model_config = _examples(
+        {
+            "full_name": "Nguyễn Văn A",
+            "language_id": "c0ffee00-0000-4000-8000-000000000001",
+        },
+        {"language_id": None},
+    )
 
     @field_validator("email")
     @classmethod
@@ -240,6 +249,12 @@ class LanguageUpdate(SQLModel):
     name: str | None = Field(default=None, max_length=100)
     is_active: bool | None = None
     is_default: bool | None = None
+
+    model_config = _examples(
+        {"name": "English (US)"},
+        {"is_default": True},
+        {"is_active": False},
+    )
 
     @field_validator("code", "name")
     @classmethod
@@ -771,6 +786,19 @@ class VisitLog(SQLModel, table=True):
 
 
 class VisitLogPublic(SQLModel):
+    model_config = _examples(
+        {
+            "id": "a1b2c3d4-0000-4000-8000-000000000001",
+            "user_id": "5d2c6a1f-3b7e-4c88-8f1a-9a0b1c2d3e4f",
+            "artifact_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "beacon_id": "b3a1c2d4-1111-4222-8333-444455556666",
+            "language_id": "c0ffee00-0000-4000-8000-000000000001",
+            "visited_at": "2026-11-08T03:00:00Z",
+            "duration_seconds": None,
+            "rssi": -62,
+        }
+    )
+
     id: uuid.UUID
     user_id: uuid.UUID
     artifact_id: uuid.UUID
@@ -811,6 +839,15 @@ class Favorite(SQLModel, table=True):
 
 
 class FavoritePublic(SQLModel):
+    model_config = _examples(
+        {
+            "id": "f4a5b6c7-0000-4000-8000-000000000001",
+            "user_id": "5d2c6a1f-3b7e-4c88-8f1a-9a0b1c2d3e4f",
+            "artifact_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "created_at": "2026-11-08T03:00:00Z",
+        }
+    )
+
     id: uuid.UUID
     user_id: uuid.UUID
     artifact_id: uuid.UUID
@@ -839,6 +876,15 @@ class FeedbackCreate(SQLModel):
     rating: int = Field(ge=1, le=5)
     comment: str | None = Field(default=None, max_length=FEEDBACK_COMMENT_MAX)
 
+    model_config = _examples(
+        {
+            "artifact_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "rating": 5,
+            "comment": "Hiện vật rất đẹp, thuyết minh dễ hiểu.",
+        },
+        {"artifact_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7", "rating": 4},
+    )
+
     @field_validator("comment")
     @classmethod
     def _strip_comment(cls, value: str | None) -> str | None:
@@ -851,6 +897,11 @@ class FeedbackUpdate(SQLModel):
 
     rating: int | None = Field(default=None, ge=1, le=5)
     comment: str | None = Field(default=None, max_length=FEEDBACK_COMMENT_MAX)
+
+    model_config = _examples(
+        {"rating": 3, "comment": "Đã sửa lại nhận xét."},
+        {"comment": None},
+    )
 
     @field_validator("comment")
     @classmethod
@@ -870,6 +921,8 @@ class FeedbackStatusUpdate(SQLModel):
     """Admin duyệt (approved) hoặc từ chối/ẩn (hidden). `pending` do hệ thống tự đặt."""
 
     status: Literal["approved", "hidden"]
+
+    model_config = _examples({"status": "approved"}, {"status": "hidden"})
 
 
 class Feedback(SQLModel, table=True):
@@ -901,6 +954,19 @@ class Feedback(SQLModel, table=True):
 
 class FeedbackPublic(SQLModel):
     """Dữ liệu đầy đủ: chỉ trả cho chủ sở hữu (/feedbacks/me) và admin."""
+
+    model_config = _examples(
+        {
+            "id": "0b8f2d1e-6c1a-4f55-9d0a-3a5f6d7e8c90",
+            "user_id": "5d2c6a1f-3b7e-4c88-8f1a-9a0b1c2d3e4f",
+            "artifact_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "rating": 5,
+            "comment": "Hiện vật rất đẹp, thuyết minh dễ hiểu.",
+            "status": "pending",
+            "created_at": "2026-11-08T03:00:00Z",
+            "updated_at": None,
+        }
+    )
 
     id: uuid.UUID
     user_id: uuid.UUID

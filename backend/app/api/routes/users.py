@@ -13,7 +13,6 @@ from app.api.deps import (
     get_current_active_superuser,
     get_role_name,
     get_role_or_404,
-    is_admin,
 )
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
@@ -229,10 +228,10 @@ def read_user_by_id(
     """
     Get own user information or another user's information as Admin.
 
-    Kiểm tra quyền TRƯỚC khi tra cứu: người không phải admin xem user khác -> 403
+    Kiểm tra quyền TRƯỚC khi tra cứu: người không phải superuser xem user khác -> 403
     (không lộ id có tồn tại hay không); admin xem id không có -> 404.
     """
-    if user_id != current_user.id and not is_admin(current_user):
+    if user_id != current_user.id and not current_user.is_superuser:
         raise HTTPException(
             status_code=403,
             detail="The user doesn't have enough privileges",
@@ -261,11 +260,14 @@ def update_user(
     """
     Update a user. Admin only.
 
-    Quy tắc quyền: **role là nguồn sự thật**; `is_superuser` luôn khớp (admin <=> true).
-    - Gửi `role_id` -> `is_superuser` tự đồng bộ; `role_id` không tồn tại -> 404.
-    - Gửi cả `role_id` và `is_superuser` mà mâu thuẫn nhau -> 400.
-    - Admin không thể tự hạ quyền hoặc tự vô hiệu hóa chính mình -> 400.
-    - Gửi `null` cho `email` / `is_active` / `is_superuser` / `password` / `role_id` -> 422.
+    Chính sách quyền (hai tầng):
+    - Endpoint này cần `is_superuser`. Role `admin` chỉ quản lý nội dung di sản.
+    - Gán `role_id` không tự nâng quyền: `is_superuser` giữ nguyên. `role_id: null` xóa role.
+    - Chỉ gửi `is_superuser` (không kèm role) thì role tự đồng bộ admin / visitor.
+    - Superuser mà role là visitor (hoặc gán role không tồn tại) -> 409; không đổi gì.
+    - `role_id` không tồn tại -> 404.
+    - Không được tự gỡ `is_superuser` hoặc tự vô hiệu hóa chính mình -> 400.
+    - `null` cho `email` / `is_active` / `is_superuser` / `password` -> 422.
     """
     db_user = session.get(User, user_id)
     if not db_user:
@@ -273,27 +275,15 @@ def update_user(
             status_code=404,
             detail="The user with this id does not exist in the system",
         )
-    # --- thống nhất role <-> is_superuser ---
-    will_be_admin = is_admin(db_user)
-    if user_in.role_id is not None:
-        role = get_role_or_404(session, user_in.role_id)
-        role_is_admin = role.name == "admin"
-        if user_in.is_superuser is not None and user_in.is_superuser != role_is_admin:
-            raise HTTPException(
-                status_code=400,
-                detail="role_id và is_superuser mâu thuẫn nhau "
-                "(role admin <=> is_superuser = true)",
-            )
-        will_be_admin = role_is_admin
-    elif user_in.is_superuser is not None:
-        will_be_admin = user_in.is_superuser
     if db_user.id == current_user.id and (
-        not will_be_admin or user_in.is_active is False
+        user_in.is_superuser is False or user_in.is_active is False
     ):
         raise HTTPException(
             status_code=400,
-            detail="Admin không thể tự hạ quyền hoặc tự vô hiệu hóa chính mình",
+            detail="Không thể tự gỡ quyền superuser hoặc tự vô hiệu hóa chính mình",
         )
+    if user_in.role_id is not None:
+        get_role_or_404(session, user_in.role_id)
     if user_in.email:
         existing_user = crud.get_user_by_email(
             session=session,
