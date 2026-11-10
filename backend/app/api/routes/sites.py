@@ -124,6 +124,12 @@ def _localized_sites(
 def read_site_translations(
     session: SessionDep, _admin: AdminUser, site_id: uuid.UUID
 ) -> Any:
+    """
+    Danh sách bản dịch của một Site. **Chỉ Admin**.
+
+    Mỗi bản dịch có `is_stale = true` khi nội dung Site gốc đã đổi sau lần dịch gần nhất.
+    Site không tồn tại -> **404**.
+    """
     site = session.get(Site, site_id)
     if site is None:
         raise HTTPException(status_code=404, detail="Site not found")
@@ -157,6 +163,13 @@ def upsert_site_translation(
     language_id: uuid.UUID,
     translation_in: SiteTranslationInput,
 ) -> Any:
+    """
+    Tạo hoặc cập nhật bản dịch của Site cho một ngôn ngữ. **Chỉ Admin**.
+
+    - Hiện chỉ sửa được bản dịch **tiếng Anh** (`en`); ngôn ngữ khác -> **422**.
+    - Bản dịch lưu bằng tay luôn ở trạng thái đã xác nhận, `is_stale = false`.
+    - Site hoặc ngôn ngữ không tồn tại -> **404**.
+    """
     site = session.get(Site, site_id)
     if site is None:
         raise HTTPException(status_code=404, detail="Site not found")
@@ -212,6 +225,12 @@ def delete_site_translation(
     site_id: uuid.UUID,
     language_id: uuid.UUID,
 ) -> Message:
+    """
+    Xóa bản dịch Site của một ngôn ngữ. **Chỉ Admin**.
+
+    Hiện chỉ xóa được bản dịch **tiếng Anh** (`en`); ngôn ngữ khác -> **422**.
+    Site, ngôn ngữ hoặc bản dịch không tồn tại -> **404**.
+    """
     site = session.get(Site, site_id)
     if site is None:
         raise HTTPException(status_code=404, detail="Site not found")
