@@ -147,8 +147,8 @@ def test_create_default_language_must_be_active(
         headers=superuser_token_headers,
         json={"code": "zz", "name": "Sai", "is_default": True, "is_active": False},
     )
-    assert response.status_code == 422
-
+    assert response.status_code == 400
+    assert "must be active" in response.json()["detail"]
 
 @pytest.mark.parametrize(
     "body",
