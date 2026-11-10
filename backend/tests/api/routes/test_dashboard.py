@@ -28,7 +28,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from app.models import VisitLog
+from app.models import Feedback, FeedbackStatus, VisitLog
 from tests.utils.heritage import (
     API,
     add_translation,
@@ -338,3 +338,60 @@ def test_all_endpoints_agree_on_same_range(
     top = client.get(f"{D}/top-artifacts", headers=admin, params=RANGE).json()
     assert total == by_day["total"] == by_lang["total"] == 6
     assert sum(x["visit_count"] for x in top["data"]) == total
+
+
+# ------------------------------------ Rating --------------------------------------
+def test_rating_stats_exclude_hidden_feedback(
+    client: TestClient,
+    db: Session,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    dataset: Dataset,
+) -> None:
+    """Quy tắc đã chốt: rating tính từ mọi feedback trừ `hidden` (pending vẫn tính)."""
+    admin = superuser_token_headers
+    before = client.get(f"{D}/summary", headers=admin).json()["ratings"]
+    admin_id = uuid.UUID(client.get(f"{API}/users/me", headers=admin).json()["id"])
+    user_id = uuid.UUID(
+        client.get(f"{API}/users/me", headers=normal_user_token_headers).json()["id"]
+    )
+    a, b = uuid.UUID(dataset.a["id"]), uuid.UUID(dataset.b["id"])
+    db.add_all(
+        [
+            Feedback(
+                user_id=admin_id,
+                artifact_id=a,
+                rating=5,
+                comment=None,
+                status=FeedbackStatus.APPROVED.value,
+            ),
+            Feedback(
+                user_id=user_id,
+                artifact_id=a,
+                rating=4,
+                comment="Hay",
+                status=FeedbackStatus.PENDING.value,
+            ),
+            Feedback(
+                user_id=user_id,
+                artifact_id=b,
+                rating=1,
+                comment="Spam",
+                status=FeedbackStatus.HIDDEN.value,
+            ),
+        ]
+    )
+    db.commit()
+
+    after = client.get(f"{D}/summary", headers=admin).json()["ratings"]
+    assert after["count"] - before["count"] == 2  # bản hidden không được tính
+    if before["count"] == 0:
+        assert after["average"] == 4.5
+
+    top = client.get(f"{D}/top-artifacts", headers=admin, params=RANGE).json()["data"]
+    by_id = {item["artifact_id"]: item for item in top}
+    assert by_id[dataset.a["id"]]["rating_count"] == 2
+    assert by_id[dataset.a["id"]]["average_rating"] == 4.5
+    assert by_id[dataset.b["id"]]["rating_count"] == 0  # chỉ có bản hidden
+    assert by_id[dataset.b["id"]]["average_rating"] is None
+    assert by_id[dataset.c["id"]]["rating_count"] == 0

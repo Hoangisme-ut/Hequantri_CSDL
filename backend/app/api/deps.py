@@ -54,9 +54,9 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 def get_current_active_superuser(current_user: CurrentUser) -> User:
-    # Thống nhất với AdminUser: "admin" xác định theo role (is_superuser chỉ là dự phòng
-    # cho user cũ chưa có role, xem get_role_name).
-    if not is_admin(current_user):
+    # Hai tầng quyền: quản lý NGƯỜI DÙNG cần is_superuser; quản lý NỘI DUNG di sản
+    # (AdminUser) xác định theo role admin. Gán role không tự nâng thành superuser.
+    if not current_user.is_superuser:
         raise HTTPException(
             status_code=403, detail="The user doesn't have enough privileges"
         )
@@ -142,7 +142,7 @@ def get_active_language_or_error(session: Session, language_id: uuid.UUID) -> La
     if language is None:
         raise HTTPException(status_code=404, detail="Language not found")
     if not language.is_active:
-        raise HTTPException(status_code=400, detail="Language is not active")
+        raise HTTPException(status_code=400, detail="Language is inactive")
     return language
 
 

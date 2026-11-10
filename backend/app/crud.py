@@ -61,14 +61,8 @@ def create_user(*, session: Session, user_create: UserCreate) -> User:
 def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any:
     user_data = user_in.model_dump(exclude_unset=True)
     extra_data: dict[str, Any] = {}
-    # [Smart Heritage] role là nguồn sự thật; is_superuser luôn khớp: admin <=> True
-    if "role_id" in user_data:
-        new_role = session.get(Role, user_data["role_id"])
-        if new_role is None:
-            raise InvalidRoleAssignmentError("Role not found")
-        extra_data["is_superuser"] = new_role.name == ROLE_ADMIN
-    # đổi is_superuser mà không chỉ định role_id -> đổi role theo
-    elif "is_superuser" in user_data:
+    # [Smart Heritage] đổi is_superuser mà không chỉ định role_id -> đổi role theo
+    if "is_superuser" in user_data and "role_id" not in user_data:
         role = get_role_by_name(
             session=session,
             name=ROLE_ADMIN if user_data["is_superuser"] else ROLE_VISITOR,
@@ -81,11 +75,8 @@ def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any:
         effective_role = session.get(Role, role_id) if role_id is not None else None
         if role_id is not None and effective_role is None:
             raise InvalidRoleAssignmentError("Role not found")
-        effective_superuser = extra_data.get(
-            "is_superuser", user_data.get("is_superuser", db_user.is_superuser)
-        )
         if (
-            effective_superuser
+            user_data.get("is_superuser", db_user.is_superuser)
             and effective_role is not None
             and effective_role.name != ROLE_ADMIN
         ):

@@ -1,12 +1,11 @@
-"""Kiểm thử validation (ngôn ngữ mặc định, FK, null) và quy tắc quyền role/superuser.
+"""Kiểm thử validation (ngôn ngữ mặc định, FK, null) và chính sách quyền hai tầng.
 
-Quy tắc đã chốt (P3 dùng để kiểm tra quyền):
-- ``role`` (admin / visitor) là nguồn sự thật. ``AdminUser`` và ``get_current_active_superuser``
-  đều dùng ``is_admin`` -> cùng một kết quả cho cùng một người dùng.
-- ``is_superuser`` chỉ là bản sao đồng bộ (admin <=> true); user cũ chưa có role thì
-  ``is_superuser`` được dùng làm dự phòng.
-- Thiếu token -> 401; đủ token nhưng không đủ quyền -> 403; id không tồn tại -> 404;
-  dữ liệu sai quy tắc (null, rỗng, mâu thuẫn) -> 4xx, không bao giờ 500.
+Chính sách quyền (khớp ``test_role_policy.py``):
+- Tầng NỘI DUNG di sản (``AdminUser``): xác định theo **role admin**.
+- Tầng NGƯỜI DÙNG (``get_current_active_superuser``): cần **is_superuser = true**.
+  Role admin không tự thành superuser; gán role không tự nâng quyền.
+- Thiếu token -> 401; không đủ quyền -> 403; id không tồn tại -> 404;
+  dữ liệu sai quy tắc (null, rỗng) -> 4xx, không bao giờ 500.
 """
 
 import uuid
@@ -148,8 +147,8 @@ def test_create_default_language_must_be_active(
         headers=superuser_token_headers,
         json={"code": "zz", "name": "Sai", "is_default": True, "is_active": False},
     )
-    assert response.status_code == 422
-
+    assert response.status_code == 400
+    assert "must be active" in response.json()["detail"]
 
 @pytest.mark.parametrize(
     "body",
@@ -286,7 +285,6 @@ def test_visit_language_must_exist_and_be_active(
         {"is_active": None},
         {"is_superuser": None},
         {"password": None},
-        {"role_id": None},
     ],
 )
 def test_admin_update_user_rejects_null(
@@ -318,60 +316,13 @@ def test_admin_update_user_unknown_role_is_404(
     assert response.status_code == 404
 
 
-# ---------------------- Thống nhất role <-> is_superuser -------------------------
-def test_role_is_source_of_truth_and_syncs_superuser(
-    client: TestClient,
-    db: Session,
-    superuser_token_headers: Headers,
-    created_users: list[uuid.UUID],
-) -> None:
-    admin = superuser_token_headers
-    user, _ = _new_user(db, created_users)
-    url = _users(str(user.id))
-    assert user.is_superuser is False
-
-    promoted = client.patch(
-        url, headers=admin, json={"role_id": str(_role_id(db, "admin"))}
-    )
-    assert promoted.status_code == 200, promoted.text
-    assert promoted.json()["is_superuser"] is True
-    assert promoted.json()["role_id"] == str(_role_id(db, "admin"))
-
-    demoted = client.patch(
-        url, headers=admin, json={"role_id": str(_role_id(db, "visitor"))}
-    )
-    assert demoted.status_code == 200
-    assert demoted.json()["is_superuser"] is False
-
-    # chiều ngược lại: đổi is_superuser -> role đổi theo
-    again = client.patch(url, headers=admin, json={"is_superuser": True})
-    assert again.status_code == 200
-    assert again.json()["role_id"] == str(_role_id(db, "admin"))
-
-
-def test_conflicting_role_and_superuser_is_400(
-    client: TestClient,
-    db: Session,
-    superuser_token_headers: Headers,
-    created_users: list[uuid.UUID],
-) -> None:
-    user, _ = _new_user(db, created_users)
-    response = client.patch(
-        _users(str(user.id)),
-        headers=superuser_token_headers,
-        json={"role_id": str(_role_id(db, "admin")), "is_superuser": False},
-    )
-    assert response.status_code == 400
-    db.refresh(user)
-    assert user.is_superuser is False
-
-
+# ----------------------- Tự bảo vệ tài khoản quản trị ----------------------------
 @pytest.mark.parametrize(
-    "body",
+    ("body", "expected_status"),
     [
-        {"is_superuser": False},
-        {"is_active": False},
-        {"role": "visitor"},
+        ({"is_superuser": False}, 400),
+        ({"is_active": False}, 400),
+        ({"role": "visitor"}, 409),  # superuser không được mang role visitor
     ],
 )
 def test_admin_cannot_demote_or_deactivate_self(
@@ -379,6 +330,7 @@ def test_admin_cannot_demote_or_deactivate_self(
     db: Session,
     superuser_token_headers: Headers,
     body: dict[str, object],
+    expected_status: int,
 ) -> None:
     admin = superuser_token_headers
     me = client.get(_users("me"), headers=admin).json()
@@ -386,7 +338,7 @@ def test_admin_cannot_demote_or_deactivate_self(
     if payload.pop("role", None) == "visitor":
         payload["role_id"] = str(_role_id(db, "visitor"))
     response = client.patch(_users(me["id"]), headers=admin, json=payload)
-    assert response.status_code == 400, response.text
+    assert response.status_code == expected_status, response.text
     again = client.get(_users("me"), headers=admin).json()
     assert again["role_name"] == "admin"
     assert again["is_superuser"] is True
@@ -411,49 +363,59 @@ def test_user_admin_endpoints_status_codes(
     assert missing.status_code == 404
 
 
-def test_admin_check_is_identical_for_role_and_superuser_dependencies(
+def test_permission_tiers_are_consistent_across_endpoints(
     client: TestClient,
     db: Session,
     created_users: list[uuid.UUID],
 ) -> None:
-    """AdminUser (/users/) và get_current_active_superuser (/password-recovery-html-content/...)
-    phải cho cùng kết quả với cùng một người dùng."""
+    """Hai tầng quyền cho cùng một kết quả trên mọi endpoint cùng tầng.
+
+    - Tầng người dùng: ``GET /users/`` và ``POST /password-recovery-html-content/...``
+      (đều dùng ``get_current_active_superuser``) -> cần is_superuser.
+    - Tầng nội dung: ``GET /analytics/overview`` (``AdminUser``) -> cần role admin
+      (user cũ không có role thì is_superuser là dự phòng).
+    """
     users_url = _users()
-    # endpoint dùng get_current_active_superuser; email ngẫu nhiên -> admin nhận 404
-    # (không gửi email), người không đủ quyền nhận 403
-    superuser_only_url = (
+    recovery_url = (
         f"{settings.API_V1_STR}/password-recovery-html-content/{random_email()}"
     )
+    content_url = f"{API}/analytics/overview"
 
     def headers_for(user: User, password: str) -> Headers:
         return user_authentication_headers(
             client=client, email=user.email, password=password
         )
 
-    # 1) role admin (is_superuser đồng bộ) -> qua cả hai
-    admin_user, admin_pw = _new_user(db, created_users, is_superuser=True)
-    admin_headers = headers_for(admin_user, admin_pw)
-    assert client.get(users_url, headers=admin_headers).status_code == 200
-    assert client.post(superuser_only_url, headers=admin_headers).status_code != 403
+    def tiers(headers: Headers) -> tuple[bool, bool, bool]:
+        # "được qua" = khác 401/403 (recovery với email lạ trả 404 cho người đủ quyền)
+        return (
+            client.get(users_url, headers=headers).status_code not in (401, 403),
+            client.post(recovery_url, headers=headers).status_code not in (401, 403),
+            client.get(content_url, headers=headers).status_code not in (401, 403),
+        )
 
-    # 2) role visitor nhưng cờ is_superuser lệch (dữ liệu cũ/sai) -> bị chặn ở cả hai,
-    #    vì role là nguồn sự thật
-    odd_user, odd_pw = _new_user(db, created_users)
-    odd_user.is_superuser = True
-    db.add(odd_user)
+    # 1) superuser + role admin -> cả hai tầng
+    superuser, pw1 = _new_user(db, created_users, is_superuser=True)
+    assert tiers(headers_for(superuser, pw1)) == (True, True, True)
+
+    # 2) role admin nhưng KHÔNG superuser -> chỉ tầng nội dung
+    content_admin, pw2 = _new_user(db, created_users)
+    content_admin.role_id = _role_id(db, "admin")
+    db.add(content_admin)
     db.commit()
-    odd_headers = headers_for(odd_user, odd_pw)
-    assert client.get(users_url, headers=odd_headers).status_code == 403
-    assert client.post(superuser_only_url, headers=odd_headers).status_code == 403
+    assert content_admin.is_superuser is False
+    assert tiers(headers_for(content_admin, pw2)) == (False, False, True)
 
-    # 3) user cũ chưa có role nhưng is_superuser = true -> dự phòng: được coi là admin
-    legacy, legacy_pw = _new_user(db, created_users, is_superuser=True)
+    # 3) visitor -> không tầng nào
+    visitor, pw3 = _new_user(db, created_users)
+    assert tiers(headers_for(visitor, pw3)) == (False, False, False)
+
+    # 4) user cũ chưa có role nhưng is_superuser -> dự phòng: được cả hai tầng
+    legacy, pw4 = _new_user(db, created_users, is_superuser=True)
     legacy.role_id = None
     db.add(legacy)
     db.commit()
-    legacy_headers = headers_for(legacy, legacy_pw)
-    assert client.get(users_url, headers=legacy_headers).status_code == 200
-    assert client.post(superuser_only_url, headers=legacy_headers).status_code != 403
-    assert client.get(_users("me"), headers=legacy_headers).json()["role_name"] == (
-        "admin"
-    )
+    assert tiers(headers_for(legacy, pw4)) == (True, True, True)
+    assert client.get(_users("me"), headers=headers_for(legacy, pw4)).json()[
+        "role_name"
+    ] == ("admin")

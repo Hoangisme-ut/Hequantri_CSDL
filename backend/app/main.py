@@ -25,8 +25,10 @@ API backend của **Smart Heritage** (hệ thống du lịch thông minh dùng i
 1. Gọi `POST /api/v1/login/access-token` (ô `username` là email) để lấy `access_token`.
 2. Bấm **Authorize** (ổ khóa) và dán token.
 
-**Phân quyền**: *Public* (không cần token) · *Visitor* (đã đăng nhập, role `visitor`)
-· *Admin* (role `admin`). Thiếu token -> **401**, sai quyền -> **403**.
+**Phân quyền (hai tầng)**: *Public* (không cần token) · *Visitor* (đã đăng nhập, role
+`visitor`) · *Admin* (role `admin`: quản lý nội dung di sản, dashboard, kiểm duyệt) ·
+*Superuser* (`is_superuser`: quản lý người dùng). Gán role admin không tự thành superuser.
+Thiếu token -> **401**, sai quyền -> **403**.
 
 **Quy ước chung**
 - Ngôn ngữ: `?lang=vi|en`; bỏ trống thì dùng ngôn ngữ ưa thích của người dùng,
@@ -69,6 +71,18 @@ OPENAPI_TAGS = [
     {
         "name": "dashboard",
         "description": "Thống kê tổng quan (Site/Artifact/Beacon, lượt xem theo ngày, top hiện vật, theo ngôn ngữ). Chỉ Admin.",
+    },
+    {
+        "name": "analytics",
+        "description": "Thống kê lượt xem theo khoảng thời gian có múi giờ (overview, visits, top-artifacts, sites). Chỉ Admin.",
+    },
+    {
+        "name": "feedback",
+        "description": "Hợp đồng cũ của Web Admin (trạng thái `rejected` được ánh xạ sang `hidden` trong DB). Ứng dụng mới dùng nhóm `feedbacks`.",
+    },
+    {
+        "name": "media",
+        "description": "Metadata media (ảnh/video/audio) của hiện vật. Chỉ Admin.",
     },
 ]
 
