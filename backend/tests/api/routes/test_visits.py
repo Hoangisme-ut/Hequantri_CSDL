@@ -2,6 +2,7 @@
 
 import uuid
 from collections.abc import Generator
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -271,3 +272,35 @@ def test_history_is_private_and_paginated(
             client.get(f"{API}/visits/me?{bad}", headers=other_user_headers).status_code
             == 422
         )
+
+
+def test_visit_time_is_server_side_and_repeat_does_not_change_duration(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    site_ids: list[str],
+) -> None:
+    """Quy tắc VisitLog: visited_at do server đặt; lượt trùng không sửa bản ghi cũ."""
+    artifact = _artifact(client, superuser_token_headers, site_ids, "Quy tắc lượt xem")
+    first = client.post(
+        f"{API}/visits/",
+        headers=normal_user_token_headers,
+        json={"artifact_id": artifact["id"], "visited_at": "2000-01-01T00:00:00Z"},
+    )
+    assert first.status_code == 201
+    visited_at = datetime.fromisoformat(first.json()["visited_at"])
+    if visited_at.tzinfo is None:
+        visited_at = visited_at.replace(tzinfo=UTC)
+    assert abs(datetime.now(UTC) - visited_at) < timedelta(
+        minutes=1
+    )  # không phải năm 2000
+    assert first.json()["duration_seconds"] is None
+
+    repeat = client.post(
+        f"{API}/visits/",
+        headers=normal_user_token_headers,
+        json={"artifact_id": artifact["id"], "duration_seconds": 99},
+    )
+    assert repeat.status_code == 200
+    assert repeat.json()["id"] == first.json()["id"]
+    assert repeat.json()["duration_seconds"] is None  # lượt trùng không ghi đè

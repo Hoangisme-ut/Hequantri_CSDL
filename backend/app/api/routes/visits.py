@@ -55,6 +55,12 @@ def record_visit(
       lượt mới trả **201**.
     - `beacon_id` (nếu gửi) phải là beacon đang gắn đúng hiện vật này.
     - `language_id` bỏ trống thì lấy ngôn ngữ ưa thích của người dùng / mặc định.
+    - `visited_at` do **server** đặt (UTC, lúc ghi); app không gửi được. Cửa sổ 300 giây
+      tính từ `visited_at` của lượt gần nhất.
+    - `duration_seconds` (tuỳ chọn, số nguyên >= 0) là số giây app đo được người dùng
+      xem nội dung; server **không tự tính** và không cộng dồn. Chỉ lưu khi tạo lượt
+      mới: request bị chặn trùng (200) không cập nhật lại giá trị này.
+      Bỏ trống = không biết (`null`).
     """
     acquire_transaction_lock(session, f"visit:{current_user.id}:{visit_in.artifact_id}")
     artifact = crud.get_visible_artifact(
