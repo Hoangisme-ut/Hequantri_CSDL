@@ -1,6 +1,7 @@
 import logging
 import uuid
 from dataclasses import dataclass
+from typing import Any
 
 from sqlmodel import Session, col, select
 
@@ -155,7 +156,9 @@ BEACONS = (
 def _seed_languages(session: Session) -> dict[str, Language]:
     languages: dict[str, Language] = {}
     for code, name in (("vi", "Tiếng Việt"), ("en", "English")):
-        language = session.exec(select(Language).where(Language.code == code)).first()
+        language = session.exec(
+            select(Language).where(col(Language.code) == code)
+        ).first()
         if language is None:
             language = Language(code=code, name=name)
         else:
@@ -183,7 +186,7 @@ def _seed_languages(session: Session) -> dict[str, Language]:
 def _seed_sites(session: Session) -> None:
     for seed in SITES:
         site = session.get(Site, seed.id)
-        values = {
+        values: dict[str, Any] = {
             "name": seed.name,
             "description": seed.description,
             "address": seed.address,
@@ -212,7 +215,7 @@ def _seed_artifacts_and_translations(
 ) -> None:
     for seed in ARTIFACTS:
         artifact = session.get(Artifact, seed.id)
-        values = {
+        values: dict[str, Any] = {
             "site_id": seed.site_id,
             "code": seed.code,
             "era": seed.era,
@@ -239,11 +242,14 @@ def _seed_artifacts_and_translations(
             language = languages[code]
             translation = session.exec(
                 select(ArtifactTranslation).where(
-                    ArtifactTranslation.artifact_id == artifact.id,
-                    ArtifactTranslation.language_id == language.id,
+                    col(ArtifactTranslation.artifact_id) == artifact.id,
+                    col(ArtifactTranslation.language_id) == language.id,
                 )
             ).first()
-            translation_values = {"title": title, "description": description}
+            translation_values: dict[str, Any] = {
+                "title": title,
+                "description": description,
+            }
             if translation is None:
                 translation = ArtifactTranslation(
                     artifact_id=artifact.id,
@@ -270,7 +276,7 @@ def _seed_media(session: Session, languages: dict[str, Language]) -> None:
             media_id = uuid.uuid5(
                 artifact.id, f"demo-media:{media_type}:{code or 'shared'}"
             )
-            values = {
+            values: dict[str, Any] = {
                 "artifact_id": artifact.id,
                 "language_id": languages[code].id if code else None,
                 "media_type": media_type,
@@ -290,7 +296,7 @@ def _seed_media(session: Session, languages: dict[str, Language]) -> None:
 def _seed_beacons(session: Session) -> None:
     for seed in BEACONS:
         beacon = session.get(Beacon, seed.id)
-        values = {
+        values: dict[str, Any] = {
             "site_id": seed.site_id,
             "artifact_id": seed.artifact_id,
             "proximity_uuid": seed.proximity_uuid,
