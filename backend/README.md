@@ -35,17 +35,48 @@ Consumed-token records are retained; no automatic destructive cleanup is added.
 
 ## Feedback API
 
-Authenticated Visitors/Admins can POST `/api/v1/feedback/` with `artifact_id`,
-`rating` (1–5), and optional `comment`. The server assigns ownership and
-`pending` status. The artifact and its site must be visible. GET `/feedback/me`
-returns only the caller's submissions. GET `/feedback/{id}` permits the owner
-or an Admin; other users receive 404 regardless of moderation status.
+**Main endpoint: `/api/v1/feedbacks`** (matches the ERD, with statuses `pending | approved | hidden`).
 
-Admin-only GET `/feedback/` supports `status`, `artifact_id`, `user_id`, `skip`,
-and `limit`. PATCH `/feedback/{id}/status` accepts `pending`, `approved`, or
-`rejected`. No public feedback feed is exposed. Migration `b2c3d4e5f6a7` adds
-rating/status CHECK constraints; invalid legacy rows stop the migration for
-review instead of being changed or deleted automatically.
+`/api/v1/feedback` is the legacy Web Admin contract. It is marked **deprecated** in Swagger and retained to avoid breaking the current Web Admin. It will be removed when the Web Admin migrates to `/feedbacks`.
+
+| Action | Main (`/feedbacks`) | Legacy, deprecated (`/feedback`) |
+| --- | --- | --- |
+| Visitor submits feedback | `POST /feedbacks/` | `POST /feedback/` |
+| View my feedback | `GET /feedbacks/me` | `GET /feedback/me` |
+| Update my feedback | `PUT /feedbacks/{id}` | Not available |
+| View approved comments for an artifact (public) | `GET /feedbacks/artifact/{artifact_id}` | Not available |
+| Admin lists feedback (filter by `status`, `artifact_id`, `q`) | `GET /feedbacks/` | `GET /feedback/` |
+| Admin approves / hides feedback | `PATCH /feedbacks/{id}/status` (`approved`, `hidden`, `pending`) | `PATCH /feedback/{id}/status` (`approved`, `rejected`, `pending`) |
+
+Rules for `/feedbacks`: `rating` must be between 1 and 5; each user can submit one rating per artifact (duplicates return 409). Users cannot set `status` or `user_id` themselves.
+
+When creating feedback: no comment → `approved`; comment provided → `pending`.
+
+When editing a comment: `approved` → `pending`; `hidden` remains unchanged.
+
+Visitors can only see `approved` comments. Requests for another user's feedback return 404.
+
+The Dashboard calculates ratings from all feedback except `hidden`.
+
+Differences in the legacy API: feedback is always created as `pending`; `rejected` is used instead of `hidden` (this is only a naming difference at the API layer; the database always stores `hidden`).
+
+Migration `b2c3d4e5f6a7` adds CHECK constraints for rating/status. Invalid existing data will cause the migration to stop for review; it will not automatically modify or delete data.
+
+## VisitLog Rules
+
+- **When to record a visit:** The app calls `POST /api/v1/visits/` exactly once when the artifact content is displayed to the user (when entering a new beacon region). It must **not** be called every time a BLE signal is received. The user must be authenticated, and both the artifact and Site must be active.
+
+- **Deduplication:** The same user viewing the same artifact within **300 seconds** (calculated from the most recent visit's `visited_at`) counts as one visit. The API returns `200` with the existing record and does not create a new one. A new visit returns `201`. Viewing the artifact again after more than 300 seconds counts as a new visit.
+
+- **Timestamp:** `visited_at` is set by the **server** (UTC, at the time the visit is recorded). The app cannot send this value.
+
+- **Viewing duration:** `duration_seconds` (optional, integer >= 0) is the number of seconds the app measures that the user spends viewing the content. The server **does not calculate or accumulate** this value. It only stores it when creating a new visit; a duplicate request does not update it. If omitted, the duration is unknown (`null`). Dashboard/analytics only count visits and **do not** report viewing duration.
+
+- **Language and beacon:** If `language_id` is provided, it must exist (404) and be enabled (400). If omitted, the user's preferred language is used, followed by the default language. If `beacon_id` is provided, it must refer to an active beacon assigned to this artifact; otherwise, the API returns 404/400.
+
+- **History retention:** VisitLog is statistical data. There is no API for editing or deleting visits.
+
+- **Not yet verified:** The performance of visit recording and analytics queries on large datasets has not been measured.
 
 ## SQL Server verification for phases 2, 4 and 5
 
