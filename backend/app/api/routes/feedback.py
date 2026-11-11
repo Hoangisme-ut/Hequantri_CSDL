@@ -26,7 +26,13 @@ from app.models import (
     get_datetime_utc,
 )
 
-router = APIRouter(prefix="/feedback", tags=["feedback"])
+# DEPRECATED: hợp đồng cũ của Web Admin. Đường dẫn CHÍNH là `/feedbacks`
+# (app/api/routes/feedbacks.py, đúng ERD: pending / approved / hidden).
+# Giữ lại để Web Admin hiện tại không bị hỏng; xóa khi Web Admin đã chuyển sang
+# `/feedbacks`. Khác biệt so với `/feedbacks`: luôn tạo `pending` (không tự
+# `approved` khi không có comment), dùng `rejected` thay cho `hidden`, không có
+# sửa feedback của mình và không có feed công khai theo hiện vật.
+router = APIRouter(prefix="/feedback", tags=["feedback"], deprecated=True)
 
 
 # ---------------------------------------------------------------------------

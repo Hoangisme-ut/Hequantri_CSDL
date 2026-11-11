@@ -78,7 +78,7 @@ OPENAPI_TAGS = [
     },
     {
         "name": "feedback",
-        "description": "Hợp đồng cũ của Web Admin (trạng thái `rejected` được ánh xạ sang `hidden` trong DB). Ứng dụng mới dùng nhóm `feedbacks`.",
+        "description": "**DEPRECATED** - hợp đồng cũ của Web Admin (trạng thái `rejected` được ánh xạ sang `hidden` trong DB). Đường dẫn chính là nhóm `feedbacks`; nhóm này chỉ giữ để Web Admin hiện tại chạy tới khi chuyển xong.",
     },
     {
         "name": "media",

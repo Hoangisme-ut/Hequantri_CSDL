@@ -139,3 +139,19 @@ def test_feedback_database_constraints(
     with pytest.raises(IntegrityError):
         db.commit()
     db.rollback()
+
+
+def test_legacy_feedback_is_deprecated_and_feedbacks_is_primary(client):
+    """/feedbacks là đường chính; mọi thao tác của /feedback phải đánh dấu deprecated."""
+    import re
+
+    paths = client.get(f"{API}/openapi.json").json()["paths"]
+    legacy = [p for p in paths if re.fullmatch(rf"{re.escape(API)}/feedback(/.*)?", p)]
+    primary = [p for p in paths if p.startswith(f"{API}/feedbacks")]
+    assert legacy and primary
+    for path in legacy:
+        for method, operation in paths[path].items():
+            assert operation.get("deprecated") is True, f"{method} {path}"
+    for path in primary:
+        for method, operation in paths[path].items():
+            assert not operation.get("deprecated"), f"{method} {path}"
