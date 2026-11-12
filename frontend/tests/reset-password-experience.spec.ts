@@ -10,10 +10,10 @@ test("missing token shows a branded recovery message without Admin login", async
   await page.goto("/reset-password")
 
   await expect(
-    page.getByRole("heading", { name: "Liên kết không hợp lệ" }),
+    page.getByRole("heading", { name: "Không tìm thấy mã xác thực" }),
   ).toBeVisible()
   await expect(
-    page.getByRole("link", { name: "Yêu cầu email mới" }),
+    page.getByRole("link", { name: "Yêu cầu email khôi phục mới" }),
   ).toHaveAttribute("href", "/recover-password")
   await expect(page.getByText("Admin Console")).toHaveCount(0)
   await expect(page.getByRole("link", { name: "Sign in" })).toHaveCount(0)
@@ -72,10 +72,11 @@ test("invalid or expired token shows a safe message without exposing the token",
   await page.getByRole("button", { name: "Cập nhật mật khẩu" }).click()
 
   await expect(
-    page.getByText(
-      "Liên kết không hợp lệ, đã hết hạn hoặc đã được sử dụng. Hãy yêu cầu email khôi phục mới.",
-    ),
+    page.getByRole("heading", { name: "Liên kết đã hết hạn" }),
   ).toBeVisible()
+  await expect(
+    page.getByRole("link", { name: "Yêu cầu email khôi phục mới" }),
+  ).toHaveAttribute("href", "/recover-password")
   await expect(page.locator("body")).not.toContainText("private-test-token")
   await expect(page.getByText("Admin Console")).toHaveCount(0)
 })
@@ -99,14 +100,11 @@ test("successful reset shows app guidance and does not redirect to Admin login",
   await page.getByRole("button", { name: "Cập nhật mật khẩu" }).click()
 
   await expect(
-    page.getByRole("heading", { name: "Mật khẩu đã được cập nhật!" }),
-  ).toBeVisible()
-  await expect(
-    page.getByText("Mật khẩu của bạn đã được cập nhật thành công!"),
+    page.getByRole("heading", { name: "Mật khẩu đã được cập nhật" }),
   ).toBeVisible()
   await expect(
     page.getByText(
-      "Hãy quay lại ứng dụng Smart Heritage và đăng nhập bằng mật khẩu mới.",
+      "Bạn có thể quay lại ứng dụng Smart Heritage Mobile và đăng nhập bằng mật khẩu mới.",
     ),
   ).toBeVisible()
   expect(requestBody).toEqual({
@@ -122,9 +120,7 @@ test("successful reset shows app guidance and does not redirect to Admin login",
   await expect(page.getByText("Admin Console")).toHaveCount(0)
   await expect(page.getByRole("link", { name: "Sign in" })).toHaveCount(0)
 
-  await page
-    .getByRole("button", { name: "Tôi đã hiểu – Quay lại ứng dụng" })
-    .click()
+  await page.getByRole("button", { name: "Quay lại ứng dụng Mobile" }).click()
   await expect(page.getByRole("status")).toContainText(
     "hãy mở ứng dụng Smart Heritage từ màn hình chính",
   )
@@ -140,10 +136,36 @@ test("reset screen fits a mobile viewport", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Cập nhật mật khẩu" }),
   ).toBeVisible()
+  await expect(page.getByRole("button", { name: "Hiện mật khẩu" })).toHaveCount(
+    2,
+  )
+  await page.getByTestId("new-password-input").fill("StrongPass123!")
+  await expect(
+    page.getByRole("progressbar", { name: "Độ mạnh mật khẩu" }),
+  ).toHaveAttribute("aria-valuenow", "4")
+  await page.getByRole("button", { name: "Hiện mật khẩu" }).first().click()
+  await expect(page.getByTestId("new-password-input")).toHaveAttribute(
+    "type",
+    "text",
+  )
   const hasHorizontalOverflow = await page.evaluate(
     () =>
       document.documentElement.scrollWidth >
       document.documentElement.clientWidth,
   )
   expect(hasHorizontalOverflow).toBe(false)
+})
+
+test("reset screen fits a desktop viewport without stretching the card", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(resetUrl)
+
+  const card = page.locator("main > div").last()
+  await expect(card).toBeVisible()
+  await expect(card).toHaveCSS("max-width", "480px")
+  await expect(
+    page.getByRole("heading", { name: "Đặt lại mật khẩu" }),
+  ).toBeVisible()
 })

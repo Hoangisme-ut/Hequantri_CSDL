@@ -77,7 +77,9 @@ test("User can reset password successfully using the link", async ({
   await page.getByTestId("confirm-password-input").fill(newPassword)
   await page.getByRole("button", { name: "Cập nhật mật khẩu" }).click()
   await expect(
-    page.getByText("Mật khẩu của bạn đã được cập nhật thành công!"),
+    page.getByText(
+      "Bạn có thể quay lại ứng dụng Smart Heritage Mobile và đăng nhập bằng mật khẩu mới.",
+    ),
   ).toBeVisible()
 
   // Check if the user is able to login with the new password
@@ -103,9 +105,7 @@ test("Expired or invalid reset link", async ({ page }) => {
   await page.getByRole("button", { name: "Cập nhật mật khẩu" }).click()
 
   await expect(
-    page.getByText(
-      "Liên kết không hợp lệ, đã hết hạn hoặc đã được sử dụng. Hãy yêu cầu email khôi phục mới.",
-    ),
+    page.getByRole("heading", { name: "Liên kết đã hết hạn" }),
   ).toBeVisible()
 })
 
