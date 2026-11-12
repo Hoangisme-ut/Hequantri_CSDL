@@ -141,7 +141,6 @@ class AuthService {
         ...baseUrl.pathSegments.where((segment) => segment.isNotEmpty),
         'api',
         'v1',
-        'login',
         'password-recovery',
         email,
       ],

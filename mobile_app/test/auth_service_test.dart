@@ -103,7 +103,10 @@ void main() {
 
         expect(client.method, 'POST');
         expect(client.uri!.pathSegments.last, 'visitor+test@example.com');
-        expect(client.uri!.path, contains('/api/v1/login/password-recovery/'));
+        expect(
+          client.uri!.path,
+          '/api/v1/password-recovery/visitor+test@example.com',
+        );
         expect(client.contentType, 'application/x-www-form-urlencoded');
         expect(client.body, isEmpty);
       },
