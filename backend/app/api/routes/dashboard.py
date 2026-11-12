@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import ColumnElement, Date, Float, cast
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy import ColumnElement, Date, Float, cast, true
 from sqlmodel import SQLModel, col, func, select
 
 from app import crud
@@ -19,6 +19,7 @@ from app.models import (
     Site,
     VisitLog,
 )
+from app.services.excel_report import XLSX_MEDIA_TYPE, Sheet, build_workbook
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -191,15 +192,15 @@ def read_summary(
     return DashboardSummary(
         sites=InventoryCount(
             total=_count(session, Site),
-            active=_count(session, Site, col(Site.is_active)),
+            active=_count(session, Site, col(Site.is_active) == true()),
         ),
         artifacts=InventoryCount(
             total=_count(session, Artifact),
-            active=_count(session, Artifact, col(Artifact.is_active)),
+            active=_count(session, Artifact, col(Artifact.is_active) == true()),
         ),
         beacons=InventoryCount(
             total=_count(session, Beacon),
-            active=_count(session, Beacon, col(Beacon.is_active)),
+            active=_count(session, Beacon, col(Beacon.is_active) == true()),
         ),
         visits=VisitStats(
             total=_count(session, VisitLog, *conditions),
@@ -286,22 +287,25 @@ def read_top_artifacts(
             col(Artifact.id),
             col(Artifact.site_id),
             col(Artifact.code),
-            col(Artifact.is_active),
             visit_count,
         )
         .select_from(VisitLog)
         .join(Artifact, col(Artifact.id) == col(VisitLog.artifact_id))
         .where(*_visit_conditions(date_range))
-        .group_by(
-            col(Artifact.id),
-            col(Artifact.site_id),
-            col(Artifact.code),
-            col(Artifact.is_active),
-        )
+        .group_by(col(Artifact.id), col(Artifact.site_id), col(Artifact.code))
         .order_by(visit_count.desc(), col(Artifact.code), col(Artifact.id))
         .limit(limit)
     ).all()
 
+    artifact_ids = [row[0] for row in rows]
+    # sqlmodel.select chỉ hỗ trợ tối đa 4 cột nên cờ is_active lấy bằng truy vấn riêng
+    active_by_id = dict(
+        session.exec(
+            select(col(Artifact.id), col(Artifact.is_active)).where(
+                col(Artifact.id).in_(artifact_ids)
+            )
+        ).all()
+    )
     ratings = {
         artifact_id: (rating_count, rating_avg)
         for artifact_id, rating_count, rating_avg in session.exec(
@@ -311,7 +315,7 @@ def read_top_artifacts(
                 func.avg(cast(col(Feedback.rating), Float)),
             )
             .where(
-                col(Feedback.artifact_id).in_([row[0] for row in rows]),
+                col(Feedback.artifact_id).in_(artifact_ids),
                 *_rating_conditions(),
             )
             .group_by(col(Feedback.artifact_id))
@@ -320,10 +324,10 @@ def read_top_artifacts(
     language = crud.resolve_language(session=session, lang_code=lang)
     # một truy vấn chung cho mọi hiện vật trong bảng xếp hạng (không gọi lặp từng dòng)
     translations = crud.pick_translations(
-        session=session, artifact_ids=[row[0] for row in rows], language=language
+        session=session, artifact_ids=artifact_ids, language=language
     )
     data: list[TopArtifact] = []
-    for artifact_id, site_id, code, is_active, count in rows:
+    for artifact_id, site_id, code, count in rows:
         translation, _ = translations.get(artifact_id, (None, None))
         data.append(
             TopArtifact(
@@ -331,7 +335,7 @@ def read_top_artifacts(
                 site_id=site_id,
                 code=code,
                 title=translation.title if translation else None,
-                is_active=is_active,
+                is_active=active_by_id[artifact_id],
                 visit_count=count,
                 rating_count=ratings.get(artifact_id, (0, None))[0],
                 average_rating=_average(ratings.get(artifact_id, (0, None))[1]),
@@ -375,4 +379,129 @@ def read_visits_by_language(
         to_date=date_range.to_date,
         total=sum(item.count for item in data),
         data=data,
+    )
+
+
+@router.get(
+    "/export.xlsx",
+    response_model=None,
+    responses={
+        200: {
+            "description": "File Excel (.xlsx) gồm 4 sheet: Tổng quan, Lượt xem theo ngày, "
+            "Hiện vật nổi bật, Ngôn ngữ",
+            "content": {
+                XLSX_MEDIA_TYPE: {"schema": {"type": "string", "format": "binary"}}
+            },
+        },
+        **errors(401, 403, 422),
+    },
+)
+def export_report(
+    session: SessionDep,
+    _admin: AdminUser,
+    date_range: DateRangeDep,
+    limit: Annotated[
+        int, Query(ge=1, le=50, description="Số hiện vật nổi bật tối đa")
+    ] = 10,
+    lang: Annotated[
+        str | None, Query(description="Mã ngôn ngữ của tiêu đề hiện vật (vi, en...)")
+    ] = None,
+) -> Response:
+    """
+    Xuất báo cáo thống kê ra **Excel (.xlsx)**. **Chỉ Admin**.
+
+    Dùng đúng bộ lọc ngày và đúng truy vấn của các endpoint dashboard nên số liệu trong file
+    **trùng** với `summary`, `visits-by-day`, `top-artifacts` và `visits-by-language`:
+
+    - **Tổng quan**: số Site/Hiện vật/Beacon, tổng lượt xem, số khách xem khác nhau, đánh giá.
+    - **Lượt xem theo ngày**: mọi ngày trong khoảng (mặc định 30 ngày gần nhất, tối đa 366).
+    - **Hiện vật nổi bật**: top `limit` hiện vật xem nhiều nhất kèm đánh giá.
+    - **Ngôn ngữ**: lượt xem theo ngôn ngữ.
+
+    Chưa hỗ trợ xuất PDF.
+    """
+    summary: DashboardSummary = read_summary(session, _admin, date_range)
+    by_day: VisitsByDay = read_visits_by_day(session, _admin, date_range)
+    top: TopArtifacts = read_top_artifacts(
+        session=session, _admin=_admin, date_range=date_range, limit=limit, lang=lang
+    )
+    by_language: VisitsByLanguage = read_visits_by_language(session, _admin, date_range)
+
+    now = datetime.now(UTC)
+    everything = "Toàn bộ thời gian"
+    sheets = [
+        Sheet(
+            "Tổng quan",
+            ["Chỉ số", "Giá trị"],
+            [
+                ["Từ ngày (UTC)", summary.from_date or everything],
+                ["Đến ngày (UTC)", summary.to_date or everything],
+                ["Tổng số Site", summary.sites.total],
+                ["Site đang hoạt động", summary.sites.active],
+                ["Tổng số hiện vật", summary.artifacts.total],
+                ["Hiện vật đang hoạt động", summary.artifacts.active],
+                ["Tổng số Beacon", summary.beacons.total],
+                ["Beacon đang hoạt động", summary.beacons.active],
+                ["Tổng lượt xem", summary.visits.total],
+                ["Số khách xem khác nhau", summary.visits.unique_visitors],
+                ["Số đánh giá (không tính hidden)", summary.ratings.count],
+                [
+                    "Điểm đánh giá trung bình",
+                    summary.ratings.average
+                    if summary.ratings.average is not None
+                    else "Chưa có đánh giá",
+                ],
+                ["Thời điểm xuất (UTC)", now],
+            ],
+        ),
+        Sheet(
+            "Lượt xem theo ngày",
+            ["Ngày (UTC)", "Số lượt xem"],
+            [[item.day, item.count] for item in by_day.data],
+        ),
+        Sheet(
+            "Hiện vật nổi bật",
+            [
+                "Hạng",
+                "Mã hiện vật",
+                "Tiêu đề",
+                "Đang hoạt động",
+                "Số lượt xem",
+                "Số đánh giá",
+                "Điểm trung bình",
+            ],
+            [
+                [
+                    rank,
+                    item.code,
+                    item.title or "(chưa có bản dịch)",
+                    "Có" if item.is_active else "Không",
+                    item.visit_count,
+                    item.rating_count,
+                    item.average_rating,
+                ]
+                for rank, item in enumerate(top.data, start=1)
+            ],
+        ),
+        Sheet(
+            "Ngôn ngữ",
+            ["Mã ngôn ngữ", "Tên ngôn ngữ", "Số lượt xem"],
+            [
+                [
+                    item.code or "-",
+                    item.name or "Không ghi nhận",
+                    item.count,
+                ]
+                for item in by_language.data
+            ],
+        ),
+    ]
+    filename = f"smart-heritage-report-{now:%Y%m%d}.xlsx"
+    return Response(
+        content=build_workbook(sheets),
+        media_type=XLSX_MEDIA_TYPE,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store",
+        },
     )

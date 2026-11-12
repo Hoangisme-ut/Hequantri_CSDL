@@ -70,7 +70,7 @@ OPENAPI_TAGS = [
     },
     {
         "name": "dashboard",
-        "description": "Thống kê tổng quan (Site/Artifact/Beacon, lượt xem theo ngày, top hiện vật, theo ngôn ngữ). Chỉ Admin.",
+        "description": "Thống kê tổng quan (Site/Artifact/Beacon, lượt xem theo ngày, top hiện vật, theo ngôn ngữ) và xuất báo cáo Excel (`export.xlsx`). Chỉ Admin.",
     },
     {
         "name": "analytics",

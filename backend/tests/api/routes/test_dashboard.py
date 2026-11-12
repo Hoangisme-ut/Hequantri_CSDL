@@ -18,11 +18,14 @@ Kết quả mong đợi: tổng 6 lượt, 2 người xem; theo ngày 10/3=2, 11
 A=4, B=1, C=1; ngôn ngữ vi=3, en=2, không ghi=1.
 """
 
+import io
 import uuid
+import zipfile
 from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
+from xml.etree import ElementTree
 
 import pytest
 from fastapi.testclient import TestClient
@@ -395,3 +398,101 @@ def test_rating_stats_exclude_hidden_feedback(
     assert by_id[dataset.b["id"]]["rating_count"] == 0  # chỉ có bản hidden
     assert by_id[dataset.b["id"]]["average_rating"] is None
     assert by_id[dataset.c["id"]]["rating_count"] == 0
+
+
+# ------------------------------- Xuất báo cáo Excel -------------------------------
+def _read_xlsx(content: bytes) -> dict[str, list[list[Any]]]:
+    """Đọc .xlsx bằng thư viện chuẩn (không cần openpyxl): {tên sheet: các dòng}."""
+    ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+    result: dict[str, list[list[Any]]] = {}
+    with zipfile.ZipFile(io.BytesIO(content)) as archive:
+        names = [
+            sheet.get("name")
+            for sheet in ElementTree.fromstring(
+                archive.read("xl/workbook.xml")
+            ).iterfind(".//m:sheet", ns)
+        ]
+        for index, name in enumerate(names, start=1):
+            root = ElementTree.fromstring(
+                archive.read(f"xl/worksheets/sheet{index}.xml")
+            )
+            rows: list[list[Any]] = []
+            for row in root.iterfind(".//m:row", ns):
+                values: list[Any] = []
+                for cell in row.iterfind("m:c", ns):
+                    column = ord(cell.get("r", "A")[0]) - 65
+                    values.extend([None] * (column - len(values)))
+                    if cell.get("t") == "inlineStr":
+                        values.append("".join(cell.find("m:is", ns).itertext()))
+                    else:
+                        values.append(float(cell.findtext("m:v", namespaces=ns)))
+                rows.append(values)
+            result[str(name)] = rows
+    return result
+
+
+def test_export_requires_admin(
+    client: TestClient, normal_user_token_headers: dict[str, str]
+) -> None:
+    assert client.get(f"{D}/export.xlsx").status_code == 401
+    forbidden = client.get(f"{D}/export.xlsx", headers=normal_user_token_headers)
+    assert forbidden.status_code == 403
+
+
+def test_export_xlsx_matches_dashboard_numbers(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    dataset: Dataset,
+) -> None:
+    admin = superuser_token_headers
+    response = client.get(
+        f"{D}/export.xlsx", headers=admin, params={**RANGE, "lang": "vi"}
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    assert "attachment" in response.headers["content-disposition"]
+    assert ".xlsx" in response.headers["content-disposition"]
+
+    book = _read_xlsx(response.content)
+    assert list(book) == [
+        "Tổng quan",
+        "Lượt xem theo ngày",
+        "Hiện vật nổi bật",
+        "Ngôn ngữ",
+    ]
+
+    summary = client.get(f"{D}/summary", headers=admin, params=RANGE).json()
+    overview = {row[0]: row[1] for row in book["Tổng quan"][1:]}
+    assert overview["Tổng lượt xem"] == summary["visits"]["total"] == 6
+    assert overview["Số khách xem khác nhau"] == summary["visits"]["unique_visitors"]
+    assert overview["Tổng số Site"] == summary["sites"]["total"]
+    assert overview["Từ ngày (UTC)"] == 36960  # ô ngày: 2001-03-10
+
+    by_day = book["Lượt xem theo ngày"][1:]
+    assert len(by_day) == 4  # 10, 11, 12, 13/3: ngày không có lượt xem vẫn có dòng
+    assert [int(row[1]) for row in by_day] == [2, 2, 0, 2]
+
+    top = {row[1]: row for row in book["Hiện vật nổi bật"][1:]}
+    assert int(top[dataset.a["code"]][4]) == 4
+    assert top[dataset.a["code"]][2] == "Trống đồng"
+    assert int(top[dataset.b["code"]][4]) == 1
+    assert top[dataset.c["code"]][2] == "(chưa có bản dịch)"
+    assert sum(int(row[4]) for row in top.values()) == 6
+
+    languages = {row[0]: int(row[2]) for row in book["Ngôn ngữ"][1:]}
+    assert languages["vi"] == 3
+    assert languages["en"] == 2
+    assert languages["-"] == 1  # lượt xem không ghi ngôn ngữ
+
+
+def test_export_xlsx_rejects_bad_range(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    response = client.get(
+        f"{D}/export.xlsx",
+        headers=superuser_token_headers,
+        params={"from_date": "2001-03-13", "to_date": "2001-03-10"},
+    )
+    assert response.status_code == 422
