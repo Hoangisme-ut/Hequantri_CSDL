@@ -49,6 +49,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       errorMessage = switch (error.failure) {
         AuthFailure.network => strings.forgotPasswordNetworkError,
         AuthFailure.server => strings.forgotPasswordServerError,
+        AuthFailure.invalidEmail => strings.forgotPasswordEmailInvalid,
         _ => strings.forgotPasswordGenericError,
       };
     } catch (_) {
@@ -199,13 +200,17 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                 fieldKey: const Key('forgot-password-email'),
                                 controller: _emailController,
                                 label: strings.forgotPasswordEmailLabel,
-                                validator: (value) => validateEmail(
-                                  value,
-                                  requiredMessage:
-                                      strings.forgotPasswordEmailRequired,
-                                  invalidMessage:
-                                      strings.forgotPasswordEmailInvalid,
-                                ),
+                                validator: (value) {
+                                  final email = value?.trim() ?? '';
+                                  if (email.isEmpty) {
+                                    return strings.forgotPasswordEmailRequired;
+                                  }
+                                  if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                                      .hasMatch(email)) {
+                                    return strings.forgotPasswordEmailInvalid;
+                                  }
+                                  return null;
+                                },
                               ),
                               const SizedBox(height: AppSpacing.large),
                               AuthSubmitButton(
