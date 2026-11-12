@@ -1,20 +1,22 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Archive,
   Bell,
   CalendarDays,
   ChartNoAxesColumnIncreasing,
+  ChevronLeft,
+  ChevronRight,
   CircleAlert,
   FileText,
   Filter,
   MessageSquare,
   Search,
-  UsersRound,
-  ChevronLeft,
-  ChevronRight,
   Star,
+  UsersRound,
 } from "lucide-react"
 import { useState } from "react"
-
+import type { FeedbackReviewPublic, LegacyFeedbackStatus } from "@/client"
+import { BeaconManagement } from "@/components/Beacons/BeaconManagement"
 import {
   ApiPendingCard,
   EmptyState,
@@ -27,29 +29,13 @@ import { Input } from "@/components/ui/input"
 import {
   Table,
   TableBody,
-  TableHead,
   TableCell,
+  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { BeaconManagement } from "@/components/Beacons/BeaconManagement"
 
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query"
-
-import type {
-  FeedbackReviewPublic,
-  FeedbackStatus,
-} from "@/client"
-
-import {
-  feedbackKeys,
-  feedbackService,
-} from "@/services/feedback"
-
+import { feedbackKeys, feedbackService } from "@/services/feedback"
 
 function ScreenCard({
   title,
@@ -191,7 +177,6 @@ export function AnalyticsScreen() {
   )
 }
 
-
 type ModerationStatus = "approved" | "rejected"
 
 const PAGE_SIZE = 10
@@ -222,11 +207,7 @@ function getStatusLabel(status?: string | null) {
   }
 }
 
-function FeedbackStatusBadge({
-  status,
-}: {
-  status?: string | null
-}) {
+function FeedbackStatusBadge({ status }: { status?: string | null }) {
   return (
     <Badge
       variant={
@@ -247,15 +228,14 @@ export function FeedbackScreen() {
 
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<
-    "all" | FeedbackStatus
+    "all" | LegacyFeedbackStatus
   >("all")
   const [page, setPage] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const filters = {
     q: search.trim() || undefined,
-    status:
-      statusFilter === "all" ? undefined : statusFilter,
+    status: statusFilter === "all" ? undefined : statusFilter,
     skip: page * PAGE_SIZE,
     limit: PAGE_SIZE,
   }
@@ -268,13 +248,7 @@ export function FeedbackScreen() {
 
   // Duyệt hoặc từ chối phản hồi
   const moderationMutation = useMutation({
-    mutationFn: ({
-      id,
-      status,
-    }: {
-      id: string
-      status: ModerationStatus
-    }) =>
+    mutationFn: ({ id, status }: { id: string; status: ModerationStatus }) =>
       feedbackService.updateStatus(id, { status }),
 
     onSuccess: async () => {
@@ -289,9 +263,7 @@ export function FeedbackScreen() {
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 
   const selectedFeedback: FeedbackReviewPublic | null =
-    feedbacks.find((item) => item.id === selectedId) ??
-    feedbacks[0] ??
-    null
+    feedbacks.find((item) => item.id === selectedId) ?? feedbacks[0] ?? null
 
   const pendingCount = feedbacks.filter(
     (item) => item.status === "pending",
@@ -305,7 +277,7 @@ export function FeedbackScreen() {
     (item) => item.status === "rejected",
   ).length
 
-  function handleFilterChange(value: "all" | FeedbackStatus) {
+  function handleFilterChange(value: "all" | LegacyFeedbackStatus) {
     setStatusFilter(value)
     setPage(0)
     setSelectedId(null)
@@ -339,9 +311,7 @@ export function FeedbackScreen() {
             placeholder="Search feedback..."
             aria-label="Search feedback"
             value={search}
-            onChange={(event) =>
-              handleSearchChange(event.target.value)
-            }
+            onChange={(event) => handleSearchChange(event.target.value)}
           />
         </div>
 
@@ -356,9 +326,7 @@ export function FeedbackScreen() {
           ).map(([value, label]) => (
             <Button
               key={value}
-              variant={
-                statusFilter === value ? "default" : "outline"
-              }
+              variant={statusFilter === value ? "default" : "outline"}
               size="sm"
               onClick={() => handleFilterChange(value)}
             >
@@ -370,21 +338,15 @@ export function FeedbackScreen() {
 
       {/* Summary */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Badge variant="secondary">
-          {pendingCount} Pending
-        </Badge>
+        <Badge variant="secondary">{pendingCount} Pending</Badge>
 
-        <Badge variant="secondary">
-          {approvedCount} Approved
-        </Badge>
+        <Badge variant="secondary">{approvedCount} Approved</Badge>
 
-        <Badge variant="secondary">
-          {rejectedCount} Rejected
-        </Badge>
+        <Badge variant="secondary">{rejectedCount} Rejected</Badge>
 
         <span className="text-xs text-muted-foreground">
-          Showing {feedbacks.length} of {totalCount} matching
-          submissions on this page
+          Showing {feedbacks.length} of {totalCount} matching submissions on
+          this page
         </span>
       </div>
 
@@ -430,20 +392,15 @@ export function FeedbackScreen() {
                     {feedbacks.map((feedback) => (
                       <TableRow
                         key={feedback.id}
-                        onClick={() =>
-                          setSelectedId(feedback.id)
-                        }
+                        onClick={() => setSelectedId(feedback.id)}
                         className={`cursor-pointer ${
-                          selectedFeedback?.id === feedback.id
-                            ? "bg-muted"
-                            : ""
+                          selectedFeedback?.id === feedback.id ? "bg-muted" : ""
                         }`}
                       >
                         <TableCell>
                           <div className="min-w-[130px]">
                             <p className="font-medium">
-                              {feedback.visitor_name ||
-                                "Anonymous"}
+                              {feedback.visitor_name || "Anonymous"}
                             </p>
                             <p className="max-w-[160px] truncate text-xs text-muted-foreground">
                               {feedback.visitor_email}
@@ -470,15 +427,11 @@ export function FeedbackScreen() {
                         </TableCell>
 
                         <TableCell>
-                          <FeedbackStatusBadge
-                            status={feedback.status}
-                          />
+                          <FeedbackStatusBadge status={feedback.status} />
                         </TableCell>
 
                         <TableCell className="whitespace-nowrap text-xs">
-                          {formatFeedbackDate(
-                            feedback.created_at,
-                          )}
+                          {formatFeedbackDate(feedback.created_at)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -510,8 +463,7 @@ export function FeedbackScreen() {
                     variant="outline"
                     size="sm"
                     disabled={
-                      page + 1 >= totalPages ||
-                      feedbackQuery.isFetching
+                      page + 1 >= totalPages || feedbackQuery.isFetching
                     }
                     onClick={() => {
                       setPage((current) => current + 1)
@@ -532,9 +484,7 @@ export function FeedbackScreen() {
           <ScreenCard
             title="Submission Detail"
             icon={FileText}
-            badge={
-              selectedFeedback ? "Selected" : "No selection"
-            }
+            badge={selectedFeedback ? "Selected" : "No selection"}
           >
             {!selectedFeedback ? (
               <EmptyState
@@ -547,24 +497,19 @@ export function FeedbackScreen() {
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="font-semibold">
-                      {selectedFeedback.visitor_name ||
-                        "Anonymous"}
+                      {selectedFeedback.visitor_name || "Anonymous"}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {selectedFeedback.visitor_email}
                     </p>
                   </div>
 
-                  <FeedbackStatusBadge
-                    status={selectedFeedback.status}
-                  />
+                  <FeedbackStatusBadge status={selectedFeedback.status} />
                 </div>
 
                 <div className="grid gap-3 rounded-lg border border-border/70 p-3 sm:grid-cols-2">
                   <div>
-                    <p className="text-xs text-muted-foreground">
-                      Artifact
-                    </p>
+                    <p className="text-xs text-muted-foreground">Artifact</p>
                     <p className="text-sm font-medium">
                       {selectedFeedback.artifact_title ||
                         selectedFeedback.artifact_code}
@@ -575,9 +520,7 @@ export function FeedbackScreen() {
                   </div>
 
                   <div>
-                    <p className="text-xs text-muted-foreground">
-                      Site
-                    </p>
+                    <p className="text-xs text-muted-foreground">Site</p>
                     <p className="text-sm font-medium">
                       {selectedFeedback.site_name}
                     </p>
@@ -588,19 +531,13 @@ export function FeedbackScreen() {
                       Submitted at
                     </p>
                     <p className="text-sm">
-                      {formatFeedbackDate(
-                        selectedFeedback.created_at,
-                      )}
+                      {formatFeedbackDate(selectedFeedback.created_at)}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-xs text-muted-foreground">
-                      Feedback ID
-                    </p>
-                    <p className="break-all text-xs">
-                      {selectedFeedback.id}
-                    </p>
+                    <p className="text-xs text-muted-foreground">Feedback ID</p>
+                    <p className="break-all text-xs">{selectedFeedback.id}</p>
                   </div>
                 </div>
 
@@ -633,8 +570,7 @@ export function FeedbackScreen() {
                   </p>
 
                   <div className="min-h-20 whitespace-pre-wrap rounded-lg bg-muted/50 p-3 text-sm">
-                    {selectedFeedback.comment ||
-                      "No comment provided."}
+                    {selectedFeedback.comment || "No comment provided."}
                   </div>
                 </div>
               </div>
@@ -643,16 +579,13 @@ export function FeedbackScreen() {
 
           <Card className="gap-0 border-border/70 bg-card shadow-sm">
             <CardHeader className="border-b border-border/70 px-5 py-3">
-              <CardTitle className="text-sm">
-                Moderation actions
-              </CardTitle>
+              <CardTitle className="text-sm">Moderation actions</CardTitle>
             </CardHeader>
 
             <CardContent className="flex flex-wrap gap-2 p-4">
               <Button
                 disabled={
-                  !selectedFeedback ||
-                  selectedFeedback.status !== "pending" ||
+                  selectedFeedback?.status !== "pending" ||
                   moderationMutation.isPending
                 }
                 onClick={() => handleModeration("approved")}
@@ -666,8 +599,7 @@ export function FeedbackScreen() {
               <Button
                 variant="destructive"
                 disabled={
-                  !selectedFeedback ||
-                  selectedFeedback.status !== "pending" ||
+                  selectedFeedback?.status !== "pending" ||
                   moderationMutation.isPending
                 }
                 onClick={() => handleModeration("rejected")}
@@ -693,8 +625,8 @@ export function FeedbackScreen() {
           )}
 
           <p className="text-xs text-muted-foreground">
-            Only pending submissions can be approved or rejected.
-            Rejection reasons are not supported by the current API.
+            Only pending submissions can be approved or rejected. Rejection
+            reasons are not supported by the current API.
           </p>
         </div>
       </div>
