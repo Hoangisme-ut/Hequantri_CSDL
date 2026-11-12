@@ -78,6 +78,8 @@ jobs:
     - run: docker compose build
     - run: docker compose down -v --remove-orphans
     - run: docker compose run --rm backend bash scripts/prestart.sh
+    - name: Seed deterministic sample data for browser tests
+      run: docker compose run --rm backend python -m app.seed_sample_data
     - name: Run Playwright tests
       run: docker compose run --rm playwright bunx playwright test --fail-on-flaky-tests --trace=retain-on-failure --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
     - name: Collect Compose logs

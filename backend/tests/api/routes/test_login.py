@@ -114,6 +114,21 @@ def test_reset_password(client: TestClient, db: Session) -> None:
     verified, _ = verify_password(new_password, user.hashed_password)
     assert verified
 
+    # The password set by reset-password must be accepted by the same HTTP
+    # login endpoint used by Mobile. The previous password must be rejected.
+    new_login = client.post(
+        f"{settings.API_V1_STR}/login/access-token",
+        data={"username": email, "password": new_password},
+    )
+    assert new_login.status_code == 200
+    assert new_login.json().get("access_token")
+
+    old_login = client.post(
+        f"{settings.API_V1_STR}/login/access-token",
+        data={"username": email, "password": password},
+    )
+    assert old_login.status_code == 400
+
 
 def test_reset_password_token_replay_is_rejected(
     client: TestClient, db: Session
