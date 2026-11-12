@@ -18,6 +18,14 @@ counts across groups must not be summed to infer a global unique count.
 `top-artifacts` accepts `limit` (1–100); `sites` accepts `skip` and `limit`
 (1–200). Each endpoint aggregates in one SQL query instead of loading events.
 
+## Dashboard Excel export
+
+`GET /api/v1/dashboard/export.xlsx` (Admin only) downloads one Excel file with four sheets: **Tổng quan** (Site/Artifact/Beacon totals, total visits, unique visitors, ratings), **Lượt xem theo ngày** (every day in the range, including days with zero visits), **Hiện vật nổi bật** (top artifacts with visits and ratings) and **Ngôn ngữ** (visits per language).
+
+Query parameters: `from_date`, `to_date` (UTC, inclusive, same rules as the other dashboard endpoints), `limit` (1-50, default 10, number of top artifacts) and `lang` (language of the artifact titles). The file reuses the same queries as `summary`, `visits-by-day`, `top-artifacts` and `visits-by-language`, so its numbers match those endpoints for the same filter. Ratings exclude `hidden` feedback and do not depend on the date filter.
+
+The file is generated with the Python standard library (no new dependency). Text is always stored as plain text, never as a formula. PDF export is **not implemented**. Generating very large ranges has not been load tested; the range is capped at 366 days.
+
 ## Token compatibility and reset replay protection
 
 New JWTs carry `purpose=access` or `purpose=password_reset`. Legacy access
@@ -340,6 +348,19 @@ configuration. Delivery failures are logged without recipient/token details;
 200 is not a delivery receipt. Failed welcome-email delivery does not undo an
 already-created user. Delivery checks are enabled for these two flows without
 changing other email endpoints. No automatic mail retry/queue is introduced.
+
+## Decision: no separate Role API
+
+**Decision:** the backend does **not** expose a Role CRUD API (`/roles`). Roles stay seeded data, and role assignment stays in `PUT /users/{id}` (`role_id`).
+
+Reasons:
+
+1. **Roles are fixed.** Only `admin` and `visitor` exist; `init_db` seeds them on startup. Permissions are enforced in code (`require_role`, `AdminUser`, `VisitorUser`, `get_current_active_superuser`), not read from the Role table. A role created through an API would carry no permission, so it could only mislead.
+2. **An API could break the permission model.** Renaming or deleting `admin`/`visitor` would silently break the role checks, and deleting a role that users reference conflicts with `User.role_id`. The agreed two-tier policy (superuser manages users, role `admin` manages Heritage content) would also need new rules for who may edit roles.
+3. **Assignment is already covered.** `PUT /users/{id}` accepts `role_id` (superuser only) with the agreed validation: unknown role -> 404, superuser with the `visitor` role -> 409, `null` clears the role.
+4. **The ERD keeps Role minimal** (`id`, `name`, `description`). Adding a role means new permission rules in code plus a migration/seed change, not a data operation, so it goes through code review rather than an endpoint.
+
+**Not covered (add only if needed):** if the Web Admin needs a dropdown of roles it can only get `role_id` values from existing user records. In that case add one read-only, superuser-only `GET /roles/` that returns `id`, `name`, `description`. It has not been built because no requirement asks for it.
 
 # Media metadata API
 
