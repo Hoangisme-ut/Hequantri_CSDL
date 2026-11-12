@@ -9,6 +9,7 @@ enum AuthFailure {
   server,
   network,
   invalidResponse,
+  invalidEmail,
 }
 
 /// Class Exception xử lý ngoại lệ cho AuthService
@@ -135,7 +136,46 @@ class AuthService {
   }
 
   Future<void> requestPasswordRecovery({required String email}) async {
-    await Future<void>.delayed(const Duration(milliseconds: 300));
+    final uri = baseUrl.replace(
+      pathSegments: [
+        ...baseUrl.pathSegments.where((segment) => segment.isNotEmpty),
+        'api',
+        'v1',
+        'password-recovery',
+        email,
+      ],
+    );
+
+    try {
+      final response = await client!.post(
+        uri,
+        contentType: 'application/x-www-form-urlencoded',
+        body: '',
+      );
+
+      if (response.statusCode != 200) {
+        throw AuthServiceException(
+          response.statusCode == 422
+              ? AuthFailure.invalidEmail
+              : response.statusCode >= 500
+              ? AuthFailure.server
+              : AuthFailure.invalidResponse,
+        );
+      }
+
+      try {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        if (json['message'] is! String || (json['message'] as String).isEmpty) {
+          throw const FormatException('Missing recovery message');
+        }
+      } catch (_) {
+        throw const AuthServiceException(AuthFailure.invalidResponse);
+      }
+    } on AuthServiceException {
+      rethrow;
+    } catch (_) {
+      throw const AuthServiceException(AuthFailure.network);
+    }
   }
 
   Future<AuthToken> login({

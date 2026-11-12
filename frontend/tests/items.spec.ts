@@ -1,4 +1,3 @@
-
 import { expect, test } from "@playwright/test"
 
 function randomArtifactCode() {
@@ -14,7 +13,10 @@ test.describe("Admin - Artifact Management", () => {
     page,
   }) => {
     await expect(
-      page.getByRole("heading", { name: "Artifact Management" }),
+      page.getByRole("heading", {
+        name: "Artifact Management",
+        level: 2,
+      }),
     ).toBeVisible()
 
     await expect(
@@ -33,7 +35,7 @@ test.describe("Admin - Artifact Management", () => {
 
     await expect(page.getByRole("dialog")).toBeVisible()
 
-    await page.getByLabel("Artifact code").fill(code)
+    await page.getByLabel("Artifact code", { exact: true }).fill(code)
 
     // The form automatically selects the first active site.
     await expect(page.locator("#artifact-site")).not.toHaveValue("")
@@ -52,15 +54,17 @@ test.describe("Admin - Artifact Management", () => {
 
     await page.getByRole("button", { name: "Save artifact" }).click()
 
-    await expect(
-      page.getByText("Artifact code is required."),
-    ).toBeVisible()
+    await expect(page.getByRole("alert")).toHaveText(
+      "Artifact code is required.",
+    )
   })
 
   test("Cancel artifact creation", async ({ page }) => {
     await page.getByRole("button", { name: "Add artifact" }).click()
 
-    await page.getByLabel("Artifact code").fill(randomArtifactCode())
+    await page
+      .getByLabel("Artifact code", { exact: true })
+      .fill(randomArtifactCode())
 
     await page.getByRole("button", { name: "Cancel" }).click()
 
@@ -73,7 +77,7 @@ test.describe("Admin - Artifact Management", () => {
 
     // Create test artifact.
     await page.getByRole("button", { name: "Add artifact" }).click()
-    await page.getByLabel("Artifact code").fill(code)
+    await page.getByLabel("Artifact code", { exact: true }).fill(code)
     await page.getByRole("button", { name: "Save artifact" }).click()
 
     await expect(page.getByText("Artifact created")).toBeVisible()
@@ -98,7 +102,7 @@ test.describe("Admin - Artifact Management", () => {
     const code = randomArtifactCode()
 
     await page.getByRole("button", { name: "Add artifact" }).click()
-    await page.getByLabel("Artifact code").fill(code)
+    await page.getByLabel("Artifact code", { exact: true }).fill(code)
     await page.getByRole("button", { name: "Save artifact" }).click()
 
     await expect(page.getByText("Artifact created")).toBeVisible()
@@ -109,7 +113,9 @@ test.describe("Admin - Artifact Management", () => {
       page.getByRole("heading", { name: `Artifact details · ${code}` }),
     ).toBeVisible()
 
-    await expect(page.getByLabel("Artifact code")).toBeDisabled()
+    await expect(
+      page.getByLabel("Artifact code", { exact: true }),
+    ).toBeDisabled()
 
     await expect(
       page.getByRole("button", { name: "Save artifact" }),
@@ -120,7 +126,7 @@ test.describe("Admin - Artifact Management", () => {
     const code = randomArtifactCode()
 
     await page.getByRole("button", { name: "Add artifact" }).click()
-    await page.getByLabel("Artifact code").fill(code)
+    await page.getByLabel("Artifact code", { exact: true }).fill(code)
     await page.getByRole("button", { name: "Save artifact" }).click()
 
     await expect(page.getByText("Artifact created")).toBeVisible()

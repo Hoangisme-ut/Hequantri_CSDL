@@ -196,8 +196,8 @@ class AppStrings {
   String get forgotPasswordSubmit =>
       isEnglish ? 'Send Instructions' : 'Gửi yêu cầu';
   String get forgotPasswordSuccess => isEnglish
-      ? 'Reset link sent. Check your inbox.'
-      : 'Đã gửi hướng dẫn khôi phục. Vui lòng kiểm tra hộp thư.';
+      ? 'If an account uses this email, recovery instructions will be sent.'
+      : 'Nếu email này đã đăng ký, hướng dẫn khôi phục sẽ được gửi đến bạn.';
   String get forgotPasswordBackToLogin =>
       isEnglish ? 'Back to Sign In' : 'Quay lại đăng nhập';
   String get forgotPasswordEmailRequired =>

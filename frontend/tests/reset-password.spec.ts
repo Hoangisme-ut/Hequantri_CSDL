@@ -23,6 +23,21 @@ test("Input is visible, empty and editable", async ({ page }) => {
   await expect(page.getByTestId("email-input")).toBeEditable()
 })
 
+test("Reset form remains available with an existing browser session", async ({
+  page,
+}) => {
+  await page.goto("/")
+  await page.evaluate(() => {
+    localStorage.setItem("access_token", "existing-session")
+  })
+
+  await page.goto("/reset-password?token=diagnostic-token")
+
+  await expect(
+    page.getByRole("heading", { name: "Đặt lại mật khẩu" }),
+  ).toBeVisible()
+})
+
 test("Continue button is visible", async ({ page }) => {
   await page.goto("/recover-password")
 
@@ -60,14 +75,26 @@ test("User can reset password successfully using the link", async ({
 
   await page.getByTestId("new-password-input").fill(newPassword)
   await page.getByTestId("confirm-password-input").fill(newPassword)
-  await page.getByRole("button", { name: "Reset Password" }).click()
-  await expect(page.getByText("Password updated successfully")).toBeVisible()
+  await page.getByRole("button", { name: "Cập nhật mật khẩu" }).click()
+  await expect(
+    page.getByText(
+      "Bạn có thể quay lại ứng dụng Smart Heritage Mobile và đăng nhập bằng mật khẩu mới.",
+    ),
+  ).toBeVisible()
 
   // Check if the user is able to login with the new password
   await logInUser(page, email, newPassword)
 })
 
 test("Expired or invalid reset link", async ({ page }) => {
+  await page.route(/\/api\/v1\/reset-password\/?$/, async (route) => {
+    await route.fulfill({
+      status: 400,
+      contentType: "application/json",
+      body: JSON.stringify({ detail: "Invalid token" }),
+    })
+  })
+
   const password = randomPassword()
   const invalidUrl = "/reset-password?token=invalidtoken"
 
@@ -75,9 +102,11 @@ test("Expired or invalid reset link", async ({ page }) => {
 
   await page.getByTestId("new-password-input").fill(password)
   await page.getByTestId("confirm-password-input").fill(password)
-  await page.getByRole("button", { name: "Reset Password" }).click()
+  await page.getByRole("button", { name: "Cập nhật mật khẩu" }).click()
 
-  await expect(page.getByText("Invalid token")).toBeVisible()
+  await expect(
+    page.getByRole("heading", { name: "Liên kết đã hết hạn" }),
+  ).toBeVisible()
 })
 
 test("Weak new password validation", async ({ page, request }) => {
@@ -106,9 +135,7 @@ test("Weak new password validation", async ({ page, request }) => {
   await page.goto(resetUrl!)
   await page.getByTestId("new-password-input").fill(weakPassword)
   await page.getByTestId("confirm-password-input").fill(weakPassword)
-  await page.getByRole("button", { name: "Reset Password" }).click()
+  await page.getByRole("button", { name: "Cập nhật mật khẩu" }).click()
 
-  await expect(
-    page.getByText("Password must be at least 8 characters"),
-  ).toBeVisible()
+  await expect(page.getByText("Mật khẩu cần có ít nhất 8 ký tự.")).toBeVisible()
 })

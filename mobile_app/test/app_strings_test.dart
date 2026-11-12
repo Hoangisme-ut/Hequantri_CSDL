@@ -152,9 +152,12 @@ void main() {
 
         expect(
           vi.forgotPasswordSuccess,
-          'Đã gửi hướng dẫn khôi phục. Vui lòng kiểm tra hộp thư.',
+          'Nếu email này đã đăng ký, hướng dẫn khôi phục sẽ được gửi đến bạn.',
         );
-        expect(en.forgotPasswordSuccess, 'Reset link sent. Check your inbox.');
+        expect(
+          en.forgotPasswordSuccess,
+          'If an account uses this email, recovery instructions will be sent.',
+        );
       },
     );
 
