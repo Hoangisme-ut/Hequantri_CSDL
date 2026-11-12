@@ -82,6 +82,114 @@ void main() {
     });
   });
 
+  group('AuthService password recovery', () {
+    test(
+      'posts the email path and accepts the generic backend response',
+      () async {
+        final client = FakeAuthHttpClient(
+          const AuthHttpResponse(
+            statusCode: 200,
+            body: '{"message":"If that email is registered, we sent a password recovery link"}',
+          ),
+        );
+        final service = AuthService(
+          baseUrl: Uri.parse(baseUrl),
+          client: client,
+        );
+
+        await service.requestPasswordRecovery(
+          email: 'visitor+test@example.com',
+        );
+
+        expect(client.method, 'POST');
+        expect(client.uri!.pathSegments.last, 'visitor+test@example.com');
+        expect(client.uri!.path, contains('/api/v1/login/password-recovery/'));
+        expect(client.contentType, 'application/x-www-form-urlencoded');
+        expect(client.body, isEmpty);
+      },
+    );
+
+    test('maps backend email validation responses safely', () async {
+      final client = FakeAuthHttpClient(
+        const AuthHttpResponse(statusCode: 422, body: '{"detail":"private"}'),
+      );
+      final service = AuthService(baseUrl: Uri.parse(baseUrl), client: client);
+
+      await expectLater(
+        service.requestPasswordRecovery(email: 'bad-email'),
+        throwsA(
+          isA<AuthServiceException>().having(
+            (error) => error.failure,
+            'failure',
+            AuthFailure.invalidEmail,
+          ),
+        ),
+      );
+    });
+
+    test(
+      'maps server and malformed response failures without backend details',
+      () async {
+        final serverService = AuthService(
+          baseUrl: Uri.parse(baseUrl),
+          client: FakeAuthHttpClient(
+            const AuthHttpResponse(
+              statusCode: 503,
+              body: '{"detail":"private"}',
+            ),
+          ),
+        );
+        await expectLater(
+          serverService.requestPasswordRecovery(email: 'visitor@example.com'),
+          throwsA(
+            isA<AuthServiceException>().having(
+              (error) => error.failure,
+              'failure',
+              AuthFailure.server,
+            ),
+          ),
+        );
+
+        final malformedService = AuthService(
+          baseUrl: Uri.parse(baseUrl),
+          client: FakeAuthHttpClient(
+            const AuthHttpResponse(statusCode: 200, body: '{'),
+          ),
+        );
+        await expectLater(
+          malformedService.requestPasswordRecovery(
+            email: 'visitor@example.com',
+          ),
+          throwsA(
+            isA<AuthServiceException>().having(
+              (error) => error.failure,
+              'failure',
+              AuthFailure.invalidResponse,
+            ),
+          ),
+        );
+      },
+    );
+
+    test('maps transport failures to a safe network failure', () async {
+      final service = AuthService(
+        baseUrl: Uri.parse(baseUrl),
+        client: FakeAuthHttpClient.withError(const SocketException('offline')),
+      );
+
+      await expectLater(
+        service.requestPasswordRecovery(email: 'visitor@example.com'),
+        throwsA(
+          isA<AuthServiceException>().having(
+            (error) => error.failure,
+            'failure',
+            AuthFailure.network,
+          ),
+        ),
+      );
+    });
+  });
+
   group('AuthService register', () {
     test(
       'posts JSON and parses the public user without creating a token',
