@@ -23,6 +23,21 @@ test("Input is visible, empty and editable", async ({ page }) => {
   await expect(page.getByTestId("email-input")).toBeEditable()
 })
 
+test("Reset form remains available with an existing browser session", async ({
+  page,
+}) => {
+  await page.goto("/")
+  await page.evaluate(() => {
+    localStorage.setItem("access_token", "existing-session")
+  })
+
+  await page.goto("/reset-password?token=diagnostic-token")
+
+  await expect(
+    page.getByRole("heading", { name: "Reset Password" }),
+  ).toBeVisible()
+})
+
 test("Continue button is visible", async ({ page }) => {
   await page.goto("/recover-password")
 
