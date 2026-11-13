@@ -56,6 +56,7 @@ class BeaconContent {
     this.languageCode,
     this.isFallback = false,
     this.media = const [],
+    this.rssiThreshold,
   });
 
   final String beaconId;
@@ -74,6 +75,12 @@ class BeaconContent {
 
   final List<BeaconMedia> media;
 
+  /// Null nghĩa là backend không đặt ngưỡng RSSI tối thiểu.
+  final int? rssiThreshold;
+
+  bool acceptsRssi(int rssi) =>
+      rssi < 0 && (rssiThreshold == null || rssi >= rssiThreshold!);
+
   factory BeaconContent.fromJson(Map<String, dynamic> json) {
     final beacon = json['beacon'] as Map<String, dynamic>;
     final artifact = json['artifact'] as Map<String, dynamic>;
@@ -86,6 +93,7 @@ class BeaconContent {
     _requireUuid(beacon['proximity_uuid'], 'beacon.proximity_uuid');
     _responseUuid(artifact, 'id');
     _responseUuid(artifact, 'site_id');
+
     for (final item in mediaJson) {
       final media = item as Map<String, dynamic>;
       _responseUuid(media, 'id');
@@ -104,6 +112,7 @@ class BeaconContent {
       coverImageUrl: artifact['cover_image_url'] as String?,
       languageCode: artifact['language_code'] as String?,
       isFallback: artifact['is_fallback'] as bool? ?? false,
+      rssiThreshold: beacon['rssi_threshold'] as int?,
       media: List<BeaconMedia>.unmodifiable(
         mediaJson.map(
           (item) => BeaconMedia.fromJson(item as Map<String, dynamic>),
@@ -119,17 +128,20 @@ final _uuidPattern = RegExp(
 
 String _responseUuid(Map<String, dynamic> json, String field) {
   final value = json[field];
+
   if (value is! String || !_uuidPattern.hasMatch(value)) {
     throw FormatException(
       'Beacon resolve field "$field" must be a valid UUID.',
     );
   }
+
   return value;
 }
 
 String? _optionalResponseUuid(Map<String, dynamic> json, String field) {
   final value = json[field];
   if (value == null) return null;
+
   return _requireUuid(value, field);
 }
 
@@ -139,6 +151,7 @@ String _requireUuid(Object? value, String field) {
       'Beacon resolve field "$field" must be a valid UUID.',
     );
   }
+
   return value;
 }
 

@@ -1,0 +1,53 @@
+[
+  {
+    "id": "WEB-00",
+    "status": "PASS",
+    "action": "Real admin login through UI"
+  },
+  {
+    "id": "WEB-01",
+    "status": "PASS",
+    "site_id": "b9ccd448-4662-4af6-8a6d-2b84781f6740",
+    "name": "QA Heritage mw7dygcp"
+  },
+  {
+    "id": "WEB-02",
+    "status": "PASS",
+    "artifact_id": "9b35cf5e-c484-44e8-ab60-a18ee62fa417",
+    "site_id": "b9ccd448-4662-4af6-8a6d-2b84781f6740",
+    "code": "QA-MW7DYGCP"
+  },
+  {
+    "id": "WEB-03",
+    "status": "PASS",
+    "language": "Tiếng Việt",
+    "title": "Trống đồng nghiệm thu",
+    "language_id": "10ce4cde-68f7-47d7-9117-9ab0afdcf38f"
+  },
+  {
+    "id": "WEB-04",
+    "status": "PASS",
+    "language": "English",
+    "title": "Acceptance bronze drum",
+    "language_id": "40cf5055-37a8-4f91-99e2-3987460c8bf3"
+  },
+  {
+    "id": "WEB-05",
+    "status": "PASS",
+    "media_id": "1e95d288-15f1-4df9-a9d7-fd5031595ac9",
+    "url": "http://127.0.0.1:8091/van_mieu_welcome.jpg",
+    "image_decoded": true
+  },
+  {
+    "id": "WEB-07",
+    "status": "PASS",
+    "title": "Trống đồng đã cập nhật từ Web"
+  },
+  {
+    "id": "WEB-06",
+    "status": "PASS",
+    "beacon_id": "e29f1d2a-19cb-4cf9-963d-471247dc19fc",
+    "artifact_id": "9b35cf5e-c484-44e8-ab60-a18ee62fa417",
+    "site_id": "b9ccd448-4662-4af6-8a6d-2b84781f6740"
+  }
+]

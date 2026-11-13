@@ -21,8 +21,16 @@ export async function logInUser(page: Page, email: string, password: string) {
 
   await page.getByTestId("email-input").fill(email)
   await page.getByTestId("password-input").fill(password)
+  const currentUserResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url())
+    return (
+      url.pathname.endsWith("/api/v1/users/me") &&
+      response.request().method() === "GET"
+    )
+  })
   await page.getByRole("button", { name: "Sign In" }).click()
-  await page.waitForURL("/")
+  expect((await currentUserResponse).status()).toBe(200)
+  await page.waitForURL(/\/(?:forbidden)?$/)
 }
 
 export async function logOutUser(page: Page) {

@@ -1,0 +1,36 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.8, pytest-9.1.1, pluggy-1.6.0 -- <WORKSPACE>\.venv\Scripts\python.exe
+rootdir: <WORKSPACE>\backend
+configfile: pyproject.toml
+plugins: anyio-4.14.2
+collecting ... collected 19 items
+
+tests/api/routes/test_visit_consistency.py::test_concurrent_visits_are_deduplicated PASSED [  5%]
+tests/api/routes/test_visit_consistency.py::test_invalid_links_never_write[inactive_beacon] PASSED [ 10%]
+tests/api/routes/test_visit_consistency.py::test_invalid_links_never_write[wrong_site] PASSED [ 15%]
+tests/api/routes/test_visit_consistency.py::test_invalid_links_never_write[inactive_language] PASSED [ 21%]
+tests/api/routes/test_visits.py::test_record_visit_and_read_history PASSED [ 26%]
+tests/api/routes/test_visits.py::test_repeated_signal_within_window_is_one_visit PASSED [ 31%]
+tests/api/routes/test_visits.py::test_new_visit_after_window_is_recorded PASSED [ 36%]
+tests/api/routes/test_visits.py::test_visits_require_token PASSED        [ 42%]
+tests/api/routes/test_visits.py::test_visit_validation_errors PASSED     [ 47%]
+tests/api/routes/test_visits.py::test_visit_with_matching_beacon PASSED  [ 52%]
+tests/api/routes/test_visits.py::test_history_is_private_and_paginated PASSED [ 57%]
+tests/api/routes/test_backend_sqlserver_flow.py::test_admin_to_visitor_to_analytics PASSED [ 63%]
+tests/api/routes/test_favorites.py::test_add_list_and_remove_favorite PASSED [ 68%]
+tests/api/routes/test_favorites.py::test_adding_twice_does_not_create_duplicate PASSED [ 73%]
+tests/api/routes/test_favorites.py::test_favorites_require_token PASSED  [ 78%]
+tests/api/routes/test_favorites.py::test_cannot_favorite_unknown_or_hidden_artifact PASSED [ 84%]
+tests/api/routes/test_favorites.py::test_hidden_artifact_disappears_from_favorites_and_comes_back PASSED [ 89%]
+tests/api/routes/test_favorites.py::test_favorites_are_private_between_users PASSED [ 94%]
+tests/api/routes/test_favorites.py::test_favorites_pagination_and_language PASSED [100%]
+
+============================== warnings summary ===============================
+..\.venv\Lib\site-packages\fastapi\testclient.py:1
+  <WORKSPACE>\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 19 passed, 1 warning in 5.86s ========================
+
+exit_code=0

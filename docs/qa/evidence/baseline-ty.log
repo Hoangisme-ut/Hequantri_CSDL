@@ -1,0 +1,136 @@
+error[invalid-argument-type]: Argument to function `_count` is incorrect
+   --> backend\app\api\routes\dashboard.py:162:42
+    |
+162 |             active=_count(session, Site, col(Site.is_active)),
+    |                                          ^^^^^^^^^^^^^^^^^^^ Expected `ColumnElement[bool]`, found `Mapped[bool]`
+info: Function defined here
+   --> backend\app\api\routes\dashboard.py:133:5
+    |
+133 | def _count(session: SessionDep, model: Any, *conditions: ColumnElement[bool]) -> int:
+    |     ^^^^^^                                  -------------------------------- Parameter declared here
+
+error[invalid-argument-type]: Argument to function `_count` is incorrect
+   --> backend\app\api\routes\dashboard.py:166:46
+    |
+166 |             active=_count(session, Artifact, col(Artifact.is_active)),
+    |                                              ^^^^^^^^^^^^^^^^^^^^^^^ Expected `ColumnElement[bool]`, found `Mapped[bool]`
+info: Function defined here
+   --> backend\app\api\routes\dashboard.py:133:5
+    |
+133 | def _count(session: SessionDep, model: Any, *conditions: ColumnElement[bool]) -> int:
+    |     ^^^^^^                                  -------------------------------- Parameter declared here
+
+error[invalid-argument-type]: Argument to function `_count` is incorrect
+   --> backend\app\api\routes\dashboard.py:170:44
+    |
+170 |             active=_count(session, Beacon, col(Beacon.is_active)),
+    |                                            ^^^^^^^^^^^^^^^^^^^^^ Expected `ColumnElement[bool]`, found `Mapped[bool]`
+info: Function defined here
+   --> backend\app\api\routes\dashboard.py:133:5
+    |
+133 | def _count(session: SessionDep, model: Any, *conditions: ColumnElement[bool]) -> int:
+    |     ^^^^^^                                  -------------------------------- Parameter declared here
+
+error[no-matching-overload]: No overload of function `select` matches arguments
+   --> backend\app\api\routes\dashboard.py:250:9
+    |
+250 | /         select(
+251 | |             col(Artifact.id),
+252 | |             col(Artifact.site_id),
+253 | |             col(Artifact.code),
+254 | |             col(Artifact.is_active),
+255 | |             visit_count,
+256 | |         )
+    | |_________^
+info: First overload defined here
+   --> <WORKSPACE>\.venv\Lib\site-packages\sqlmodel\sql\_expression_select_gen.py:105:1
+    |
+105 | / @overload
+106 | | def select(ent0: _TCCA[_T0], /) -> SelectOfScalar[_T0]: ...
+    | |___________________________________________________________^ First overload defined here
+info: Possible overloads for function `select`:
+info:   [_T0](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], /) -> SelectOfScalar[_T0]
+info:   [_TScalar_0](ent0: _TScalar_0, /) -> SelectOfScalar[_TScalar_0]
+info:   [_T0, _T1](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], /) -> Select[tuple[_T0, _T1]]
+info:   [_T0, _TScalar_1](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], entity_1: _TScalar_1, /) -> Select[tuple[_T0, _TScalar_1]]
+info:   [_TScalar_0, _T1](entity_0: _TScalar_0, ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], /) -> Select[tuple[_TScalar_0, _T1]]
+info:   [_TScalar_0, _TScalar_1](entity_0: _TScalar_0, entity_1: _TScalar_1, /) -> Select[tuple[_TScalar_0, _TScalar_1]]
+info:   [_T0, _T1, _T2](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], /) -> Select[tuple[_T0, _T1, _T2]]
+info:   [_T0, _T1, _TScalar_2](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], entity_2: _TScalar_2, /) -> Select[tuple[_T0, _T1, _TScalar_2]]
+info:   [_T0, _TScalar_1, _T2](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], entity_1: _TScalar_1, ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], /) -> Select[tuple[_T0, _TScalar_1, _T2]]
+info:   [_T0, _TScalar_1, _TScalar_2](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], entity_1: _TScalar_1, entity_2: _TScalar_2, /) -> Select[tuple[_T0, _TScalar_1, _TScalar_2]]
+info:   [_TScalar_0, _T1, _T2](entity_0: _TScalar_0, ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], /) -> Select[tuple[_TScalar_0, _T1, _T2]]
+info:   [_TScalar_0, _T1, _TScalar_2](entity_0: _TScalar_0, ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], entity_2: _TScalar_2, /) -> Select[tuple[_TScalar_0, _T1, _TScalar_2]]
+info:   [_TScalar_0, _TScalar_1, _T2](entity_0: _TScalar_0, entity_1: _TScalar_1, ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], /) -> Select[tuple[_TScalar_0, _TScalar_1, _T2]]
+info:   [_TScalar_0, _TScalar_1, _TScalar_2](entity_0: _TScalar_0, entity_1: _TScalar_1, entity_2: _TScalar_2, /) -> Select[tuple[_TScalar_0, _TScalar_1, _TScalar_2]]
+info:   [_T0, _T1, _T2, _T3](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], ent3: TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_T0, _T1, _T2, _T3]]
+info:   [_T0, _T1, _T2, _TScalar_3](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], entity_3: _TScalar_3, /) -> Select[tuple[_T0, _T1, _T2, _TScalar_3]]
+info:   [_T0, _T1, _TScalar_2, _T3](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], entity_2: _TScalar_2, ent3: TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_T0, _T1, _TScalar_2, _T3]]
+info:   [_T0, _T1, _TScalar_2, _TScalar_3](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], entity_2: _TScalar_2, entity_3: _TScalar_3, /) -> Select[tuple[_T0, _T1, _TScalar_2, _TScalar_3]]
+info:   [_T0, _TScalar_1, _T2, _T3](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], entity_1: _TScalar_1, ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], ent3: TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_T0, _TScalar_1, _T2, _T3]]
+info:   [_T0, _TScalar_1, _T2, _TScalar_3](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], entity_1: _TScalar_1, ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], entity_3: _TScalar_3, /) -> Select[tuple[_T0, _TScalar_1, _T2, _TScalar_3]]
+info:   [_T0, _TScalar_1, _TScalar_2, _T3](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], entity_1: _TScalar_1, entity_2: _TScalar_2, ent3: TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_T0, _TScalar_1, _TScalar_2, _T3]]
+info:   [_T0, _TScalar_1, _TScalar_2, _TScalar_3](ent0: TypedColumnsClauseRole[_T0] | SQLCoreOperations[_T0] | type[_T0], entity_1: _TScalar_1, entity_2: _TScalar_2, entity_3: _TScalar_3, /) -> Select[tuple[_T0, _TScalar_1, _TScalar_2, _TScalar_3]]
+info:   [_TScalar_0, _T1, _T2, _T3](entity_0: _TScalar_0, ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], ent3: TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_TScalar_0, _T1, _T2, _T3]]
+info:   [_TScalar_0, _T1, _T2, _TScalar_3](entity_0: _TScalar_0, ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], entity_3: _TScalar_3, /) -> Select[tuple[_TScalar_0, _T1, _T2, _TScalar_3]]
+info:   [_TScalar_0, _T1, _TScalar_2, _T3](entity_0: _TScalar_0, ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], entity_2: _TScalar_2, ent3: TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_TScalar_0, _T1, _TScalar_2, _T3]]
+info:   [_TScalar_0, _T1, _TScalar_2, _TScalar_3](entity_0: _TScalar_0, ent1: TypedColumnsClauseRole[_T1] | SQLCoreOperations[_T1] | type[_T1], entity_2: _TScalar_2, entity_3: _TScalar_3, /) -> Select[tuple[_TScalar_0, _T1, _TScalar_2, _TScalar_3]]
+info:   [_TScalar_0, _TScalar_1, _T2, _T3](entity_0: _TScalar_0, entity_1: _TScalar_1, ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], ent3: TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_TScalar_0, _TScalar_1, _T2, _T3]]
+info:   [_TScalar_0, _TScalar_1, _T2, _TScalar_3](entity_0: _TScalar_0, entity_1: _TScalar_1, ent2: TypedColumnsClauseRole[_T2] | SQLCoreOperations[_T2] | type[_T2], entity_3: _TScalar_3, /) -> Select[tuple[_TScalar_0, _TScalar_1, _T2, _TScalar_3]]
+info:   [_TScalar_0, _TScalar_1, _TScalar_2, _T3](entity_0: _TScalar_0, entity_1: _TScalar_1, entity_2: _TScalar_2, ent3: TypedColumnsClauseRole[_T3] | SQLCoreOperations[_T3] | type[_T3], /) -> Select[tuple[_TScalar_0, _TScalar_1, _TScalar_2, _T3]]
+info:   [_TScalar_0, _TScalar_1, _TScalar_2, _TScalar_3](entity_0: _TScalar_0, entity_1: _TScalar_1, entity_2: _TScalar_2, entity_3: _TScalar_3, /) -> Select[tuple[_TScalar_0, _TScalar_1, _TScalar_2, _TScalar_3]]
+info: Overload implementation defined here
+   --> <WORKSPACE>\.venv\Lib\site-packages\sqlmodel\sql\_expression_select_gen.py:383:5
+    |
+383 | def select(*entities: Any) -> Select | SelectOfScalar:
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[invalid-argument-type]: Argument to function `_localized_sites` is incorrect
+  --> backend\app\api\routes\sites.py:55:55
+   |
+55 |     return SitesPublic(data=_localized_sites(session, sites, lang), count=count)
+   |                                                       ^^^^^ Expected `list[Site]`, found `Sequence[Site]`
+info: Function defined here
+  --> backend\app\api\routes\sites.py:76:5
+   |
+76 | def _localized_sites(
+   |     ^^^^^^^^^^^^^^^^
+77 |     session: SessionDep, sites: list[Site], lang: str
+   |                          ----------------- Parameter declared here
+
+error[invalid-argument-type]: Argument to bound method `Select.join` is incorrect
+   --> backend\app\api\routes\sites.py:132:25
+    |
+132 |         .join(Language, SiteTranslation.language_id == Language.id)
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected `SQLCoreOperations[Any] | _HasClauseElement[Any] | TypedColumnsClauseRole[Any] | ... omitted 4 union elements`, found `bool`
+info: type `bool` is not assignable to any element of the union `SQLCoreOperations[Any] | _HasClauseElement[Any] | TypedColumnsClauseRole[Any] | ... omitted 4 union elements`
+info: ├── type `bool` is not assignable to protocol `_HasClauseElement[Any]`
+info: │   └── protocol member `__clause_element__` is not defined on type `bool`
+info: └── ... omitted 6 union elements without additional context
+info: Method defined here
+    --> <WORKSPACE>\.venv\Lib\site-packages\sqlalchemy\sql\selectable.py:5526:9
+     |
+5526 |     def join(
+     |         ^^^^
+5527 |         self,
+5528 |         target: _JoinTargetArgument,
+5529 |         onclause: Optional[_OnClauseArgument] = None,
+     |         -------------------------------------------- Parameter declared here
+
+error[invalid-argument-type]: Argument is incorrect
+   --> backend\app\seed_sample_data.py:283:44
+    |
+283 |                 media = Media(id=media_id, **values)
+    |                                            ^^^^^^^^ Expected `LaxDatetime | None`, found `UUID | None | str | int`
+info: element `UUID` of union `UUID | None | str | int` is not assignable to `bytes | date | float | ... omitted 3 union elements`
+
+error[invalid-argument-type]: Argument is incorrect
+   --> backend\app\seed_sample_data.py:283:44
+    |
+283 |                 media = Media(id=media_id, **values)
+    |                                            ^^^^^^^^ Expected `LaxDatetime | None`, found `UUID | None | str | int`
+info: element `UUID` of union `UUID | None | str | int` is not assignable to `bytes | date | float | ... omitted 3 union elements`
+
+Found 8 diagnostics
+
+exit_code=1

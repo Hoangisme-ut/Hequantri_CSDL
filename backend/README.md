@@ -1,5 +1,79 @@
 # FastAPI Project - Backend
 
+## Visit analytics
+
+Admin-only GET endpoints under `/api/v1/analytics`: `overview`, `visits`,
+`top-artifacts`, and `sites`. `views` counts VisitLog rows; `unique_users` counts
+distinct recorded user IDs within each result group. These are content views,
+not physical visitors, visits to a site, or audio interactions.
+
+Optional `from` and `to` parameters require timezone offsets and use UTC
+`[from, to)` boundaries. Omitted boundaries are unbounded. `site_id` filters
+using the artifact's **current** site; historical site assignments are not
+stored. Daily results contain only days with recorded views and exclude legacy
+rows with null timestamps. Overview/rankings without time filters include those
+rows. Hidden artifacts/sites remain in historical aggregates. Unique user
+counts across groups must not be summed to infer a global unique count.
+
+`top-artifacts` accepts `limit` (1–100); `sites` accepts `skip` and `limit`
+(1–200). Each endpoint aggregates in one SQL query instead of loading events.
+
+## Token compatibility and reset replay protection
+
+New JWTs carry `purpose=access` or `purpose=password_reset`. Legacy access
+tokens without purpose remain valid with a UUID subject and expiry. Legacy
+reset links remain valid with an email subject and expiry, but can be used only
+once. Migration `c3d4e5f6a7b8` adds `usedpasswordreset` to record a SHA-256 digest
+of the verified JWT signing input; no raw token is stored. Consumption and the
+password update commit atomically. Deploy the migration before the application.
+
+Web and Mobile continue using the same token response/body fields. Password
+changes do **not** revoke existing access sessions or other unused recovery
+links; access tokens expire under the existing policy. Global revocation or
+credential-version enforcement requires a separately approved session policy.
+Consumed-token records are retained; no automatic destructive cleanup is added.
+
+## Feedback API
+
+Authenticated Visitors/Admins can POST `/api/v1/feedback/` with `artifact_id`,
+`rating` (1–5), and optional `comment`. The server assigns ownership and
+`pending` status. The artifact and its site must be visible. GET `/feedback/me`
+returns only the caller's submissions. GET `/feedback/{id}` permits the owner
+or an Admin; other users receive 404 regardless of moderation status.
+
+Admin-only GET `/feedback/` supports `status`, `artifact_id`, `user_id`, `skip`,
+and `limit`. PATCH `/feedback/{id}/status` accepts `pending`, `approved`, or
+`rejected`. No public feedback feed is exposed. Migration `b2c3d4e5f6a7` adds
+rating/status CHECK constraints; invalid legacy rows stop the migration for
+review instead of being changed or deleted automatically.
+
+## SQL Server verification for phases 2, 4 and 5
+
+The normal test suite includes `test_backend_sqlserver_flow.py` (API calls
+equivalent to Admin/Visitor actions, Unicode round trips, resolve, favorites,
+visits, feedback, analytics) and `test_sqlserver_schema.py` (Alembic head,
+trusted CHECK constraints, unique/filtered indexes, NVARCHAR and foreign keys).
+These are backend integration tests, not browser or Flutter UI tests.
+
+Use the isolated test provisioning/identity checks below, migrate a **fresh**
+test database, then run `coverage run -m pytest -p no:cacheprovider tests` and
+`coverage report --fail-under=90`. Migration execution and schema inspection
+must target that verified test database, never the application database.
+
+Concurrency tests use separate SQL Server connections and widen the former
+read/write race windows. Visit deduplication keeps a rolling 300-second window
+with a transaction lock per user/artifact. Artifact updates and Beacon
+assignment writes share one bounded transaction lock; Language writes share
+another. Locks are acquired before reading mutable content rows. This favors
+correctness for Admin writes; high-volume write throughput has not been load
+tested. Database constraints remain the final protection against uniqueness
+violations. Only recognized duplicate constraints are mapped to HTTP 409.
+
+Query-count tests compare pages of 1 and 5 rows: Artifact list uses 6 SELECTs
+in both cases, Favorites/Visit History use 7 in both cases (including auth).
+Analytics executes one aggregate query per endpoint. These measurements do not
+claim production latency or query-plan improvements.
+
 ## Requirements
 
 * [Docker](https://www.docker.com/).
@@ -115,6 +189,26 @@ $ docker compose exec backend bash
 
 ## Backend Tests
 
+Database tests now fail closed unless `TEST_DATABASE_URL` and
+`TEST_DATABASE_TOKEN` identify a separately provisioned SQL Server database.
+Never point tests at the application's `DATABASE_URL`. Before running tests:
+
+1. Start a dedicated test SQL Server instance (separate container/storage).
+2. Set `TEST_DATABASE_URL` to a **new** `test_*` database on that instance and
+   `TEST_DATABASE_TOKEN` to a random 64-character hexadecimal token.
+3. Run `uv run python scripts/provision_test_database.py`. This refuses an
+   existing database and creates an identity marker only in the new database.
+4. Run migrations with `DATABASE_URL` temporarily set to `TEST_DATABASE_URL`
+   **only for the migration process**, then restore the application URL.
+5. Run the test command below with the two `TEST_DATABASE_*` variables set.
+
+The fixture verifies the database name and marker before importing the app's
+engine and again before setup/cleanup. A name alone is not proof of isolation.
+No test command provisions, marks, or migrates an existing database automatically.
+The GitHub Backend workflow provisions a new test database on its disposable runner.
+For pure model/guard tests with no DB fixtures, `pytest --noconftest` can be used
+explicitly; it is not a substitute for the integration suite.
+
 To test the backend from the `backend` directory, run:
 
 ```console
@@ -198,6 +292,24 @@ Once you are done, regenerate the templates used by the application:
 ```console
 $ bun run email:export
 ```
+
+## User management and Heritage roles
+
+User management remains restricted to `is_superuser=true`. A user with the
+`admin` role can manage Heritage content without becoming a superuser. Role
+assignment never promotes a user implicitly. Boolean-only superuser changes
+continue to synchronize the role to `admin`/`visitor`; conflicting explicit
+assignments return 409 before any mutation. Null roles retain the existing
+fallback (superuser -> admin, other users -> visitor). Existing inconsistent
+records are not silently migrated by profile/password updates.
+
+Password recovery preserves HTTP 200 and the same generic message for both
+registered and unknown addresses, including SMTP failures or missing SMTP
+configuration. Delivery failures are logged without recipient/token details;
+200 is not a delivery receipt. Failed welcome-email delivery does not undo an
+already-created user. Delivery checks are enabled for these two flows without
+changing other email endpoints. No automatic mail retry/queue is introduced.
+
 # Media metadata API
 
 All media management endpoints require an authenticated Admin (including the

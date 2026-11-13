@@ -1,15 +1,18 @@
+﻿import logging
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import col, func, select
 
 from app import crud
 from app.api.deps import (
-    AdminUser,
     CurrentUser,
     SessionDep,
-    is_admin,
+    get_active_language_or_error,
+    get_current_active_superuser,
+    get_role_name,
+    get_role_or_404,
 )
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
@@ -25,17 +28,21 @@ from app.models import (
     UserUpdate,
     UserUpdateMe,
 )
-from app.utils import generate_new_account_email, send_email
+from app.utils import EmailDeliveryError, generate_new_account_email, send_email
 
 router = APIRouter(prefix="/users", tags=["users"])
+logger = logging.getLogger(__name__)
 
 
-@router.get("/", response_model=UsersPublic)
+@router.get(
+    "/",
+    dependencies=[Depends(get_current_active_superuser)],
+    response_model=UsersPublic,
+)
 def read_users(
     session: SessionDep,
-    current_user: AdminUser,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1),
 ) -> Any:
     """
     Retrieve users. Admin only.
@@ -52,13 +59,10 @@ def read_users(
     return UsersPublic(data=users_public, count=count)
 
 
-@router.post("/", response_model=UserPublic)
-def create_user(
-    *,
-    session: SessionDep,
-    current_user: AdminUser,
-    user_in: UserCreate,
-) -> Any:
+@router.post(
+    "/", dependencies=[Depends(get_current_active_superuser)], response_model=UserPublic
+)
+def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     """
     Create new user. Admin only.
     """
@@ -76,11 +80,17 @@ def create_user(
             username=user_in.email,
             password=user_in.password,
         )
-        send_email(
-            email_to=user_in.email,
-            subject=email_data.subject,
-            html_content=email_data.html_content,
-        )
+        try:
+            send_email(
+                email_to=user_in.email,
+                subject=email_data.subject,
+                html_content=email_data.html_content,
+                raise_on_failure=True,
+            )
+        except EmailDeliveryError:
+            # The account is already committed; notification failure is not a
+            # failed creation and must not encourage a duplicate client retry.
+            logger.warning("New account email delivery failed after user creation")
     return user
 
 
@@ -93,7 +103,13 @@ def update_user_me(
 ) -> Any:
     """
     Update own user.
+
+    - `language_id` (ngôn ngữ ưa thích) phải tồn tại (404) và đang bật (400);
+      gửi `null` để bỏ ngôn ngữ ưa thích.
+    - `email: null` -> 422. Không đổi được role / quyền qua endpoint này.
     """
+    if user_in.language_id is not None:
+        get_active_language_or_error(session, user_in.language_id)
     if user_in.email:
         existing_user = crud.get_user_by_email(
             session=session,
@@ -150,11 +166,7 @@ def read_user_me(current_user: CurrentUser) -> Any:
     """
     Get current user with role information.
     """
-    role_name = (
-        current_user.role.name
-        if current_user.role is not None
-        else ("admin" if current_user.is_superuser else "visitor")
-    )
+    role_name = get_role_name(current_user)
 
     return UserMePublic(
         **UserPublic.model_validate(current_user).model_dump(),
@@ -170,10 +182,9 @@ def delete_user_me(
     """
     Delete own user. Admin accounts cannot delete themselves.
     """
-    if is_admin(current_user):
+    if current_user.is_superuser:
         raise HTTPException(
-            status_code=403,
-            detail="Administrators are not allowed to delete themselves",
+            status_code=403, detail="Super users are not allowed to delete themselves"
         )
     session.delete(current_user)
     session.commit()
@@ -215,36 +226,47 @@ def read_user_by_id(
 ) -> Any:
     """
     Get own user information or another user's information as Admin.
-    """
-    user = session.get(User, user_id)
 
+    Kiểm tra quyền TRƯỚC khi tra cứu: người không phải superuser xem user khác -> 403
+    (không lộ id có tồn tại hay không); admin xem id không có -> 404.
+    """
+    if user_id != current_user.id and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=403,
+            detail="The user doesn't have enough privileges",
+        )
+    user = session.get(User, user_id)
     if user is None:
         raise HTTPException(
             status_code=404,
             detail="User not found",
         )
-
-    if user.id == current_user.id:
-        return user
-
-    if not is_admin(current_user):
-        raise HTTPException(
-            status_code=403,
-            detail="The user doesn't have enough privileges",
-        )
-
     return user
 
-@router.patch("/{user_id}", response_model=UserPublic)
+
+@router.patch(
+    "/{user_id}",
+    dependencies=[Depends(get_current_active_superuser)],
+    response_model=UserPublic,
+)
 def update_user(
     *,
     session: SessionDep,
-    current_user: AdminUser,
+    current_user: CurrentUser,
     user_id: uuid.UUID,
     user_in: UserUpdate,
 ) -> Any:
     """
     Update a user. Admin only.
+
+    Chính sách quyền (hai tầng):
+    - Endpoint này cần `is_superuser`. Role `admin` chỉ quản lý nội dung di sản.
+    - Gán `role_id` không tự nâng quyền: `is_superuser` giữ nguyên. `role_id: null` xóa role.
+    - Chỉ gửi `is_superuser` (không kèm role) thì role tự đồng bộ admin / visitor.
+    - Superuser mà role là visitor (hoặc gán role không tồn tại) -> 409; không đổi gì.
+    - `role_id` không tồn tại -> 404.
+    - Không được tự gỡ `is_superuser` hoặc tự vô hiệu hóa chính mình -> 400.
+    - `null` cho `email` / `is_active` / `is_superuser` / `password` -> 422.
     """
     db_user = session.get(User, user_id)
     if not db_user:
@@ -252,6 +274,15 @@ def update_user(
             status_code=404,
             detail="The user with this id does not exist in the system",
         )
+    if db_user.id == current_user.id and (
+        user_in.is_superuser is False or user_in.is_active is False
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Không thể tự gỡ quyền superuser hoặc tự vô hiệu hóa chính mình",
+        )
+    if user_in.role_id is not None:
+        get_role_or_404(session, user_in.role_id)
     if user_in.email:
         existing_user = crud.get_user_by_email(
             session=session,
@@ -264,20 +295,20 @@ def update_user(
                 detail="User with this email already exists",
             )
 
-    db_user = crud.update_user(
-        session=session,
-        db_user=db_user,
-        user_in=user_in,
-    )
-
+    try:
+        db_user = crud.update_user(
+            session=session,
+            db_user=db_user,
+            user_in=user_in,
+        )
+    except crud.InvalidRoleAssignmentError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     return db_user
 
 
-@router.delete("/{user_id}")
+@router.delete("/{user_id}", dependencies=[Depends(get_current_active_superuser)])
 def delete_user(
-    session: SessionDep,
-    current_user: AdminUser,
-    user_id: uuid.UUID,
+    session: SessionDep, current_user: CurrentUser, user_id: uuid.UUID
 ) -> Message:
     """
     Delete a user. Admin only.
@@ -289,10 +320,9 @@ def delete_user(
             detail="User not found",
         )
 
-    if user.id == current_user.id:
+    if user == current_user:
         raise HTTPException(
-            status_code=403,
-            detail="Administrators are not allowed to delete themselves",
+            status_code=403, detail="Super users are not allowed to delete themselves"
         )
     session.delete(user)
     session.commit()

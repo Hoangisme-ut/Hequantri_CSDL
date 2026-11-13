@@ -1,0 +1,33 @@
+{
+  "checks": [
+    {
+      "id": "OPEN-LIVE-01",
+      "status": "PASS",
+      "detail": "No visit before opening the detail route"
+    },
+    {
+      "id": "OPEN-LIVE-02",
+      "status": "PASS",
+      "detail": "Actual detail widget loaded Web content, rendered it and recorded HTTP 201"
+    },
+    {
+      "id": "OPEN-LIVE-03",
+      "status": "PASS",
+      "detail": "Reopening sent another real request; server returned 200 with the same persisted visit"
+    },
+    {
+      "id": "OPEN-LIVE-04",
+      "status": "PASS",
+      "detail": "Identity-verified SQL SELECT confirmed one visit, matching user/artifact/timestamp"
+    }
+  ],
+  "user_id": "2c398454-a25e-472b-919c-219728e2e632",
+  "artifact_id": "9b35cf5e-c484-44e8-ab60-a18ee62fa417",
+  "site_id": "b9ccd448-4662-4af6-8a6d-2b84781f6740",
+  "visit_id": "7488b0cd-9a08-41ca-98ab-aa59b2055dc1",
+  "visited_at_utc": "2026-11-08T05:22:50.315Z",
+  "http_visit_statuses": [
+    201,
+    200
+  ]
+}

@@ -157,6 +157,48 @@ export type ArtifactPublic = {
 };
 
 /**
+ * ArtifactReviewPublic
+ *
+ * Bình luận công khai: chỉ comment đã duyệt, không lộ user_id / status.
+ */
+export type ArtifactReviewPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Artifact Id
+     */
+    artifact_id: string;
+    /**
+     * Rating
+     */
+    rating: number;
+    /**
+     * Comment
+     */
+    comment?: string | null;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+};
+
+/**
+ * ArtifactReviewsPublic
+ */
+export type ArtifactReviewsPublic = {
+    /**
+     * Data
+     */
+    data: Array<ArtifactReviewPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * ArtifactSummariesPublic
  */
 export type ArtifactSummariesPublic = {
@@ -302,6 +344,32 @@ export type ArtifactUpdate = {
      * Is Active
      */
     is_active?: boolean | null;
+};
+
+/**
+ * ArtifactViews
+ */
+export type ArtifactViews = {
+    /**
+     * Artifact Id
+     */
+    artifact_id: string;
+    /**
+     * Site Id
+     */
+    site_id: string;
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Views
+     */
+    views: number;
+    /**
+     * Unique Users
+     */
+    unique_users: number;
 };
 
 /**
@@ -497,6 +565,43 @@ export type Body_login_login_access_token = {
 };
 
 /**
+ * DailyViews
+ */
+export type DailyViews = {
+    /**
+     * Date
+     */
+    date: string;
+    /**
+     * Views
+     */
+    views: number;
+    /**
+     * Unique Users
+     */
+    unique_users: number;
+};
+
+/**
+ * DashboardSummary
+ */
+export type DashboardSummary = {
+    sites: InventoryCount;
+    artifacts: InventoryCount;
+    beacons: InventoryCount;
+    visits: VisitStats;
+    ratings: RatingStats;
+    /**
+     * From Date
+     */
+    from_date?: string | null;
+    /**
+     * To Date
+     */
+    to_date?: string | null;
+};
+
+/**
  * FavoriteCreate
  */
 export type FavoriteCreate = {
@@ -568,7 +673,27 @@ export type FavoritesDetailPublic = {
 };
 
 /**
+ * FeedbackCreate
+ */
+export type FeedbackCreate = {
+    /**
+     * Artifact Id
+     */
+    artifact_id: string;
+    /**
+     * Rating
+     */
+    rating: number;
+    /**
+     * Comment
+     */
+    comment?: string | null;
+};
+
+/**
  * FeedbackPublic
+ *
+ * Dữ liệu đầy đủ: chỉ trả cho chủ sở hữu (/feedbacks/me) và admin.
  */
 export type FeedbackPublic = {
     /**
@@ -599,6 +724,10 @@ export type FeedbackPublic = {
      * Created At
      */
     created_at?: string | null;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
 };
 
 /**
@@ -635,6 +764,10 @@ export type FeedbackReviewPublic = {
      * Created At
      */
     created_at?: string | null;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
     /**
      * Visitor Name
      */
@@ -675,17 +808,52 @@ export type FeedbackReviewsPublic = {
 
 /**
  * FeedbackStatus
+ *
+ * Trạng thái Feedback theo ERD: chỉ nhận pending / approved / hidden.
  */
-export type FeedbackStatus = 'pending' | 'approved' | 'rejected';
+export type FeedbackStatus = 'pending' | 'approved' | 'hidden';
 
 /**
  * FeedbackStatusUpdate
+ *
+ * Admin duyệt (approved) hoặc từ chối/ẩn (hidden). `pending` do hệ thống tự đặt.
  */
 export type FeedbackStatusUpdate = {
     /**
      * Status
      */
-    status: string;
+    status: 'approved' | 'hidden';
+};
+
+/**
+ * FeedbackUpdate
+ *
+ * Visitor sửa đánh giá của chính mình. Chỉ các trường được gửi mới bị đổi;
+ * gửi `"comment": null` (hoặc chuỗi rỗng) để xóa comment.
+ */
+export type FeedbackUpdate = {
+    /**
+     * Rating
+     */
+    rating?: number | null;
+    /**
+     * Comment
+     */
+    comment?: string | null;
+};
+
+/**
+ * FeedbacksPublic
+ */
+export type FeedbacksPublic = {
+    /**
+     * Data
+     */
+    data: Array<FeedbackPublic>;
+    /**
+     * Count
+     */
+    count: number;
 };
 
 /**
@@ -699,71 +867,17 @@ export type HTTPValidationError = {
 };
 
 /**
- * ItemCreate
+ * InventoryCount
  */
-export type ItemCreate = {
+export type InventoryCount = {
     /**
-     * Title
+     * Total
      */
-    title: string;
+    total: number;
     /**
-     * Description
+     * Active
      */
-    description?: string | null;
-};
-
-/**
- * ItemPublic
- */
-export type ItemPublic = {
-    /**
-     * Title
-     */
-    title: string;
-    /**
-     * Description
-     */
-    description?: string | null;
-    /**
-     * Id
-     */
-    id: string;
-    /**
-     * Owner Id
-     */
-    owner_id: string;
-    /**
-     * Created At
-     */
-    created_at?: string | null;
-};
-
-/**
- * ItemUpdate
- */
-export type ItemUpdate = {
-    /**
-     * Title
-     */
-    title?: string | null;
-    /**
-     * Description
-     */
-    description?: string | null;
-};
-
-/**
- * ItemsPublic
- */
-export type ItemsPublic = {
-    /**
-     * Data
-     */
-    data: Array<ItemPublic>;
-    /**
-     * Count
-     */
-    count: number;
+    active: number;
 };
 
 /**
@@ -837,6 +951,28 @@ export type LanguageUpdate = {
 };
 
 /**
+ * LanguageVisitCount
+ */
+export type LanguageVisitCount = {
+    /**
+     * Language Id
+     */
+    language_id?: string | null;
+    /**
+     * Code
+     */
+    code?: string | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * LanguagesPublic
  */
 export type LanguagesPublic = {
@@ -848,6 +984,18 @@ export type LanguagesPublic = {
      * Count
      */
     count: number;
+};
+
+/**
+ * LegacyFeedbackStatus
+ */
+export type LegacyFeedbackStatus = 'pending' | 'approved' | 'rejected';
+
+/**
+ * LegacyFeedbackStatusUpdate
+ */
+export type LegacyFeedbackStatusUpdate = {
+    status: LegacyFeedbackStatus;
 };
 
 /**
@@ -969,6 +1117,24 @@ export type NewPassword = {
 };
 
 /**
+ * Overview
+ */
+export type Overview = {
+    /**
+     * Views
+     */
+    views: number;
+    /**
+     * Unique Users
+     */
+    unique_users: number;
+    /**
+     * Artifacts Viewed
+     */
+    artifacts_viewed: number;
+};
+
+/**
  * PrivateUserCreate
  */
 export type PrivateUserCreate = {
@@ -988,6 +1154,20 @@ export type PrivateUserCreate = {
      * Is Verified
      */
     is_verified?: boolean;
+};
+
+/**
+ * RatingStats
+ */
+export type RatingStats = {
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Average
+     */
+    average?: number | null;
 };
 
 /**
@@ -1068,6 +1248,90 @@ export type SitePublic = {
      * Updated At
      */
     updated_at?: string | null;
+    /**
+     * Language Code
+     */
+    language_code?: string | null;
+    /**
+     * Is Fallback
+     */
+    is_fallback?: boolean;
+};
+
+/**
+ * SiteTranslationInput
+ */
+export type SiteTranslationInput = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Address
+     */
+    address?: string | null;
+};
+
+/**
+ * SiteTranslationPublic
+ */
+export type SiteTranslationPublic = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Address
+     */
+    address?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Site Id
+     */
+    site_id: string;
+    /**
+     * Language Id
+     */
+    language_id: string;
+    /**
+     * Source Hash
+     */
+    source_hash: string;
+    /**
+     * Translation Source
+     */
+    translation_source: string;
+    /**
+     * Is Confirmed
+     */
+    is_confirmed: boolean;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
+    /**
+     * Language Code
+     */
+    language_code: string;
+    /**
+     * Is Stale
+     */
+    is_stale?: boolean;
 };
 
 /**
@@ -1105,6 +1369,28 @@ export type SiteUpdate = {
 };
 
 /**
+ * SiteViews
+ */
+export type SiteViews = {
+    /**
+     * Site Id
+     */
+    site_id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Views
+     */
+    views: number;
+    /**
+     * Unique Users
+     */
+    unique_users: number;
+};
+
+/**
  * SitesPublic
  */
 export type SitesPublic = {
@@ -1130,6 +1416,62 @@ export type Token = {
      * Token Type
      */
     token_type?: string;
+};
+
+/**
+ * TopArtifact
+ */
+export type TopArtifact = {
+    /**
+     * Artifact Id
+     */
+    artifact_id: string;
+    /**
+     * Site Id
+     */
+    site_id: string;
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Is Active
+     */
+    is_active: boolean;
+    /**
+     * Visit Count
+     */
+    visit_count: number;
+    /**
+     * Rating Count
+     */
+    rating_count?: number;
+    /**
+     * Average Rating
+     */
+    average_rating?: number | null;
+};
+
+/**
+ * TopArtifacts
+ */
+export type TopArtifacts = {
+    /**
+     * From Date
+     */
+    from_date?: string | null;
+    /**
+     * To Date
+     */
+    to_date?: string | null;
+    /**
+     * Data
+     */
+    data: Array<TopArtifact>;
 };
 
 /**
@@ -1361,6 +1703,20 @@ export type ValidationError = {
 };
 
 /**
+ * VisitDayCount
+ */
+export type VisitDayCount = {
+    /**
+     * Day
+     */
+    day: string;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * VisitDetailPublic
  *
  * Một lượt tham quan kèm tóm tắt hiện vật (tiêu đề theo ngôn ngữ).
@@ -1466,6 +1822,64 @@ export type VisitLogPublic = {
 };
 
 /**
+ * VisitStats
+ */
+export type VisitStats = {
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Unique Visitors
+     */
+    unique_visitors: number;
+};
+
+/**
+ * VisitsByDay
+ */
+export type VisitsByDay = {
+    /**
+     * From Date
+     */
+    from_date: string;
+    /**
+     * To Date
+     */
+    to_date: string;
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Data
+     */
+    data: Array<VisitDayCount>;
+};
+
+/**
+ * VisitsByLanguage
+ */
+export type VisitsByLanguage = {
+    /**
+     * From Date
+     */
+    from_date?: string | null;
+    /**
+     * To Date
+     */
+    to_date?: string | null;
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Data
+     */
+    data: Array<LanguageVisitCount>;
+};
+
+/**
  * VisitsDetailPublic
  */
 export type VisitsDetailPublic = {
@@ -1478,6 +1892,176 @@ export type VisitsDetailPublic = {
      */
     count: number;
 };
+
+export type analyticsOverviewData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * From
+         */
+        from?: string | null;
+        /**
+         * To
+         */
+        to?: string | null;
+        /**
+         * Site Id
+         */
+        site_id?: string | null;
+    };
+    url: '/api/v1/analytics/overview';
+};
+
+export type analyticsOverviewErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type analyticsOverviewError = analyticsOverviewErrors[keyof analyticsOverviewErrors];
+
+export type analyticsOverviewResponses = {
+    /**
+     * Successful Response
+     */
+    200: Overview;
+};
+
+export type analyticsOverviewResponse = analyticsOverviewResponses[keyof analyticsOverviewResponses];
+
+export type analyticsVisitsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * From
+         */
+        from?: string | null;
+        /**
+         * To
+         */
+        to?: string | null;
+        /**
+         * Site Id
+         */
+        site_id?: string | null;
+    };
+    url: '/api/v1/analytics/visits';
+};
+
+export type analyticsVisitsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type analyticsVisitsError = analyticsVisitsErrors[keyof analyticsVisitsErrors];
+
+export type analyticsVisitsResponses = {
+    /**
+     * Response Analytics-Visits
+     *
+     * Successful Response
+     */
+    200: Array<DailyViews>;
+};
+
+export type analyticsVisitsResponse = analyticsVisitsResponses[keyof analyticsVisitsResponses];
+
+export type analyticsTopArtifactsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * From
+         */
+        from?: string | null;
+        /**
+         * To
+         */
+        to?: string | null;
+        /**
+         * Site Id
+         */
+        site_id?: string | null;
+    };
+    url: '/api/v1/analytics/top-artifacts';
+};
+
+export type analyticsTopArtifactsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type analyticsTopArtifactsError = analyticsTopArtifactsErrors[keyof analyticsTopArtifactsErrors];
+
+export type analyticsTopArtifactsResponses = {
+    /**
+     * Response Analytics-Top Artifacts
+     *
+     * Successful Response
+     */
+    200: Array<ArtifactViews>;
+};
+
+export type analyticsTopArtifactsResponse = analyticsTopArtifactsResponses[keyof analyticsTopArtifactsResponses];
+
+export type analyticsSitesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * From
+         */
+        from?: string | null;
+        /**
+         * To
+         */
+        to?: string | null;
+        /**
+         * Site Id
+         */
+        site_id?: string | null;
+    };
+    url: '/api/v1/analytics/sites';
+};
+
+export type analyticsSitesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type analyticsSitesError = analyticsSitesErrors[keyof analyticsSitesErrors];
+
+export type analyticsSitesResponses = {
+    /**
+     * Response Analytics-Sites
+     *
+     * Successful Response
+     */
+    200: Array<SiteViews>;
+};
+
+export type analyticsSitesResponse = analyticsSitesResponses[keyof analyticsSitesResponses];
 
 export type loginLoginAccessTokenData = {
     body: Body_login_login_access_token;
@@ -1909,161 +2493,26 @@ export type utilsHealthCheckResponses = {
 
 export type utilsHealthCheckResponse = utilsHealthCheckResponses[keyof utilsHealthCheckResponses];
 
-export type itemsReadItemsData = {
+export type languagesReadLanguagesData = {
     body?: never;
     path?: never;
     query?: {
         /**
-         * Skip
+         * Include Inactive
          */
-        skip?: number;
-        /**
-         * Limit
-         */
-        limit?: number;
+        include_inactive?: boolean;
     };
-    url: '/api/v1/items/';
-};
-
-export type itemsReadItemsErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type itemsReadItemsError = itemsReadItemsErrors[keyof itemsReadItemsErrors];
-
-export type itemsReadItemsResponses = {
-    /**
-     * Successful Response
-     */
-    200: ItemsPublic;
-};
-
-export type itemsReadItemsResponse = itemsReadItemsResponses[keyof itemsReadItemsResponses];
-
-export type itemsCreateItemData = {
-    body: ItemCreate;
-    path?: never;
-    query?: never;
-    url: '/api/v1/items/';
-};
-
-export type itemsCreateItemErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type itemsCreateItemError = itemsCreateItemErrors[keyof itemsCreateItemErrors];
-
-export type itemsCreateItemResponses = {
-    /**
-     * Successful Response
-     */
-    200: ItemPublic;
-};
-
-export type itemsCreateItemResponse = itemsCreateItemResponses[keyof itemsCreateItemResponses];
-
-export type itemsDeleteItemData = {
-    body?: never;
-    path: {
-        /**
-         * Id
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/items/{id}';
-};
-
-export type itemsDeleteItemErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type itemsDeleteItemError = itemsDeleteItemErrors[keyof itemsDeleteItemErrors];
-
-export type itemsDeleteItemResponses = {
-    /**
-     * Successful Response
-     */
-    200: Message;
-};
-
-export type itemsDeleteItemResponse = itemsDeleteItemResponses[keyof itemsDeleteItemResponses];
-
-export type itemsReadItemData = {
-    body?: never;
-    path: {
-        /**
-         * Id
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/items/{id}';
-};
-
-export type itemsReadItemErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type itemsReadItemError = itemsReadItemErrors[keyof itemsReadItemErrors];
-
-export type itemsReadItemResponses = {
-    /**
-     * Successful Response
-     */
-    200: ItemPublic;
-};
-
-export type itemsReadItemResponse = itemsReadItemResponses[keyof itemsReadItemResponses];
-
-export type itemsUpdateItemData = {
-    body: ItemUpdate;
-    path: {
-        /**
-         * Id
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/items/{id}';
-};
-
-export type itemsUpdateItemErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type itemsUpdateItemError = itemsUpdateItemErrors[keyof itemsUpdateItemErrors];
-
-export type itemsUpdateItemResponses = {
-    /**
-     * Successful Response
-     */
-    200: ItemPublic;
-};
-
-export type itemsUpdateItemResponse = itemsUpdateItemResponses[keyof itemsUpdateItemResponses];
-
-export type languagesReadLanguagesData = {
-    body?: never;
-    path?: never;
-    query?: never;
     url: '/api/v1/languages/';
 };
+
+export type languagesReadLanguagesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type languagesReadLanguagesError = languagesReadLanguagesErrors[keyof languagesReadLanguagesErrors];
 
 export type languagesReadLanguagesResponses = {
     /**
@@ -2087,7 +2536,7 @@ export type languagesCreateLanguageErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
@@ -2133,13 +2582,17 @@ export type languagesDeleteLanguageErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
      * Không tìm thấy hoặc đang bị ẩn
      */
     404: unknown;
+    /**
+     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
+     */
+    409: unknown;
     /**
      * Validation Error
      */
@@ -2179,7 +2632,7 @@ export type languagesUpdateLanguageErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
@@ -2227,6 +2680,10 @@ export type sitesReadSitesData = {
          * Include Inactive
          */
         include_inactive?: boolean;
+        /**
+         * Lang
+         */
+        lang?: 'vi' | 'en';
     };
     url: '/api/v1/sites/';
 };
@@ -2262,7 +2719,7 @@ export type sitesCreateSiteErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
@@ -2300,7 +2757,7 @@ export type sitesDeleteSiteErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
@@ -2332,7 +2789,12 @@ export type sitesReadSiteData = {
          */
         site_id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Lang
+         */
+        lang?: 'vi' | 'en';
+    };
     url: '/api/v1/sites/{site_id}';
 };
 
@@ -2376,7 +2838,7 @@ export type sitesUpdateSiteErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
@@ -2399,6 +2861,138 @@ export type sitesUpdateSiteResponses = {
 };
 
 export type sitesUpdateSiteResponse = sitesUpdateSiteResponses[keyof sitesUpdateSiteResponses];
+
+export type sitesReadSiteTranslationsData = {
+    body?: never;
+    path: {
+        /**
+         * Site Id
+         */
+        site_id: string;
+    };
+    query?: never;
+    url: '/api/v1/sites/{site_id}/translations';
+};
+
+export type sitesReadSiteTranslationsErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type sitesReadSiteTranslationsError = sitesReadSiteTranslationsErrors[keyof sitesReadSiteTranslationsErrors];
+
+export type sitesReadSiteTranslationsResponses = {
+    /**
+     * Response Sites-Read Site Translations
+     *
+     * Successful Response
+     */
+    200: Array<SiteTranslationPublic>;
+};
+
+export type sitesReadSiteTranslationsResponse = sitesReadSiteTranslationsResponses[keyof sitesReadSiteTranslationsResponses];
+
+export type sitesDeleteSiteTranslationData = {
+    body?: never;
+    path: {
+        /**
+         * Site Id
+         */
+        site_id: string;
+        /**
+         * Language Id
+         */
+        language_id: string;
+    };
+    query?: never;
+    url: '/api/v1/sites/{site_id}/translations/{language_id}';
+};
+
+export type sitesDeleteSiteTranslationErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Dữ liệu gửi lên sai định dạng
+     */
+    422: unknown;
+};
+
+export type sitesDeleteSiteTranslationResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type sitesDeleteSiteTranslationResponse = sitesDeleteSiteTranslationResponses[keyof sitesDeleteSiteTranslationResponses];
+
+export type sitesUpsertSiteTranslationData = {
+    body: SiteTranslationInput;
+    path: {
+        /**
+         * Site Id
+         */
+        site_id: string;
+        /**
+         * Language Id
+         */
+        language_id: string;
+    };
+    query?: never;
+    url: '/api/v1/sites/{site_id}/translations/{language_id}';
+};
+
+export type sitesUpsertSiteTranslationErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Dữ liệu gửi lên sai định dạng
+     */
+    422: unknown;
+};
+
+export type sitesUpsertSiteTranslationResponses = {
+    /**
+     * Successful Response
+     */
+    200: SiteTranslationPublic;
+};
+
+export type sitesUpsertSiteTranslationResponse = sitesUpsertSiteTranslationResponses[keyof sitesUpsertSiteTranslationResponses];
 
 export type artifactsReadArtifactsData = {
     body?: never;
@@ -2467,7 +3061,7 @@ export type artifactsCreateArtifactErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
@@ -2513,7 +3107,7 @@ export type artifactsDeleteArtifactErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
@@ -2596,7 +3190,7 @@ export type artifactsUpdateArtifactErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
@@ -2642,7 +3236,7 @@ export type artifactsReadTranslationsErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
@@ -2690,7 +3284,7 @@ export type artifactsDeleteTranslationErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
@@ -2736,13 +3330,17 @@ export type artifactsUpsertTranslationErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
      * Không tìm thấy hoặc đang bị ẩn
      */
     404: unknown;
+    /**
+     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
+     */
+    409: unknown;
     /**
      * Validation Error
      */
@@ -2836,13 +3434,17 @@ export type beaconsDeleteBeaconErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
      * Không tìm thấy hoặc đang bị ẩn
      */
     404: unknown;
+    /**
+     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
+     */
+    409: unknown;
     /**
      * Validation Error
      */
@@ -2878,7 +3480,7 @@ export type beaconsReadBeaconErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
@@ -2924,7 +3526,7 @@ export type beaconsUpdateBeaconErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
@@ -2980,7 +3582,7 @@ export type beaconsReadBeaconsErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
@@ -3017,7 +3619,7 @@ export type beaconsCreateBeaconErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
@@ -3073,7 +3675,7 @@ export type favoritesReadMyFavoritesErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
@@ -3106,7 +3708,7 @@ export type favoritesAddFavoriteErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
@@ -3152,7 +3754,7 @@ export type favoritesRemoveFavoriteErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
@@ -3176,6 +3778,491 @@ export type favoritesRemoveFavoriteResponses = {
 
 export type favoritesRemoveFavoriteResponse = favoritesRemoveFavoriteResponses[keyof favoritesRemoveFavoriteResponses];
 
+export type feedbackReadFeedbacksData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Status
+         *
+         * Filter by status: pending, approved, or rejected
+         */
+        status?: LegacyFeedbackStatus | null;
+        /**
+         * Artifact Id
+         */
+        artifact_id?: string | null;
+        /**
+         * User Id
+         */
+        user_id?: string | null;
+        /**
+         * Q
+         *
+         * Search by visitor name, email, artifact code, or feedback comment
+         */
+        q?: string | null;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/feedback/';
+};
+
+export type feedbackReadFeedbacksErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
+     */
+    403: unknown;
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type feedbackReadFeedbacksError = feedbackReadFeedbacksErrors[keyof feedbackReadFeedbacksErrors];
+
+export type feedbackReadFeedbacksResponses = {
+    /**
+     * Successful Response
+     */
+    200: FeedbackReviewsPublic;
+};
+
+export type feedbackReadFeedbacksResponse = feedbackReadFeedbacksResponses[keyof feedbackReadFeedbacksResponses];
+
+export type feedbackSubmitFeedbackData = {
+    body: FeedbackCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/feedback/';
+};
+
+export type feedbackSubmitFeedbackErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
+     */
+    409: unknown;
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type feedbackSubmitFeedbackError = feedbackSubmitFeedbackErrors[keyof feedbackSubmitFeedbackErrors];
+
+export type feedbackSubmitFeedbackResponses = {
+    /**
+     * Successful Response
+     */
+    201: FeedbackPublic;
+};
+
+export type feedbackSubmitFeedbackResponse = feedbackSubmitFeedbackResponses[keyof feedbackSubmitFeedbackResponses];
+
+export type feedbackMyFeedbackData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/feedback/me';
+};
+
+export type feedbackMyFeedbackErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
+     */
+    403: unknown;
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type feedbackMyFeedbackError = feedbackMyFeedbackErrors[keyof feedbackMyFeedbackErrors];
+
+export type feedbackMyFeedbackResponses = {
+    /**
+     * Successful Response
+     */
+    200: FeedbacksPublic;
+};
+
+export type feedbackMyFeedbackResponse = feedbackMyFeedbackResponses[keyof feedbackMyFeedbackResponses];
+
+export type feedbackReadFeedbackData = {
+    body?: never;
+    path: {
+        /**
+         * Feedback Id
+         */
+        feedback_id: string;
+    };
+    query?: never;
+    url: '/api/v1/feedback/{feedback_id}';
+};
+
+export type feedbackReadFeedbackErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type feedbackReadFeedbackError = feedbackReadFeedbackErrors[keyof feedbackReadFeedbackErrors];
+
+export type feedbackReadFeedbackResponses = {
+    /**
+     * Successful Response
+     */
+    200: FeedbackPublic;
+};
+
+export type feedbackReadFeedbackResponse = feedbackReadFeedbackResponses[keyof feedbackReadFeedbackResponses];
+
+export type feedbackModerateFeedbackData = {
+    body: LegacyFeedbackStatusUpdate;
+    path: {
+        /**
+         * Feedback Id
+         */
+        feedback_id: string;
+    };
+    query?: never;
+    url: '/api/v1/feedback/{feedback_id}/status';
+};
+
+export type feedbackModerateFeedbackErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Dữ liệu gửi lên sai định dạng
+     */
+    422: unknown;
+};
+
+export type feedbackModerateFeedbackResponses = {
+    /**
+     * Successful Response
+     */
+    200: FeedbackPublic;
+};
+
+export type feedbackModerateFeedbackResponse = feedbackModerateFeedbackResponses[keyof feedbackModerateFeedbackResponses];
+
+export type feedbacksReadArtifactReviewsData = {
+    body?: never;
+    path: {
+        /**
+         * Artifact Id
+         */
+        artifact_id: string;
+    };
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/feedbacks/artifact/{artifact_id}';
+};
+
+export type feedbacksReadArtifactReviewsErrors = {
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Dữ liệu gửi lên sai định dạng
+     */
+    422: unknown;
+};
+
+export type feedbacksReadArtifactReviewsResponses = {
+    /**
+     * Successful Response
+     */
+    200: ArtifactReviewsPublic;
+};
+
+export type feedbacksReadArtifactReviewsResponse = feedbacksReadArtifactReviewsResponses[keyof feedbacksReadArtifactReviewsResponses];
+
+export type feedbacksReadMyFeedbacksData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/feedbacks/me';
+};
+
+export type feedbacksReadMyFeedbacksErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
+     */
+    403: unknown;
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type feedbacksReadMyFeedbacksError = feedbacksReadMyFeedbacksErrors[keyof feedbacksReadMyFeedbacksErrors];
+
+export type feedbacksReadMyFeedbacksResponses = {
+    /**
+     * Successful Response
+     */
+    200: FeedbacksPublic;
+};
+
+export type feedbacksReadMyFeedbacksResponse = feedbacksReadMyFeedbacksResponses[keyof feedbacksReadMyFeedbacksResponses];
+
+export type feedbacksReadFeedbacksData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Status
+         *
+         * pending | approved | hidden
+         */
+        status?: FeedbackStatus | null;
+        /**
+         * Artifact Id
+         */
+        artifact_id?: string | null;
+        /**
+         * Q
+         *
+         * Tìm theo tên/email người gửi, mã hiện vật, tên Site hoặc nội dung comment
+         */
+        q?: string | null;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/feedbacks/';
+};
+
+export type feedbacksReadFeedbacksErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
+     */
+    403: unknown;
+    /**
+     * Dữ liệu gửi lên sai định dạng
+     */
+    422: unknown;
+};
+
+export type feedbacksReadFeedbacksResponses = {
+    /**
+     * Successful Response
+     */
+    200: FeedbackReviewsPublic;
+};
+
+export type feedbacksReadFeedbacksResponse = feedbacksReadFeedbacksResponses[keyof feedbacksReadFeedbacksResponses];
+
+export type feedbacksCreateFeedbackData = {
+    body: FeedbackCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/feedbacks/';
+};
+
+export type feedbacksCreateFeedbackErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
+     */
+    409: unknown;
+    /**
+     * Dữ liệu gửi lên sai định dạng
+     */
+    422: unknown;
+};
+
+export type feedbacksCreateFeedbackResponses = {
+    /**
+     * Successful Response
+     */
+    201: FeedbackPublic;
+};
+
+export type feedbacksCreateFeedbackResponse = feedbacksCreateFeedbackResponses[keyof feedbacksCreateFeedbackResponses];
+
+export type feedbacksUpdateMyFeedbackData = {
+    body: FeedbackUpdate;
+    path: {
+        /**
+         * Feedback Id
+         */
+        feedback_id: string;
+    };
+    query?: never;
+    url: '/api/v1/feedbacks/{feedback_id}';
+};
+
+export type feedbacksUpdateMyFeedbackErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Dữ liệu gửi lên sai định dạng
+     */
+    422: unknown;
+};
+
+export type feedbacksUpdateMyFeedbackResponses = {
+    /**
+     * Successful Response
+     */
+    200: FeedbackPublic;
+};
+
+export type feedbacksUpdateMyFeedbackResponse = feedbacksUpdateMyFeedbackResponses[keyof feedbacksUpdateMyFeedbackResponses];
+
+export type feedbacksModerateFeedbackData = {
+    body: FeedbackStatusUpdate;
+    path: {
+        /**
+         * Feedback Id
+         */
+        feedback_id: string;
+    };
+    query?: never;
+    url: '/api/v1/feedbacks/{feedback_id}/status';
+};
+
+export type feedbacksModerateFeedbackErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Dữ liệu gửi lên sai định dạng
+     */
+    422: unknown;
+};
+
+export type feedbacksModerateFeedbackResponses = {
+    /**
+     * Successful Response
+     */
+    200: FeedbackPublic;
+};
+
+export type feedbacksModerateFeedbackResponse = feedbacksModerateFeedbackResponses[keyof feedbacksModerateFeedbackResponses];
+
 export type visitsRecordVisitData = {
     body: VisitLogCreate;
     path?: never;
@@ -3193,13 +4280,17 @@ export type visitsRecordVisitErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
      * Không tìm thấy hoặc đang bị ẩn
      */
     404: unknown;
+    /**
+     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
+     */
+    409: unknown;
     /**
      * Validation Error
      */
@@ -3249,7 +4340,7 @@ export type visitsReadMyVisitsErrors = {
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
     /**
@@ -3433,99 +4524,193 @@ export type mediaUpdateMediaResponses = {
 
 export type mediaUpdateMediaResponse = mediaUpdateMediaResponses[keyof mediaUpdateMediaResponses];
 
-export type feedbackReadFeedbacksData = {
+export type dashboardReadSummaryData = {
     body?: never;
     path?: never;
     query?: {
         /**
-         * Status
+         * From Date
          *
-         * Filter by status: pending, approved, or rejected
+         * Từ ngày (YYYY-MM-DD, UTC, tính cả ngày này)
          */
-        status?: FeedbackStatus | null;
+        from_date?: string | null;
         /**
-         * Q
+         * To Date
          *
-         * Search by visitor name, email, artifact code, or feedback comment
+         * Đến ngày (YYYY-MM-DD, UTC, tính cả ngày này)
          */
-        q?: string | null;
-        /**
-         * Skip
-         */
-        skip?: number;
-        /**
-         * Limit
-         */
-        limit?: number;
+        to_date?: string | null;
     };
-    url: '/api/v1/feedback/';
+    url: '/api/v1/dashboard/summary';
 };
 
-export type feedbackReadFeedbacksErrors = {
+export type dashboardReadSummaryErrors = {
     /**
      * Thiếu hoặc sai token đăng nhập
      */
     401: unknown;
     /**
-     * Không đủ quyền (cần role admin)
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
      */
     403: unknown;
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type feedbackReadFeedbacksError = feedbackReadFeedbacksErrors[keyof feedbackReadFeedbacksErrors];
-
-export type feedbackReadFeedbacksResponses = {
-    /**
-     * Successful Response
-     */
-    200: FeedbackReviewsPublic;
-};
-
-export type feedbackReadFeedbacksResponse = feedbackReadFeedbacksResponses[keyof feedbackReadFeedbacksResponses];
-
-export type feedbackUpdateFeedbackStatusData = {
-    body: FeedbackStatusUpdate;
-    path: {
-        /**
-         * Feedback Id
-         */
-        feedback_id: string;
-    };
-    query?: never;
-    url: '/api/v1/feedback/{feedback_id}/status';
-};
-
-export type feedbackUpdateFeedbackStatusErrors = {
-    /**
-     * Thiếu hoặc sai token đăng nhập
-     */
-    401: unknown;
-    /**
-     * Không đủ quyền (cần role admin)
-     */
-    403: unknown;
-    /**
-     * Không tìm thấy hoặc đang bị ẩn
-     */
-    404: unknown;
     /**
      * Dữ liệu gửi lên sai định dạng
      */
     422: unknown;
 };
 
-export type feedbackUpdateFeedbackStatusResponses = {
+export type dashboardReadSummaryResponses = {
     /**
      * Successful Response
      */
-    200: FeedbackPublic;
+    200: DashboardSummary;
 };
 
-export type feedbackUpdateFeedbackStatusResponse = feedbackUpdateFeedbackStatusResponses[keyof feedbackUpdateFeedbackStatusResponses];
+export type dashboardReadSummaryResponse = dashboardReadSummaryResponses[keyof dashboardReadSummaryResponses];
+
+export type dashboardReadVisitsByDayData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * From Date
+         *
+         * Từ ngày (YYYY-MM-DD, UTC, tính cả ngày này)
+         */
+        from_date?: string | null;
+        /**
+         * To Date
+         *
+         * Đến ngày (YYYY-MM-DD, UTC, tính cả ngày này)
+         */
+        to_date?: string | null;
+    };
+    url: '/api/v1/dashboard/visits-by-day';
+};
+
+export type dashboardReadVisitsByDayErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
+     */
+    403: unknown;
+    /**
+     * Dữ liệu gửi lên sai định dạng
+     */
+    422: unknown;
+};
+
+export type dashboardReadVisitsByDayResponses = {
+    /**
+     * Successful Response
+     */
+    200: VisitsByDay;
+};
+
+export type dashboardReadVisitsByDayResponse = dashboardReadVisitsByDayResponses[keyof dashboardReadVisitsByDayResponses];
+
+export type dashboardReadTopArtifactsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Limit
+         *
+         * Số hiện vật tối đa
+         */
+        limit?: number;
+        /**
+         * Lang
+         *
+         * Mã ngôn ngữ của tiêu đề (vi, en...)
+         */
+        lang?: string | null;
+        /**
+         * From Date
+         *
+         * Từ ngày (YYYY-MM-DD, UTC, tính cả ngày này)
+         */
+        from_date?: string | null;
+        /**
+         * To Date
+         *
+         * Đến ngày (YYYY-MM-DD, UTC, tính cả ngày này)
+         */
+        to_date?: string | null;
+    };
+    url: '/api/v1/dashboard/top-artifacts';
+};
+
+export type dashboardReadTopArtifactsErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
+     */
+    403: unknown;
+    /**
+     * Dữ liệu gửi lên sai định dạng
+     */
+    422: unknown;
+};
+
+export type dashboardReadTopArtifactsResponses = {
+    /**
+     * Successful Response
+     */
+    200: TopArtifacts;
+};
+
+export type dashboardReadTopArtifactsResponse = dashboardReadTopArtifactsResponses[keyof dashboardReadTopArtifactsResponses];
+
+export type dashboardReadVisitsByLanguageData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * From Date
+         *
+         * Từ ngày (YYYY-MM-DD, UTC, tính cả ngày này)
+         */
+        from_date?: string | null;
+        /**
+         * To Date
+         *
+         * Đến ngày (YYYY-MM-DD, UTC, tính cả ngày này)
+         */
+        to_date?: string | null;
+    };
+    url: '/api/v1/dashboard/visits-by-language';
+};
+
+export type dashboardReadVisitsByLanguageErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
+     */
+    403: unknown;
+    /**
+     * Dữ liệu gửi lên sai định dạng
+     */
+    422: unknown;
+};
+
+export type dashboardReadVisitsByLanguageResponses = {
+    /**
+     * Successful Response
+     */
+    200: VisitsByLanguage;
+};
+
+export type dashboardReadVisitsByLanguageResponse = dashboardReadVisitsByLanguageResponses[keyof dashboardReadVisitsByLanguageResponses];
 
 export type privateCreateUserData = {
     body: PrivateUserCreate;

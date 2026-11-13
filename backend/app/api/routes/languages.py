@@ -4,8 +4,9 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from sqlmodel import col, func, select
 
-from app.api.deps import AdminUser, SessionDep
+from app.api.deps import AdminUser, OptionalUser, SessionDep, is_admin
 from app.api.docs import errors
+from app.core.transactions import acquire_transaction_lock, commit_with_conflicts
 from app.models import (
     Language,
     LanguageCreate,
@@ -16,6 +17,8 @@ from app.models import (
 )
 
 router = APIRouter(prefix="/languages", tags=["languages"])
+
+LANGUAGE_LOCK = "heritage:languages"
 
 
 def _unset_other_defaults(session: SessionDep, keep_id: uuid.UUID | None) -> None:
@@ -28,14 +31,19 @@ def _unset_other_defaults(session: SessionDep, keep_id: uuid.UUID | None) -> Non
 
 
 @router.get("/", response_model=LanguagesPublic)
-def read_languages(session: SessionDep) -> Any:
+def read_languages(
+    session: SessionDep, current_user: OptionalUser, include_inactive: bool = False
+) -> Any:
     """
     Danh sách ngôn ngữ đang bật. **Public** (app dùng để cho khách chọn ngôn ngữ).
     """
-    statement = select(Language).where(col(Language.is_active)).order_by(Language.code)
+    conditions = (
+        [] if include_inactive and is_admin(current_user) else [col(Language.is_active)]
+    )
+    statement = select(Language).where(*conditions).order_by(Language.code)
     languages = session.exec(statement).all()
     count = session.exec(
-        select(func.count()).select_from(Language).where(col(Language.is_active))
+        select(func.count()).select_from(Language).where(*conditions)
     ).one()
     return LanguagesPublic(
         data=[LanguagePublic.model_validate(x) for x in languages], count=count
@@ -49,13 +57,16 @@ def create_language(
     """
     Thêm ngôn ngữ. **Admin**.
     """
+    acquire_transaction_lock(session, LANGUAGE_LOCK)
     if session.exec(select(Language).where(Language.code == language_in.code)).first():
         raise HTTPException(status_code=409, detail="Language code already exists")
+    if language_in.is_default and not language_in.is_active:
+        raise HTTPException(status_code=400, detail="Default language must be active")
     if language_in.is_default:
         _unset_other_defaults(session, keep_id=None)
     language = Language.model_validate(language_in)
     session.add(language)
-    session.commit()
+    commit_with_conflicts(session, "ix_language_code", "uq_language_default")
     session.refresh(language)
     return language
 
@@ -74,35 +85,50 @@ def update_language(
 ) -> Any:
     """
     Sửa / bật-tắt / đặt ngôn ngữ mặc định. **Admin**.
+
+    - Ngôn ngữ mặc định **không thể bị tắt** (`is_active=false`) hay bỏ cờ mặc định qua PUT:
+      phải đặt ngôn ngữ khác làm mặc định trước -> **400**.
+    - Không đặt ngôn ngữ đang tắt làm mặc định (bật nó trong cùng request thì được) -> **400**.
+    - Gửi `null` cho `code` / `name` / `is_active` / `is_default`, hoặc `code` / `name` rỗng -> **422**.
     """
+    acquire_transaction_lock(session, LANGUAGE_LOCK)
     language = session.get(Language, language_id)
     if not language:
         raise HTTPException(status_code=404, detail="Language not found")
     data = language_in.model_dump(exclude_unset=True)
+    for field in ("code", "name", "is_active", "is_default"):
+        if field in data and data[field] is None:
+            raise HTTPException(status_code=422, detail=f"{field} cannot be null")
+    if data.get("is_default", language.is_default) and not data.get(
+        "is_active", language.is_active
+    ):
+        raise HTTPException(status_code=400, detail="Default language must be active")
     if "code" in data and data["code"] != language.code:
         if session.exec(select(Language).where(Language.code == data["code"])).first():
             raise HTTPException(status_code=409, detail="Language code already exists")
-    if data.get("is_default"):
-        _unset_other_defaults(session, keep_id=language.id)
+    # Kiểm tra TRẠNG THÁI SAU KHI SỬA trước khi đụng tới DB
     if data.get("is_default") is False and language.is_default:
         raise HTTPException(
             status_code=400,
-            detail="Hãy đặt ngôn ngữ khác làm mặc định thay vì tắt ngôn ngữ mặc định",
+            detail="Hãy đặt ngôn ngữ khác làm mặc định thay vì bỏ cờ mặc định",
         )
+    if data.get("is_default"):
+        _unset_other_defaults(session, keep_id=language.id)
     language.sqlmodel_update(data)
     session.add(language)
-    session.commit()
+    commit_with_conflicts(session, "ix_language_code", "uq_language_default")
     session.refresh(language)
     return language
 
 
-@router.delete("/{language_id}", responses=errors(400, 401, 403, 404))
+@router.delete("/{language_id}", responses=errors(400, 401, 403, 404, 409))
 def delete_language(
     session: SessionDep, _admin: AdminUser, language_id: uuid.UUID
 ) -> Message:
     """
     Tắt ngôn ngữ (xóa mềm: is_active = false). **Admin**.
     """
+    acquire_transaction_lock(session, LANGUAGE_LOCK)
     language = session.get(Language, language_id)
     if not language:
         raise HTTPException(status_code=404, detail="Language not found")

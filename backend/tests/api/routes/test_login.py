@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from pwdlib.hashers.bcrypt import BcryptHasher
 from sqlmodel import Session
 
+from app import crud
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
 from app.crud import create_user
@@ -52,6 +53,8 @@ def test_recovery_password(
     with (
         patch("app.core.config.settings.SMTP_HOST", "smtp.example.com"),
         patch("app.core.config.settings.SMTP_USER", "admin@example.com"),
+        patch("app.core.config.settings.EMAILS_FROM_EMAIL", "sender@example.com"),
+        patch("app.api.routes.login.send_email") as send_email,
     ):
         email = "test@example.com"
         r = client.post(
@@ -62,6 +65,8 @@ def test_recovery_password(
         assert r.json() == {
             "message": "If that email is registered, we sent a password recovery link"
         }
+        send_email.assert_called_once()
+        assert send_email.call_args.kwargs["raise_on_failure"] is True
 
 
 def test_recovery_password_user_not_exits(
@@ -108,6 +113,60 @@ def test_reset_password(client: TestClient, db: Session) -> None:
     db.refresh(user)
     verified, _ = verify_password(new_password, user.hashed_password)
     assert verified
+
+    # The password set by reset-password must be accepted by the same HTTP
+    # login endpoint used by Mobile. The previous password must be rejected.
+    new_login = client.post(
+        f"{settings.API_V1_STR}/login/access-token",
+        data={"username": email, "password": new_password},
+    )
+    assert new_login.status_code == 200
+    assert new_login.json().get("access_token")
+
+    old_login = client.post(
+        f"{settings.API_V1_STR}/login/access-token",
+        data={"username": email, "password": password},
+    )
+    assert old_login.status_code == 400
+
+
+def test_reset_password_token_replay_is_rejected(
+    client: TestClient, db: Session
+) -> None:
+    """The same reset token must be accepted exactly once; replay must be rejected."""
+    email = random_email()
+    original_password = random_lower_string()
+    new_password = random_lower_string()
+
+    user_create = UserCreate(
+        email=email,
+        full_name="Replay Test User",
+        password=original_password,
+        is_active=True,
+        is_superuser=False,
+    )
+    create_user(session=db, user_create=user_create)
+    token = generate_password_reset_token(email=email)
+    data = {"new_password": new_password, "token": token}
+
+    # First use: must succeed.
+    first = client.post(f"{settings.API_V1_STR}/reset-password/", json=data)
+    assert first.status_code == 200
+    assert first.json() == {"message": "Password updated successfully"}
+
+    # Second use with the same token: must be rejected.
+    second = client.post(f"{settings.API_V1_STR}/reset-password/", json=data)
+    assert second.status_code == 400
+    assert second.json()["detail"] == "Invalid token"
+
+    # Password must still be new_password (not changed again or reverted).
+    user = crud.get_user_by_email(session=db, email=email)
+    assert user is not None
+    db.refresh(user)
+    verified_new, _ = verify_password(new_password, user.hashed_password)
+    assert verified_new, "Password must remain as set by the first (successful) reset"
+    verified_original, _ = verify_password(original_password, user.hashed_password)
+    assert not verified_original, "Original password must no longer work"
 
 
 def test_reset_password_invalid_token(

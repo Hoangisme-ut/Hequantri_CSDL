@@ -1,9 +1,9 @@
 import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any, Literal, Optional, Self
 
-from pydantic import EmailStr, field_validator
+from pydantic import EmailStr, field_validator, model_validator
 from sqlalchemy import CheckConstraint, Index, Unicode, UniqueConstraint, text
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -19,6 +19,17 @@ def _examples(*examples: dict[str, Any]) -> Any:
 
 def get_datetime_utc() -> datetime:
     return datetime.now(UTC)
+
+
+def _reject_explicit_null(model: SQLModel, *fields: str) -> None:
+    """PATCH/PUT: trường bắt buộc có giá trị thì không được gửi `null` rõ ràng.
+
+    Bỏ trống trường = giữ nguyên (hợp lệ); gửi `"x": null` = muốn xóa giá trị,
+    không hợp lệ với cột NOT NULL -> 422 thay vì lỗi 500 từ DB.
+    """
+    for name in fields:
+        if name in model.model_fields_set and getattr(model, name) is None:
+            raise ValueError(f"{name} must not be null")
 
 
 # Shared properties
@@ -49,11 +60,39 @@ class UserUpdate(SQLModel):
     password: str | None = Field(default=None, min_length=8, max_length=128)
     role_id: uuid.UUID | None = None  # [Smart Heritage] admin gán role
 
+    model_config = _examples(
+        {"full_name": "Nguyễn Văn A"},
+        {"role_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"},
+        {"is_superuser": True},
+    )
+
+    @field_validator("email", "password", "is_active", "is_superuser")
+    @classmethod
+    def reject_null_required(cls, value: Any) -> Any:
+        if value is None:
+            raise ValueError("Field cannot be null")
+        return value
+
 
 class UserUpdateMe(SQLModel):
     full_name: str | None = Field(default=None, max_length=255)
     email: EmailStr | None = Field(default=None, max_length=255)
     language_id: uuid.UUID | None = None  # [Smart Heritage] ngôn ngữ ưa thích
+
+    model_config = _examples(
+        {
+            "full_name": "Nguyễn Văn A",
+            "language_id": "c0ffee00-0000-4000-8000-000000000001",
+        },
+        {"language_id": None},
+    )
+
+    @field_validator("email")
+    @classmethod
+    def reject_null_email(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("email cannot be null")
+        return value
 
 
 class UpdatePassword(SQLModel):
@@ -94,6 +133,7 @@ class UsersPublic(SQLModel):
     data: list[UserPublic]
     count: int
 
+
 class UserMePublic(UserPublic):
     role_name: str
 
@@ -110,9 +150,11 @@ class MediaType(StrEnum):
 
 
 class FeedbackStatus(StrEnum):
-    PENDING = "pending"
-    APPROVED = "approved"
-    REJECTED = "rejected"
+    """Trạng thái Feedback theo ERD: chỉ nhận pending / approved / hidden."""
+
+    PENDING = "pending"  # có comment, đang chờ admin duyệt
+    APPROVED = "approved"  # hiển thị công khai
+    HIDDEN = "hidden"  # admin từ chối/ẩn: không hiện công khai, không tính rating
 
 
 # ---------------------------------- Role -------------------------------------
@@ -143,6 +185,14 @@ class LanguageBase(SQLModel):
 
 
 class LanguageCreate(LanguageBase):
+    @field_validator("code", "name")
+    @classmethod
+    def _not_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("must not be blank")
+        return value
+
     model_config = _examples(
         {
             "code": "en",
@@ -158,6 +208,27 @@ class LanguageUpdate(SQLModel):
     name: str | None = Field(default=None, max_length=100)
     is_active: bool | None = None
     is_default: bool | None = None
+
+    model_config = _examples(
+        {"name": "English (US)"},
+        {"is_default": True},
+        {"is_active": False},
+    )
+
+    @field_validator("code", "name")
+    @classmethod
+    def _not_blank(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        value = value.strip()
+        if not value:
+            raise ValueError("must not be blank")
+        return value
+
+    @model_validator(mode="after")
+    def _no_explicit_null(self) -> Self:
+        _reject_explicit_null(self, "code", "name", "is_active", "is_default")
+        return self
 
 
 class Language(LanguageBase, table=True):
@@ -674,6 +745,19 @@ class VisitLog(SQLModel, table=True):
 
 
 class VisitLogPublic(SQLModel):
+    model_config = _examples(
+        {
+            "id": "a1b2c3d4-0000-4000-8000-000000000001",
+            "user_id": "5d2c6a1f-3b7e-4c88-8f1a-9a0b1c2d3e4f",
+            "artifact_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "beacon_id": "b3a1c2d4-1111-4222-8333-444455556666",
+            "language_id": "c0ffee00-0000-4000-8000-000000000001",
+            "visited_at": "2026-11-08T03:00:00Z",
+            "duration_seconds": None,
+            "rssi": -62,
+        }
+    )
+
     id: uuid.UUID
     user_id: uuid.UUID
     artifact_id: uuid.UUID
@@ -714,6 +798,15 @@ class Favorite(SQLModel, table=True):
 
 
 class FavoritePublic(SQLModel):
+    model_config = _examples(
+        {
+            "id": "f4a5b6c7-0000-4000-8000-000000000001",
+            "user_id": "5d2c6a1f-3b7e-4c88-8f1a-9a0b1c2d3e4f",
+            "artifact_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "created_at": "2026-11-08T03:00:00Z",
+        }
+    )
+
     id: uuid.UUID
     user_id: uuid.UUID
     artifact_id: uuid.UUID
@@ -726,17 +819,80 @@ class FavoritesPublic(SQLModel):
 
 
 # ---------------------------------- Feedback ---------------------------------
+FEEDBACK_COMMENT_MAX = 2000
+
+
+def _clean_comment(value: str | None) -> str | None:
+    """Cắt khoảng trắng đầu/cuối; chuỗi rỗng coi như không có comment (None)."""
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+
 class FeedbackCreate(SQLModel):
     artifact_id: uuid.UUID
     rating: int = Field(ge=1, le=5)
-    comment: str | None = Field(default=None, max_length=2000)
+    comment: str | None = Field(default=None, max_length=FEEDBACK_COMMENT_MAX)
+
+    model_config = _examples(
+        {
+            "artifact_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "rating": 5,
+            "comment": "Hiện vật rất đẹp, thuyết minh dễ hiểu.",
+        },
+        {"artifact_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7", "rating": 4},
+    )
+
+    @field_validator("comment")
+    @classmethod
+    def _strip_comment(cls, value: str | None) -> str | None:
+        return _clean_comment(value)
+
+
+class FeedbackUpdate(SQLModel):
+    """Visitor sửa đánh giá của chính mình. Chỉ các trường được gửi mới bị đổi;
+    gửi `"comment": null` (hoặc chuỗi rỗng) để xóa comment."""
+
+    rating: int | None = Field(default=None, ge=1, le=5)
+    comment: str | None = Field(default=None, max_length=FEEDBACK_COMMENT_MAX)
+
+    model_config = _examples(
+        {"rating": 3, "comment": "Đã sửa lại nhận xét."},
+        {"comment": None},
+    )
+
+    @field_validator("comment")
+    @classmethod
+    def _strip_comment(cls, value: str | None) -> str | None:
+        return _clean_comment(value)
+
+    @model_validator(mode="after")
+    def _require_a_change(self) -> FeedbackUpdate:
+        if not self.model_fields_set:
+            raise ValueError("Cần gửi ít nhất một trong hai: rating, comment")
+        if "rating" in self.model_fields_set and self.rating is None:
+            raise ValueError("rating không được để null")
+        return self
 
 
 class FeedbackStatusUpdate(SQLModel):
-    status: str = Field(max_length=20)  # FeedbackStatus
+    """Admin duyệt (approved) hoặc từ chối/ẩn (hidden). `pending` do hệ thống tự đặt."""
+
+    status: Literal["approved", "hidden"]
+
+    model_config = _examples({"status": "approved"}, {"status": "hidden"})
 
 
 class Feedback(SQLModel, table=True):
+    # ERD: mỗi người 1 đánh giá cho mỗi hiện vật; rating 1-5; status giới hạn 3 giá trị
+    __table_args__ = (
+        UniqueConstraint("user_id", "artifact_id", name="uq_feedback_user_artifact"),
+        CheckConstraint("rating BETWEEN 1 AND 5", name="ck_feedback_rating"),
+        CheckConstraint(
+            "status IN ('pending', 'approved', 'hidden')", name="ck_feedback_status"
+        ),
+    )
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     user_id: uuid.UUID = Field(
         foreign_key="user.id", nullable=False, ondelete="CASCADE"
@@ -745,14 +901,32 @@ class Feedback(SQLModel, table=True):
         foreign_key="artifact.id", nullable=False, ondelete="CASCADE"
     )
     rating: int = Field(ge=1, le=5)
-    comment: str | None = Field(default=None, max_length=2000, sa_type=Unicode(2000))
+    comment: str | None = Field(
+        default=None, max_length=FEEDBACK_COMMENT_MAX, sa_type=Unicode(2000)
+    )
     status: str = Field(default=FeedbackStatus.PENDING, max_length=20)
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
+    updated_at: datetime | None = None
     user: User | None = Relationship(back_populates="feedbacks")
     artifact: Artifact | None = Relationship(back_populates="feedbacks")
 
 
 class FeedbackPublic(SQLModel):
+    """Dữ liệu đầy đủ: chỉ trả cho chủ sở hữu (/feedbacks/me) và admin."""
+
+    model_config = _examples(
+        {
+            "id": "0b8f2d1e-6c1a-4f55-9d0a-3a5f6d7e8c90",
+            "user_id": "5d2c6a1f-3b7e-4c88-8f1a-9a0b1c2d3e4f",
+            "artifact_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "rating": 5,
+            "comment": "Hiện vật rất đẹp, thuyết minh dễ hiểu.",
+            "status": "pending",
+            "created_at": "2026-11-08T03:00:00Z",
+            "updated_at": None,
+        }
+    )
+
     id: uuid.UUID
     user_id: uuid.UUID
     artifact_id: uuid.UUID
@@ -760,10 +934,26 @@ class FeedbackPublic(SQLModel):
     comment: str | None = None
     status: str
     created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class FeedbacksPublic(SQLModel):
     data: list[FeedbackPublic]
+    count: int
+
+
+class ArtifactReviewPublic(SQLModel):
+    """Bình luận công khai: chỉ comment đã duyệt, không lộ user_id / status."""
+
+    id: uuid.UUID
+    artifact_id: uuid.UUID
+    rating: int
+    comment: str | None = None
+    created_at: datetime | None = None
+
+
+class ArtifactReviewsPublic(SQLModel):
+    data: list[ArtifactReviewPublic]
     count: int
 
 
@@ -842,16 +1032,26 @@ class Token(SQLModel):
 
 # Contents of JWT token
 class TokenPayload(SQLModel):
-    sub: str | None = None
+    sub: uuid.UUID
+    purpose: Literal["access"] | None = None
+
+
+class UsedPasswordReset(SQLModel, table=True):
+    """Digest of the authenticated JWT signing input, never the raw token."""
+
+    token_digest: str = Field(primary_key=True, max_length=64)
+    used_at: datetime = Field(default_factory=get_datetime_utc)
 
 
 class NewPassword(SQLModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
 
+
 # ------------------- Schemas dùng cho API nội dung hiện vật -------------------
 class FeedbackReviewPublic(FeedbackPublic):
     """Thông tin phản hồi dành cho Admin kiểm duyệt."""
+
     visitor_name: str | None = None
     visitor_email: str
     artifact_code: str
@@ -861,5 +1061,6 @@ class FeedbackReviewPublic(FeedbackPublic):
 
 class FeedbackReviewsPublic(SQLModel):
     """Danh sách phản hồi dành cho Admin."""
+
     data: list[FeedbackReviewPublic]
     count: int

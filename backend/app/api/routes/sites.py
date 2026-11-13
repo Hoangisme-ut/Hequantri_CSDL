@@ -29,8 +29,8 @@ router = APIRouter(prefix="/sites", tags=["sites"])
 def read_sites(
     session: SessionDep,
     current_user: OptionalUser,
-    skip: int = 0,
-    limit: int = Query(default=100, le=200),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=200),
     q: str | None = None,
     include_inactive: bool = False,
     lang: Literal["vi", "en"] = "vi",
@@ -124,6 +124,12 @@ def _localized_sites(
 def read_site_translations(
     session: SessionDep, _admin: AdminUser, site_id: uuid.UUID
 ) -> Any:
+    """
+    Danh sách bản dịch của một Site. **Chỉ Admin**.
+
+    Mỗi bản dịch có `is_stale = true` khi nội dung Site gốc đã đổi sau lần dịch gần nhất.
+    Site không tồn tại -> **404**.
+    """
     site = session.get(Site, site_id)
     if site is None:
         raise HTTPException(status_code=404, detail="Site not found")
@@ -157,6 +163,13 @@ def upsert_site_translation(
     language_id: uuid.UUID,
     translation_in: SiteTranslationInput,
 ) -> Any:
+    """
+    Tạo hoặc cập nhật bản dịch của Site cho một ngôn ngữ. **Chỉ Admin**.
+
+    - Hiện chỉ sửa được bản dịch **tiếng Anh** (`en`); ngôn ngữ khác -> **422**.
+    - Bản dịch lưu bằng tay luôn ở trạng thái đã xác nhận, `is_stale = false`.
+    - Site hoặc ngôn ngữ không tồn tại -> **404**.
+    """
     site = session.get(Site, site_id)
     if site is None:
         raise HTTPException(status_code=404, detail="Site not found")
@@ -212,6 +225,12 @@ def delete_site_translation(
     site_id: uuid.UUID,
     language_id: uuid.UUID,
 ) -> Message:
+    """
+    Xóa bản dịch Site của một ngôn ngữ. **Chỉ Admin**.
+
+    Hiện chỉ xóa được bản dịch **tiếng Anh** (`en`); ngôn ngữ khác -> **422**.
+    Site, ngôn ngữ hoặc bản dịch không tồn tại -> **404**.
+    """
     site = session.get(Site, site_id)
     if site is None:
         raise HTTPException(status_code=404, detail="Site not found")
@@ -242,7 +261,7 @@ def create_site(*, session: SessionDep, _admin: AdminUser, site_in: SiteCreate) 
     session.add(site)
     session.commit()
     session.refresh(site)
-    return site
+    return _localized_site(session, site, "vi")
 
 
 @router.put("/{site_id}", response_model=SitePublic, responses=errors(401, 403, 404))
@@ -253,12 +272,16 @@ def update_site(
     site = session.get(Site, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
-    site.sqlmodel_update(site_in.model_dump(exclude_unset=True))
+    data = site_in.model_dump(exclude_unset=True)
+    for field in ("name", "is_active"):
+        if field in data and data[field] is None:
+            raise HTTPException(status_code=422, detail=f"{field} cannot be null")
+    site.sqlmodel_update(data)
     site.updated_at = get_datetime_utc()
     session.add(site)
     session.commit()
     session.refresh(site)
-    return site
+    return _localized_site(session, site, "vi")
 
 
 @router.delete("/{site_id}", responses=errors(401, 403, 404))

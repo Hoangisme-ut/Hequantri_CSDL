@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../auth/auth_service.dart';
+import '../media/artifact_media.dart';
 
 class VisitorApiException implements Exception {
   const VisitorApiException(this.message, {this.statusCode});
@@ -72,6 +73,7 @@ class VisitorArtifactContent {
     this.historyContent,
     this.languageCode,
     this.isFallback = false,
+    this.media = const [],
   });
 
   final String id;
@@ -84,20 +86,29 @@ class VisitorArtifactContent {
   final String? historyContent;
   final String? languageCode;
   final bool isFallback;
+  final List<ArtifactMedia> media;
 
-  factory VisitorArtifactContent.fromJson(Map<String, dynamic> json) =>
-      VisitorArtifactContent(
-        id: _responseUuid(json, 'id'),
-        siteId: _responseUuid(json, 'site_id'),
-        code: json['code'] as String,
-        era: json['era'] as String?,
-        coverImageUrl: json['cover_image_url'] as String?,
-        title: json['title'] as String?,
-        description: json['description'] as String?,
-        historyContent: json['history_content'] as String?,
-        languageCode: json['language_code'] as String?,
-        isFallback: json['is_fallback'] as bool? ?? false,
-      );
+  factory VisitorArtifactContent.fromJson(Map<String, dynamic> json) {
+    final mediaJson = json['media'] as List<dynamic>? ?? const [];
+
+    return VisitorArtifactContent(
+      id: _responseUuid(json, 'id'),
+      siteId: _responseUuid(json, 'site_id'),
+      code: json['code'] as String,
+      era: json['era'] as String?,
+      coverImageUrl: json['cover_image_url'] as String?,
+      title: json['title'] as String?,
+      description: json['description'] as String?,
+      historyContent: json['history_content'] as String?,
+      languageCode: json['language_code'] as String?,
+      isFallback: json['is_fallback'] as bool? ?? false,
+      media: List<ArtifactMedia>.unmodifiable(
+        mediaJson.map(
+          (item) => ArtifactMedia.fromJson(item as Map<String, dynamic>),
+        ),
+      ),
+    );
+  }
 }
 
 class VisitorSite {
@@ -234,6 +245,7 @@ class VisitorVisitReceipt {
     if (statusCode != 200 && statusCode != 201) {
       throw FormatException('Unexpected Visit response status: $statusCode.');
     }
+
     return VisitorVisitReceipt(
       id: _responseUuid(json, 'id'),
       userId: _responseUuid(json, 'user_id'),
@@ -244,6 +256,50 @@ class VisitorVisitReceipt {
       durationSeconds: json['duration_seconds'] as int?,
       rssi: json['rssi'] as int?,
       wasCreated: statusCode == 201,
+    );
+  }
+}
+
+class VisitorFeedback {
+  const VisitorFeedback({
+    required this.id,
+    required this.userId,
+    required this.artifactId,
+    required this.rating,
+    required this.status,
+    this.comment,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  final String id;
+  final String userId;
+  final String artifactId;
+  final int rating;
+  final String? comment;
+  final String status;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  factory VisitorFeedback.fromJson(Map<String, dynamic> json) {
+    final rating = json['rating'];
+    if (rating is! int || rating < 1 || rating > 5) {
+      throw const FormatException('Feedback response rating must be 1–5.');
+    }
+    final status = json['status'];
+    if (status is! String || status.isEmpty) {
+      throw const FormatException('Feedback response status is required.');
+    }
+
+    return VisitorFeedback(
+      id: _responseUuid(json, 'id'),
+      userId: _responseUuid(json, 'user_id'),
+      artifactId: _responseUuid(json, 'artifact_id'),
+      rating: rating,
+      comment: json['comment'] as String?,
+      status: status,
+      createdAt: _dateOrNull(json['created_at']),
+      updatedAt: _dateOrNull(json['updated_at']),
     );
   }
 }
@@ -303,6 +359,7 @@ abstract interface class VisitorApi {
     required AuthToken token,
     required String artifactId,
   });
+
   Future<void> removeFavorite({
     required AuthToken token,
     required String artifactId,
@@ -322,6 +379,13 @@ abstract interface class VisitorApi {
     int? rssi,
     int? durationSeconds,
   });
+
+  Future<VisitorFeedback> submitFeedback({
+    required AuthToken token,
+    required String artifactId,
+    required int rating,
+    String? comment,
+  });
 }
 
 class HttpVisitorApi implements VisitorApi, SiteApi {
@@ -333,6 +397,7 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
   final Uri _baseUrl;
   final http.Client _client;
   final bool _ownsClient;
+
   static const _timeout = Duration(seconds: 20);
 
   static Uri _validateBaseUrl(Uri url) {
@@ -372,7 +437,9 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
         headers: const {'Accept': 'application/json'},
       ),
     );
+
     final body = _decodeObject(response);
+
     return VisitorPage(
       items: (body['data'] as List<dynamic>)
           .map(
@@ -387,6 +454,7 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
   Future<http.Response> _send(Future<http.Response> Function() request) async {
     try {
       final response = await request().timeout(_timeout);
+
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw VisitorApiException(switch (response.statusCode) {
           401 => 'Your session has expired. Please sign in again.',
@@ -396,6 +464,7 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
           _ => 'The request failed (${response.statusCode}).',
         }, statusCode: response.statusCode);
       }
+
       return response;
     } on VisitorApiException {
       rethrow;
@@ -425,7 +494,9 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
         headers: const {'Accept': 'application/json'},
       ),
     );
+
     final body = _decodeObject(response);
+
     return VisitorPage(
       items: (body['data'] as List<dynamic>)
           .map((item) => VisitorSite.fromJson(item as Map<String, dynamic>))
@@ -440,12 +511,14 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
     required String languageCode,
   }) async {
     _requireRequestUuid(siteId, 'site_id');
+
     final response = await _send(
       () => _client.get(
         _uri('/sites/$siteId', {'lang': languageCode}),
         headers: const {'Accept': 'application/json'},
       ),
     );
+
     return VisitorSite.fromJson(_decodeObject(response));
   }
 
@@ -455,12 +528,14 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
     required String languageCode,
   }) async {
     _requireRequestUuid(artifactId, 'artifact_id');
+
     final response = await _send(
       () => _client.get(
         _uri('/artifacts/$artifactId', {'lang': languageCode}),
         headers: {'Accept': 'application/json'},
       ),
     );
+
     return VisitorArtifactContent.fromJson(_decodeObject(response));
   }
 
@@ -481,7 +556,9 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
         headers: _headers(token),
       ),
     );
+
     final body = _decodeObject(response);
+
     return VisitorPage(
       items: (body['data'] as List<dynamic>)
           .map((item) => VisitorFavorite.fromJson(item as Map<String, dynamic>))
@@ -496,6 +573,7 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
     required String artifactId,
   }) async {
     _requireRequestUuid(artifactId, 'artifact_id');
+
     final response = await _send(
       () => _client.post(
         _uri('/favorites/'),
@@ -503,6 +581,7 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
         body: jsonEncode({'artifact_id': artifactId}),
       ),
     );
+
     _FavoriteMutationReceipt.fromJson(_decodeObject(response));
   }
 
@@ -512,6 +591,7 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
     required String artifactId,
   }) async {
     _requireRequestUuid(artifactId, 'artifact_id');
+
     await _send(
       () => _client.delete(
         _uri('/favorites/$artifactId'),
@@ -537,7 +617,9 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
         headers: _headers(token),
       ),
     );
+
     final body = _decodeObject(response);
+
     return VisitorPage(
       items: (body['data'] as List<dynamic>)
           .map((item) => VisitorVisit.fromJson(item as Map<String, dynamic>))
@@ -555,17 +637,22 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
     int? durationSeconds,
   }) async {
     _requireRequestUuid(artifactId, 'artifact_id');
+
     final payload = <String, Object>{'artifact_id': artifactId};
+
     if (beaconId != null && beaconId.isNotEmpty) {
       _requireRequestUuid(beaconId, 'beacon_id');
       payload['beacon_id'] = beaconId;
     }
+
     if (rssi != null && rssi < 0) {
       payload['rssi'] = rssi;
     }
+
     if (durationSeconds != null && durationSeconds >= 0) {
       payload['duration_seconds'] = durationSeconds;
     }
+
     final response = await _send(
       () => _client.post(
         _uri('/visits/'),
@@ -573,10 +660,61 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
         body: jsonEncode(payload),
       ),
     );
+
     return VisitorVisitReceipt.fromJson(
       _decodeObject(response),
       statusCode: response.statusCode,
     );
+  }
+
+  @override
+  Future<VisitorFeedback> submitFeedback({
+    required AuthToken token,
+    required String artifactId,
+    required int rating,
+    String? comment,
+  }) async {
+    _requireRequestUuid(artifactId, 'artifact_id');
+    if (rating < 1 || rating > 5) {
+      throw const VisitorApiException(
+        'rating must be between 1 and 5.',
+        statusCode: 422,
+      );
+    }
+    final normalizedComment = comment?.trim();
+    if ((normalizedComment?.runes.length ?? 0) > 2000) {
+      throw const VisitorApiException(
+        'comment must not exceed 2000 characters.',
+        statusCode: 422,
+      );
+    }
+
+    final payload = <String, Object>{
+      'artifact_id': artifactId,
+      'rating': rating,
+      if (normalizedComment?.isNotEmpty ?? false) 'comment': normalizedComment!,
+    };
+    final response = await _send(
+      () => _client.post(
+        _uri('/feedback/'),
+        headers: _headers(token, json: true),
+        body: jsonEncode(payload),
+      ),
+    );
+    if (response.statusCode != 201) {
+      throw VisitorApiException(
+        'Unexpected Feedback response status: ${response.statusCode}.',
+        statusCode: response.statusCode,
+      );
+    }
+
+    final feedback = VisitorFeedback.fromJson(_decodeObject(response));
+    if (feedback.artifactId != artifactId || feedback.status != 'pending') {
+      throw const FormatException(
+        'Feedback response does not match the submitted artifact or pending status.',
+      );
+    }
+    return feedback;
   }
 
   void close() {
@@ -588,10 +726,13 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
 
 DateTime? _dateOrNull(Object? value) {
   if (value == null) return null;
+
   final timestamp = value as String;
+
   // SQL Server/pyodbc deployments may serialize a UTC datetime without an
   // offset. Treat that form as UTC, while preserving explicit offsets.
   final hasTimezone = RegExp(r'(?:[zZ]|[+-]\d{2}:?\d{2})$').hasMatch(timestamp);
+
   return DateTime.parse(hasTimezone ? timestamp : '${timestamp}Z');
 }
 
@@ -607,17 +748,22 @@ void _requireRequestUuid(String value, String field) {
 
 String _responseUuid(Map<String, dynamic> json, String field) {
   final value = json[field];
+
   if (value is! String || !_uuidPattern.hasMatch(value)) {
     throw FormatException('Response field "$field" must contain a valid UUID.');
   }
+
   return value;
 }
 
 String? _optionalResponseUuid(Map<String, dynamic> json, String field) {
   final value = json[field];
+
   if (value == null) return null;
+
   if (value is! String || !_uuidPattern.hasMatch(value)) {
     throw FormatException('Response field "$field" must contain a valid UUID.');
   }
+
   return value;
 }

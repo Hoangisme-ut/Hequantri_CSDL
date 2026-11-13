@@ -167,3 +167,101 @@ def test_language_write_requires_admin(
     )
     assert client.put(target, headers=visitor, json={"name": "x"}).status_code == 403
     assert client.delete(target, headers=visitor).status_code == 403
+
+
+@pytest.mark.parametrize("field", ["code", "name", "is_active", "is_default"])
+def test_language_update_rejects_null_required_fields(
+    client: TestClient, superuser_token_headers: dict[str, str], field: str
+) -> None:
+    before = client.get(f"{API}/languages/").json()
+    language = before["data"][0]
+    response = client.put(
+        f"{API}/languages/{language['id']}",
+        headers=superuser_token_headers,
+        json={field: None},
+    )
+    assert response.status_code == 422
+    assert client.get(f"{API}/languages/").json() == before
+
+
+def test_default_cannot_be_inactive_through_create_or_update(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    created_languages: list[str],
+) -> None:
+    headers = superuser_token_headers
+    before = client.get(f"{API}/languages/").json()
+    default = next(item for item in before["data"] if item["is_default"])
+    invalid = client.post(
+        f"{API}/languages/",
+        headers=headers,
+        json={
+            "code": _code(),
+            "name": "Invalid",
+            "is_active": False,
+            "is_default": True,
+        },
+    )
+    assert invalid.status_code == 400
+    assert (
+        client.put(
+            f"{API}/languages/{default['id']}",
+            headers=headers,
+            json={"is_active": False},
+        ).status_code
+        == 400
+    )
+    assert client.get(f"{API}/languages/").json() == before
+    hidden = client.post(
+        f"{API}/languages/",
+        headers=headers,
+        json={"code": _code(), "name": "Hidden", "is_active": False},
+    ).json()
+    created_languages.append(hidden["id"])
+    assert (
+        client.put(
+            f"{API}/languages/{hidden['id']}",
+            headers=headers,
+            json={"is_default": True},
+        ).status_code
+        == 400
+    )
+    assert (
+        client.put(
+            f"{API}/languages/{hidden['id']}", headers=headers, json={}
+        ).status_code
+        == 200
+    )
+
+
+def test_only_admin_can_list_inactive_languages_and_restore_them(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    normal_user_token_headers: dict[str, str],
+    created_languages: list[str],
+) -> None:
+    hidden = client.post(
+        f"{API}/languages/",
+        headers=superuser_token_headers,
+        json={"code": _code(), "name": "Hidden", "is_active": False},
+    ).json()
+    created_languages.append(hidden["id"])
+    for headers in ({}, normal_user_token_headers, superuser_token_headers):
+        default = client.get(f"{API}/languages/", headers=headers).json()
+        assert hidden["id"] not in {x["id"] for x in default["data"]}
+        response = client.get(
+            f"{API}/languages/?include_inactive=true", headers=headers
+        ).json()
+        assert (hidden["id"] in {x["id"] for x in response["data"]}) == (
+            headers == superuser_token_headers
+        )
+        assert response["count"] == len(response["data"])
+    restored = client.put(
+        f"{API}/languages/{hidden['id']}",
+        headers=superuser_token_headers,
+        json={"is_active": True},
+    )
+    assert restored.status_code == 200
+    assert hidden["id"] in {
+        x["id"] for x in client.get(f"{API}/languages/").json()["data"]
+    }

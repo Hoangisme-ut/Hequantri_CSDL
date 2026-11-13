@@ -1,3 +1,4 @@
+import uuid
 from collections.abc import Generator
 from typing import Annotated
 
@@ -11,7 +12,7 @@ from sqlmodel import Session
 from app.core import security
 from app.core.config import settings
 from app.core.db import engine
-from app.models import TokenPayload, User
+from app.models import Language, Role, TokenPayload, User
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"
@@ -30,10 +31,13 @@ TokenDep = Annotated[str, Depends(reusable_oauth2)]
 def get_current_user(session: SessionDep, token: TokenDep) -> User:
     try:
         payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
+            token,
+            settings.SECRET_KEY,
+            algorithms=[security.ALGORITHM],
+            options={"require": ["exp", "sub"]},
         )
         token_data = TokenPayload(**payload)
-    except (InvalidTokenError, ValidationError):
+    except InvalidTokenError, ValidationError:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Could not validate credentials",
@@ -50,6 +54,8 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 def get_current_active_superuser(current_user: CurrentUser) -> User:
+    # Hai tầng quyền: quản lý NGƯỜI DÙNG cần is_superuser; quản lý NỘI DUNG di sản
+    # (AdminUser) xác định theo role admin. Gán role không tự nâng thành superuser.
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=403, detail="The user doesn't have enough privileges"
@@ -110,10 +116,13 @@ def get_optional_user(
         return None
     try:
         payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
+            token,
+            settings.SECRET_KEY,
+            algorithms=[security.ALGORITHM],
+            options={"require": ["exp", "sub"]},
         )
         token_data = TokenPayload(**payload)
-    except (InvalidTokenError, ValidationError):
+    except InvalidTokenError, ValidationError:
         return None
     user = session.get(User, token_data.sub)
     if not user or not user.is_active:
@@ -122,3 +131,23 @@ def get_optional_user(
 
 
 OptionalUser = Annotated[User | None, Depends(get_optional_user)]
+
+
+# =============================================================================
+# Kiểm tra khóa ngoại do người dùng gửi lên (404 nếu không có, 400 nếu không hợp lệ)
+# =============================================================================
+def get_active_language_or_error(session: Session, language_id: uuid.UUID) -> Language:
+    """Ngôn ngữ phải tồn tại (404) và đang bật (400)."""
+    language = session.get(Language, language_id)
+    if language is None:
+        raise HTTPException(status_code=404, detail="Language not found")
+    if not language.is_active:
+        raise HTTPException(status_code=400, detail="Language is inactive")
+    return language
+
+
+def get_role_or_404(session: Session, role_id: uuid.UUID) -> Role:
+    role = session.get(Role, role_id)
+    if role is None:
+        raise HTTPException(status_code=404, detail="Role not found")
+    return role

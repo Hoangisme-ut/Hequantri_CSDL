@@ -1,4 +1,5 @@
 import logging
+import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -8,12 +9,17 @@ import emails
 import jwt
 from jinja2 import Template
 from jwt.exceptions import InvalidTokenError
+from pydantic import EmailStr, TypeAdapter, ValidationError
 
 from app.core import security
 from app.core.config import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+class EmailDeliveryError(RuntimeError):
+    """Sanitized error for callers that explicitly check delivery."""
 
 
 @dataclass
@@ -36,7 +42,11 @@ def send_email(
     email_to: str,
     subject: str = "",
     html_content: str = "",
+    raise_on_failure: bool = False,
 ) -> None:
+    # Opt-in checks preserve behavior of other callers (such as /utils/test-email).
+    if raise_on_failure and not settings.emails_enabled:
+        raise EmailDeliveryError("Email service is not configured")
     assert settings.emails_enabled, "no provided configuration for email variables"
     assert settings.EMAILS_FROM_EMAIL  # For type checker
     message = emails.message.Message(
@@ -53,8 +63,15 @@ def send_email(
         smtp_options["user"] = settings.SMTP_USER
     if settings.SMTP_PASSWORD:
         smtp_options["password"] = settings.SMTP_PASSWORD
-    response = message.send(to=email_to, smtp=smtp_options)
-    logger.info(f"send email result: {response}")
+    try:
+        response = message.send(to=email_to, smtp=smtp_options)
+    except Exception:
+        if raise_on_failure:
+            raise EmailDeliveryError("Email delivery failed") from None
+        raise
+    if raise_on_failure and not response.success:
+        raise EmailDeliveryError("Email delivery failed")
+    logger.info("Email transport status: %s", response.status_code)
 
 
 def generate_test_email(email_to: str) -> EmailData:
@@ -108,7 +125,13 @@ def generate_password_reset_token(email: str) -> str:
     expires = now + delta
     exp = expires.timestamp()
     encoded_jwt = jwt.encode(
-        {"exp": exp, "nbf": now, "sub": email},
+        {
+            "exp": exp,
+            "nbf": now,
+            "sub": email,
+            "purpose": "password_reset",
+            "jti": str(uuid.uuid4()),
+        },
         settings.SECRET_KEY,
         algorithm=security.ALGORITHM,
     )
@@ -118,8 +141,13 @@ def generate_password_reset_token(email: str) -> str:
 def verify_password_reset_token(token: str) -> str | None:
     try:
         decoded_token = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
+            token,
+            settings.SECRET_KEY,
+            algorithms=[security.ALGORITHM],
+            options={"require": ["exp", "sub"]},
         )
-        return str(decoded_token["sub"])
-    except InvalidTokenError:
+        if decoded_token.get("purpose") not in (None, "password_reset"):
+            return None
+        return TypeAdapter(EmailStr).validate_python(decoded_token["sub"])
+    except InvalidTokenError, ValidationError:
         return None

@@ -1,0 +1,13 @@
+python -m ruff check backend/tests/api/routes/test_visit_acceptance.py backend/tests/api/routes/test_visit_consistency.py backend/tests/utils/visit_worker.py scripts/qa/verify_sqlserver.py
+All checks passed!
+exit_code=0
+
+python -m ruff format --check backend/tests/api/routes/test_visit_acceptance.py backend/tests/api/routes/test_visit_consistency.py backend/tests/utils/visit_worker.py scripts/qa/verify_sqlserver.py
+4 files already formatted
+exit_code=0
+
+node --check scripts/qa/web_admin_acceptance.cjs
+exit_code=0
+
+tsc -p frontend/tsconfig.build.json --noEmit
+exit_code=0
