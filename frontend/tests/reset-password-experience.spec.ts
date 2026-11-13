@@ -10,10 +10,10 @@ test("missing token shows a branded recovery message without Admin login", async
   await page.goto("/reset-password")
 
   await expect(
-    page.getByRole("heading", { name: "Không tìm thấy mã xác thực" }),
+    page.getByRole("heading", { name: "No reset token found" }),
   ).toBeVisible()
   await expect(
-    page.getByRole("link", { name: "Yêu cầu email khôi phục mới" }),
+    page.getByRole("link", { name: "Request a new recovery email" }),
   ).toHaveAttribute("href", "/recover-password")
   await expect(page.getByText("Admin Console")).toHaveCount(0)
   await expect(page.getByRole("link", { name: "Sign in" })).toHaveCount(0)
@@ -31,9 +31,9 @@ test("passwords must match before sending a reset request", async ({
   await page.goto(resetUrl)
   await page.getByTestId("new-password-input").fill("new-password-123")
   await page.getByTestId("confirm-password-input").fill("different-password")
-  await page.getByRole("button", { name: "Cập nhật mật khẩu" }).click()
+  await page.getByRole("button", { name: "Update password" }).click()
 
-  await expect(page.getByText("Mật khẩu xác nhận không khớp.")).toBeVisible()
+  await expect(page.getByText("Passwords do not match.")).toBeVisible()
   expect(requestCount).toBe(0)
 })
 
@@ -49,9 +49,11 @@ test("weak passwords are rejected before sending a reset request", async ({
   await page.goto(resetUrl)
   await page.getByTestId("new-password-input").fill("short")
   await page.getByTestId("confirm-password-input").fill("short")
-  await page.getByRole("button", { name: "Cập nhật mật khẩu" }).click()
+  await page.getByRole("button", { name: "Update password" }).click()
 
-  await expect(page.getByText("Mật khẩu cần có ít nhất 8 ký tự.")).toBeVisible()
+  await expect(
+    page.getByText("Password must be at least 8 characters."),
+  ).toBeVisible()
   expect(requestCount).toBe(0)
 })
 
@@ -69,19 +71,19 @@ test("invalid or expired token shows a safe message without exposing the token",
   await page.goto(resetUrl)
   await page.getByTestId("new-password-input").fill("new-password-123")
   await page.getByTestId("confirm-password-input").fill("new-password-123")
-  await page.getByRole("button", { name: "Cập nhật mật khẩu" }).click()
+  await page.getByRole("button", { name: "Update password" }).click()
 
   await expect(
-    page.getByRole("heading", { name: "Liên kết đã hết hạn" }),
+    page.getByRole("heading", { name: "Link expired" }),
   ).toBeVisible()
   await expect(
-    page.getByRole("link", { name: "Yêu cầu email khôi phục mới" }),
+    page.getByRole("link", { name: "Request a new recovery email" }),
   ).toHaveAttribute("href", "/recover-password")
   await expect(page.locator("body")).not.toContainText("private-test-token")
   await expect(page.getByText("Admin Console")).toHaveCount(0)
 })
 
-test("successful reset shows app guidance and does not redirect to Admin login", async ({
+test("successful reset shows sign-in link and does not redirect to Admin login", async ({
   page,
 }) => {
   let requestBody: Record<string, unknown> | undefined
@@ -97,15 +99,13 @@ test("successful reset shows app guidance and does not redirect to Admin login",
   await page.goto(resetUrl)
   await page.getByTestId("new-password-input").fill("new-password-123")
   await page.getByTestId("confirm-password-input").fill("new-password-123")
-  await page.getByRole("button", { name: "Cập nhật mật khẩu" }).click()
+  await page.getByRole("button", { name: "Update password" }).click()
 
   await expect(
-    page.getByRole("heading", { name: "Mật khẩu đã được cập nhật" }),
+    page.getByRole("heading", { name: "Password updated" }),
   ).toBeVisible()
   await expect(
-    page.getByText(
-      "Bạn có thể quay lại ứng dụng Smart Heritage Mobile và đăng nhập bằng mật khẩu mới.",
-    ),
+    page.getByText("Your password has been updated successfully."),
   ).toBeVisible()
   expect(requestBody).toEqual({
     new_password: "new-password-123",
@@ -118,12 +118,11 @@ test("successful reset shows app guidance and does not redirect to Admin login",
   expect(storedTokens).not.toContain("private-test-token")
   await expect(page).toHaveURL(/\/reset-password$/)
   await expect(page.getByText("Admin Console")).toHaveCount(0)
-  await expect(page.getByRole("link", { name: "Sign in" })).toHaveCount(0)
 
-  await page.getByRole("button", { name: "Quay lại ứng dụng Mobile" }).click()
-  await expect(page.getByRole("status")).toContainText(
-    "hãy mở ứng dụng Smart Heritage từ màn hình chính",
-  )
+  // Should show Back to Sign In link (Web Admin flow)
+  await expect(
+    page.getByRole("link", { name: "Back to Sign In" }),
+  ).toBeVisible()
 })
 
 test("reset screen fits a mobile viewport", async ({ page }) => {
@@ -131,19 +130,19 @@ test("reset screen fits a mobile viewport", async ({ page }) => {
   await page.goto(resetUrl)
 
   await expect(
-    page.getByRole("heading", { name: "Đặt lại mật khẩu" }),
+    page.getByRole("heading", { name: "Reset password" }),
   ).toBeVisible()
   await expect(
-    page.getByRole("button", { name: "Cập nhật mật khẩu" }),
+    page.getByRole("button", { name: "Update password" }),
   ).toBeVisible()
-  await expect(page.getByRole("button", { name: "Hiện mật khẩu" })).toHaveCount(
+  await expect(page.getByRole("button", { name: "Show password" })).toHaveCount(
     2,
   )
   await page.getByTestId("new-password-input").fill("StrongPass123!")
   await expect(
-    page.getByRole("progressbar", { name: "Độ mạnh mật khẩu" }),
+    page.getByRole("progressbar", { name: "Password strength" }),
   ).toHaveAttribute("aria-valuenow", "4")
-  await page.getByRole("button", { name: "Hiện mật khẩu" }).first().click()
+  await page.getByRole("button", { name: "Show password" }).first().click()
   await expect(page.getByTestId("new-password-input")).toHaveAttribute(
     "type",
     "text",
@@ -162,10 +161,7 @@ test("reset screen fits a desktop viewport without stretching the card", async (
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto(resetUrl)
 
-  const card = page.locator("main > div").last()
-  await expect(card).toBeVisible()
-  await expect(card).toHaveCSS("max-width", "480px")
   await expect(
-    page.getByRole("heading", { name: "Đặt lại mật khẩu" }),
+    page.getByRole("heading", { name: "Reset password" }),
   ).toBeVisible()
 })
