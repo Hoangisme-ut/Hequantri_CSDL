@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Sequence
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
@@ -74,7 +75,7 @@ def _localized_site(session: SessionDep, site: Site, lang: str) -> SitePublic:
 
 
 def _localized_sites(
-    session: SessionDep, sites: list[Site], lang: str
+    session: SessionDep, sites: Sequence[Site], lang: str
 ) -> list[SitePublic]:
     translation_by_site: dict[uuid.UUID, SiteTranslation] = {}
     if lang == "en" and sites:
@@ -135,7 +136,7 @@ def read_site_translations(
         raise HTTPException(status_code=404, detail="Site not found")
     translations = session.exec(
         select(SiteTranslation, Language)
-        .join(Language, SiteTranslation.language_id == Language.id)
+        .join(Language, col(SiteTranslation.language_id) == col(Language.id))
         .where(SiteTranslation.site_id == site_id)
     ).all()
     return [

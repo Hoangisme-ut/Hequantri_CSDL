@@ -8,6 +8,16 @@ FASTAPI_ENV=development uv run python -c "import app.main; import json; print(js
 cd ..
 mv openapi.json frontend/
 bun run --filter frontend generate-client
+# Keep generated whitespace stable across runs and operating systems.
+uv run python - <<'PY'
+from pathlib import Path
+
+for path in Path("frontend/src/client").rglob("*.ts"):
+    content = path.read_text(encoding="utf-8")
+    normalized = "\n".join(line.rstrip() for line in content.splitlines()) + "\n"
+    if content != normalized:
+        path.write_text(normalized, encoding="utf-8", newline="\n")
+PY
 # NOTE: the frontend lint is intentionally NOT run here.
 # This script only regenerates the API client, which lives in `frontend/src/client`
 # and is excluded from Biome anyway. Running `bun run lint` (Biome `--write`) here

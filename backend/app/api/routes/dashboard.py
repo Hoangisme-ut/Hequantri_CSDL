@@ -4,8 +4,9 @@ from datetime import UTC, date, datetime, time, timedelta
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import ColumnElement, Date, Float, cast
+from sqlalchemy import ColumnElement, Date, Float, cast, true
 from sqlmodel import SQLModel, col, func, select
+from sqlmodel.sql.expression import Select
 
 from app import crud
 from app.api.deps import AdminUser, SessionDep
@@ -191,15 +192,15 @@ def read_summary(
     return DashboardSummary(
         sites=InventoryCount(
             total=_count(session, Site),
-            active=_count(session, Site, col(Site.is_active)),
+            active=_count(session, Site, col(Site.is_active) == true()),
         ),
         artifacts=InventoryCount(
             total=_count(session, Artifact),
-            active=_count(session, Artifact, col(Artifact.is_active)),
+            active=_count(session, Artifact, col(Artifact.is_active) == true()),
         ),
         beacons=InventoryCount(
             total=_count(session, Beacon),
-            active=_count(session, Beacon, col(Beacon.is_active)),
+            active=_count(session, Beacon, col(Beacon.is_active) == true()),
         ),
         visits=VisitStats(
             total=_count(session, VisitLog, *conditions),
@@ -281,8 +282,9 @@ def read_top_artifacts(
     (không phụ thuộc bộ lọc ngày; chưa có đánh giá thì `0` / `null`).
     """
     visit_count = func.count(col(VisitLog.id))
+    # SQLModel's select() overloads cover at most four expressions.
     rows = session.exec(
-        select(
+        Select[tuple[uuid.UUID, uuid.UUID, str, bool, int]](
             col(Artifact.id),
             col(Artifact.site_id),
             col(Artifact.code),
