@@ -51,7 +51,8 @@ def test_migration_head_and_sql_server_constraints():
                 "'uq_beacon_artifact_id',"
                 "'uq_beacon_identity',"
                 "'uq_artifact_site_code',"
-                "'uq_artifact_language'"
+                "'uq_artifact_language',"
+                "'uq_feedback_user_artifact'"
                 ")"
             )
         ).all()
@@ -64,9 +65,26 @@ def test_migration_head_and_sql_server_constraints():
             ("uq_beacon_identity", True, False),
             ("uq_artifact_site_code", True, False),
             ("uq_artifact_language", True, False),
+            ("uq_feedback_user_artifact", True, False),
         }
 
     inspector = inspect(engine)
+    assert not inspector.has_table("item")
+    assert inspector.has_table("feedback_migration_backup")
+    feedback_columns = {column["name"] for column in inspector.get_columns("feedback")}
+    assert "updated_at" in feedback_columns
+    assert {
+        column["name"] for column in inspector.get_columns("feedback_migration_backup")
+    } >= {
+        "id",
+        "user_id",
+        "artifact_id",
+        "rating",
+        "comment",
+        "status",
+        "created_at",
+        "updated_at",
+    }
 
     for table, column in [
         ("site", "name"),

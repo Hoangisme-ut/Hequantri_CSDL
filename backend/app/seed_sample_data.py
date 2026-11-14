@@ -280,7 +280,7 @@ def _seed_media(session: Session, languages: dict[str, Language]) -> None:
             }
             media = session.get(Media, media_id)
             if media is None:
-                media = Media(id=media_id, **values)
+                media = Media.model_validate(values, update={"id": media_id})
             else:
                 media.sqlmodel_update(values)
             session.add(media)

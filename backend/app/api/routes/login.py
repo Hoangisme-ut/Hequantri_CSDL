@@ -17,6 +17,7 @@ from app.models import (
     NewPassword,
     Token,
     UsedPasswordReset,
+    User,
     UserPublic,
     UserUpdate,
 )
@@ -72,7 +73,7 @@ def recover_password(email: str, session: SessionDep) -> Message:
     # Always return the same response to prevent email enumeration attacks
     # Only send email if user actually exists
     if user:
-        password_reset_token = generate_password_reset_token(email=email)
+        password_reset_token = generate_password_reset_token(user_id=user.id)
         email_data = generate_reset_password_email(
             email_to=user.email, email=email, token=password_reset_token
         )
@@ -97,8 +98,8 @@ def reset_password(session: SessionDep, body: NewPassword) -> Message:
     """
     Reset password
     """
-    email = verify_password_reset_token(token=body.token)
-    if not email:
+    user_id = verify_password_reset_token(token=body.token)
+    if user_id is None:
         raise HTTPException(status_code=400, detail="Invalid token")
     # Hash authenticated header.payload, not signature text (base64url aliases
     # of the same signature must not bypass consumption).
@@ -106,7 +107,7 @@ def reset_password(session: SessionDep, body: NewPassword) -> Message:
     acquire_transaction_lock(session, f"password-reset:{digest}")
     if session.get(UsedPasswordReset, digest) is not None:
         raise HTTPException(status_code=400, detail="Invalid token")
-    user = crud.get_user_by_email(session=session, email=email)
+    user = session.get(User, user_id)
     if not user:
         # Don't reveal that the user doesn't exist - use same error as invalid token
         raise HTTPException(status_code=400, detail="Invalid token")
@@ -139,7 +140,7 @@ def recover_password_html_content(email: str, session: SessionDep) -> Any:
             status_code=404,
             detail="The user with this username does not exist in the system.",
         )
-    password_reset_token = generate_password_reset_token(email=email)
+    password_reset_token = generate_password_reset_token(user_id=user.id)
     email_data = generate_reset_password_email(
         email_to=user.email, email=email, token=password_reset_token
     )

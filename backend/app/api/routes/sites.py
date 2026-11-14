@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Sequence
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
@@ -7,6 +8,7 @@ from sqlmodel import col, func, select
 
 from app.api.deps import AdminUser, OptionalUser, SessionDep, is_admin
 from app.api.docs import errors
+from app.core.transactions import commit_with_conflicts
 from app.models import (
     Language,
     Message,
@@ -74,7 +76,7 @@ def _localized_site(session: SessionDep, site: Site, lang: str) -> SitePublic:
 
 
 def _localized_sites(
-    session: SessionDep, sites: list[Site], lang: str
+    session: SessionDep, sites: Sequence[Site], lang: str
 ) -> list[SitePublic]:
     translation_by_site: dict[uuid.UUID, SiteTranslation] = {}
     if lang == "en" and sites:
@@ -135,7 +137,7 @@ def read_site_translations(
         raise HTTPException(status_code=404, detail="Site not found")
     translations = session.exec(
         select(SiteTranslation, Language)
-        .join(Language, SiteTranslation.language_id == Language.id)
+        .join(Language, col(SiteTranslation.language_id) == col(Language.id))
         .where(SiteTranslation.site_id == site_id)
     ).all()
     return [
@@ -153,7 +155,10 @@ def read_site_translations(
 @router.put(
     "/{site_id}/translations/{language_id}",
     response_model=SiteTranslationPublic,
-    responses=errors(401, 403, 404, 422),
+    responses={
+        **errors(401, 403, 404, 422),
+        409: {"description": "A concurrent request created this Site translation"},
+    },
 )
 def upsert_site_translation(
     *,
@@ -207,7 +212,7 @@ def upsert_site_translation(
         translation.is_confirmed = True
         translation.updated_at = get_datetime_utc()
     session.add(translation)
-    session.commit()
+    commit_with_conflicts(session, "uq_site_language")
     session.refresh(translation)
     return SiteTranslationPublic.model_validate(
         translation, update={"language_code": language.code, "is_stale": False}

@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 import uuid
 from typing import Any
 
@@ -213,6 +213,7 @@ def register_user(
     user = crud.create_user(
         session=session,
         user_create=user_create,
+        email_conflict_detail="The user with this email already exists in the system",
     )
 
     return user

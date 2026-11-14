@@ -4,8 +4,9 @@ from datetime import UTC, date, datetime, time, timedelta
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import ColumnElement, Date, Float, cast
+from sqlalchemy import ColumnElement, Date, Float, cast, true
 from sqlmodel import SQLModel, col, func, select
+from sqlmodel.sql.expression import Select
 
 from app import crud
 from app.api.deps import AdminUser, SessionDep
@@ -191,15 +192,15 @@ def read_summary(
     return DashboardSummary(
         sites=InventoryCount(
             total=_count(session, Site),
-            active=_count(session, Site, col(Site.is_active)),
+            active=_count(session, Site, col(Site.is_active) == true()),
         ),
         artifacts=InventoryCount(
             total=_count(session, Artifact),
-            active=_count(session, Artifact, col(Artifact.is_active)),
+            active=_count(session, Artifact, col(Artifact.is_active) == true()),
         ),
         beacons=InventoryCount(
             total=_count(session, Beacon),
-            active=_count(session, Beacon, col(Beacon.is_active)),
+            active=_count(session, Beacon, col(Beacon.is_active) == true()),
         ),
         visits=VisitStats(
             total=_count(session, VisitLog, *conditions),
@@ -225,9 +226,14 @@ def read_visits_by_day(
     Khoảng tối đa 366 ngày, vượt quá -> 422.
     """
     to_date = date_range.to_date or datetime.now(UTC).date()
-    from_date = date_range.from_date or (
-        to_date - timedelta(days=DEFAULT_DAYS_RANGE - 1)
-    )
+    from_date = date_range.from_date
+    if from_date is None:
+        try:
+            from_date = to_date - timedelta(days=DEFAULT_DAYS_RANGE - 1)
+        except OverflowError:
+            raise HTTPException(
+                status_code=422, detail="Default date range cannot be represented"
+            ) from None
     if from_date > to_date:
         raise HTTPException(status_code=422, detail="from_date phải <= to_date")
     if (to_date - from_date).days + 1 > MAX_DAYS_RANGE:
@@ -281,8 +287,9 @@ def read_top_artifacts(
     (không phụ thuộc bộ lọc ngày; chưa có đánh giá thì `0` / `null`).
     """
     visit_count = func.count(col(VisitLog.id))
+    # SQLModel's select() overloads cover at most four expressions.
     rows = session.exec(
-        select(
+        Select[tuple[uuid.UUID, uuid.UUID, str, bool, int]](
             col(Artifact.id),
             col(Artifact.site_id),
             col(Artifact.code),

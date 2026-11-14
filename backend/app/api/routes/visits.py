@@ -113,10 +113,10 @@ def read_my_visits(
     limit: int = Query(default=20, ge=1, le=100),
 ) -> Any:
     """
-    Lịch sử tham quan **của tôi** (mới nhất trước, có phân trang).
-    **Visitor / Admin** (cần đăng nhập). Chỉ trả dữ liệu của chính người gọi.
+    My visit history (newest first, paginated).
+    **Visitor / Admin** (authentication required). Returns only the caller's visits.
 
-    Hiện vật đang bị ẩn (hoặc thuộc Site bị ẩn) không hiện trong lịch sử.
+    Hidden artifacts and artifacts belonging to a hidden site are omitted from the history.
     """
     conditions: list[ColumnElement[bool]] = [
         col(VisitLog.user_id) == current_user.id,

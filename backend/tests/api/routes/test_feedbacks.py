@@ -3,6 +3,7 @@ quyền sở hữu dữ liệu, validation và việc nội dung chưa duyệt k
 
 import uuid
 from collections.abc import Generator
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -530,6 +531,56 @@ def test_hidden_artifact_feedback_is_not_listed_or_editable(
 
 
 # ------------------------------------ Admin duyệt -------------------------------
+
+
+@pytest.mark.parametrize("previously_updated", [False, True])
+def test_stale_moderation_does_not_approve_edited_comment(
+    client: TestClient,
+    superuser_token_headers: Headers,
+    normal_user_token_headers: Headers,
+    site_ids: list[str],
+    monkeypatch: pytest.MonkeyPatch,
+    previously_updated: bool,
+) -> None:
+    artifact = _artifact(client, superuser_token_headers, site_ids)
+    feedback = _send(
+        client, normal_user_token_headers, artifact["id"], comment="Bản đã đọc"
+    ).json()
+    if previously_updated:
+        monkeypatch.setattr(
+            "app.api.routes.feedbacks.get_datetime_utc",
+            lambda: datetime(2026, 1, 1, tzinfo=UTC),
+        )
+        feedback = _moderate(
+            client, superuser_token_headers, feedback["id"], "pending"
+        ).json()
+    remembered = feedback["updated_at"]
+    monkeypatch.setattr(
+        "app.api.routes.feedbacks.get_datetime_utc",
+        lambda: datetime(2026, 1, 2, tzinfo=UTC),
+    )
+    edited = client.put(
+        f"{API}/feedbacks/{feedback['id']}",
+        headers=normal_user_token_headers,
+        json={"comment": "Bản chưa được đọc"},
+    )
+    assert edited.status_code == 200
+    assert edited.json()["updated_at"] != remembered
+
+    response = client.patch(
+        f"{API}/feedbacks/{feedback['id']}/status",
+        headers=superuser_token_headers,
+        json={"status": "approved", "expected_updated_at": remembered},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Feedback changed; reload before moderating"
+    current = client.get(
+        f"{API}/feedbacks/{feedback['id']}", headers=normal_user_token_headers
+    )
+    assert current.json() == edited.json()
+    assert current.json()["status"] == "pending"
+    assert _public(client, artifact["id"]) == []
 
 
 def test_admin_lists_and_moderates_feedback(

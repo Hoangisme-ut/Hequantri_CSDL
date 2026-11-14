@@ -15,11 +15,14 @@ from tests.utils.heritage import (
 from tests.utils.user import authentication_token_from_email
 
 
-@pytest.mark.parametrize("path", ["artifacts/", "favorites/me", "visits/me"])
+@pytest.mark.parametrize(
+    "path", ["artifacts/", "favorites/me", "visits/me", "feedbacks/"]
+)
 def test_page_query_count_is_constant(client, db, superuser_token_headers, path):
     visitor = authentication_token_from_email(
         client=client, db=db, email=f"{uuid.uuid4().hex}@example.com"
     )
+    visitor_id = client.get(f"{API}/users/me", headers=visitor).json()["id"]
     site = create_site(client, superuser_token_headers)
     language_id = get_language_id(client)
     try:
@@ -32,6 +35,19 @@ def test_page_query_count_is_constant(client, db, superuser_token_headers, path)
                 language_id,
                 f"Hiện vật {i}",
             )
+            if path == "feedbacks/":
+                assert (
+                    client.post(
+                        f"{API}/feedbacks/",
+                        headers=visitor,
+                        json={
+                            "artifact_id": artifact["id"],
+                            "rating": 5,
+                            "comment": "Chờ duyệt",
+                        },
+                    ).status_code
+                    == 201
+                )
             assert (
                 client.post(
                     f"{API}/favorites/",
@@ -63,7 +79,15 @@ def test_page_query_count_is_constant(client, db, superuser_token_headers, path)
                 params = {"limit": limit, "lang": "vi"}
                 if path == "artifacts/":
                     params["site_id"] = site["id"]
-                response = client.get(f"{API}/{path}", headers=visitor, params=params)
+                if path == "feedbacks/":
+                    params["user_id"] = visitor_id
+                response = client.get(
+                    f"{API}/{path}",
+                    headers=superuser_token_headers
+                    if path == "feedbacks/"
+                    else visitor,
+                    params=params,
+                )
                 assert response.status_code == 200
                 assert len(response.json()["data"]) == limit
                 assert response.json()["count"] == 5
@@ -71,6 +95,7 @@ def test_page_query_count_is_constant(client, db, superuser_token_headers, path)
             finally:
                 event.remove(engine, "before_cursor_execute", capture)
         assert counts[1] == counts[0], counts
-        assert counts == ([6, 6] if path == "artifacts/" else [7, 7]), counts
+        expected = {"artifacts/": 6, "favorites/me": 7, "visits/me": 7, "feedbacks/": 5}
+        assert counts == [expected[path], expected[path]], counts
     finally:
         purge_sites(db, [site["id"]])

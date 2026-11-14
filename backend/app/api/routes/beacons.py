@@ -36,11 +36,12 @@ def _validate_links(
     artifact_id: uuid.UUID | None,
     beacon_id: uuid.UUID | None = None,
     require_active_site: bool = True,
+    require_active_artifact: bool = True,
 ) -> None:
-    """Site phải tồn tại; hiện vật gán phải cùng site và chưa gắn với beacon khác.
+    """Validate the site and the artifact's site and exclusive assignment.
 
-    `require_active_site`: khi tạo beacon / đổi Site / gán hiện vật mới thì Site phải
-    đang bật (409). Gỡ hiện vật hoặc sửa thông số trên Site đã ẩn thì vẫn được phép.
+    New assignments require an active artifact. Existing inactive assignments may
+    be retained while editing other fields, and may always be unlinked.
     """
     site = session.get(Site, site_id)
     if not site:
@@ -54,6 +55,10 @@ def _validate_links(
     artifact = session.get(Artifact, artifact_id)
     if not artifact:
         raise HTTPException(status_code=404, detail="Artifact not found")
+    if require_active_artifact and not artifact.is_active:
+        raise HTTPException(
+            status_code=409, detail="Artifact is inactive; cannot assign beacon"
+        )
     if artifact.site_id != site_id:
         raise HTTPException(
             status_code=400, detail="Beacon và Artifact phải thuộc cùng một Site"
@@ -247,6 +252,7 @@ def update_beacon(
         new_artifact,
         beacon_id=beacon.id,
         require_active_site=changes_site or assigns_artifact,
+        require_active_artifact=assigns_artifact,
     )
     _check_identity_unique(
         session,

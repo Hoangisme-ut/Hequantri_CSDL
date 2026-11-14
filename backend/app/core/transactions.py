@@ -36,7 +36,12 @@ def acquire_transaction_lock(
         raise HTTPException(status_code=409, detail="Concurrent write; try again")
 
 
-def commit_with_conflicts(session: Session, *constraints: str) -> None:
+def commit_with_conflicts(
+    session: Session,
+    *constraints: str,
+    status_code: int = 409,
+    detail: str = "Value already exists",
+) -> None:
     """Map only SQL Server duplicate-key errors for the expected constraints."""
     try:
         session.commit()
@@ -48,7 +53,5 @@ def commit_with_conflicts(session: Session, *constraints: str) -> None:
             and args[0] in (2601, 2627)
             and any(f"'{name}'" in str(args[1:]) for name in constraints)
         ):
-            raise HTTPException(
-                status_code=409, detail="Value already exists"
-            ) from None
+            raise HTTPException(status_code=status_code, detail=detail) from None
         raise
