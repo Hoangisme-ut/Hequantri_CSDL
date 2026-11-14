@@ -89,7 +89,7 @@ def test_admin_to_visitor_to_analytics(
             )
             assert item["artifact"]["title"] == title
         feedback = client.post(
-            f"{API}/feedback/",
+            f"{API}/feedbacks/",
             headers=visitor,
             json={
                 "artifact_id": artifact["id"],
@@ -100,7 +100,7 @@ def test_admin_to_visitor_to_analytics(
         assert feedback["status"] == "pending"
         assert (
             client.patch(
-                f"{API}/feedback/{feedback['id']}/status",
+                f"{API}/feedbacks/{feedback['id']}/status",
                 headers=admin,
                 json={"status": "approved"},
             ).status_code
@@ -136,7 +136,7 @@ def test_admin_to_visitor_to_analytics(
         )
         assert (
             client.post(
-                f"{API}/feedback/",
+                f"{API}/feedbacks/",
                 headers=visitor,
                 json={"artifact_id": artifact["id"], "rating": 5},
             ).status_code

@@ -27,6 +27,7 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
   bool _submitting = false;
   bool _submitted = false;
   bool _alreadySubmitted = false;
+  String? _submittedStatus;
   int _rating = 0;
   int _requestGeneration = 0;
   String? _error;
@@ -44,6 +45,7 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
       _submitting = false;
       _submitted = false;
       _alreadySubmitted = false;
+      _submittedStatus = null;
       _error = null;
     }
   }
@@ -59,6 +61,7 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
       _submitting = false;
       _submitted = false;
       _alreadySubmitted = false;
+      _submittedStatus = null;
       _error = null;
     }
     _observedToken = token;
@@ -121,10 +124,13 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
       );
       if (!_isCurrentRequest(generation, token, session)) return;
       if (feedback.artifactId != widget.artifactId ||
-          feedback.status != 'pending') {
+          !{'pending', 'approved'}.contains(feedback.status)) {
         throw const FormatException('Unexpected Feedback response.');
       }
-      setState(() => _submitted = true);
+      setState(() {
+        _submitted = true;
+        _submittedStatus = feedback.status;
+      });
     } on VisitorApiException catch (error) {
       if (!_isCurrentRequest(generation, token, session)) return;
       setState(() {
@@ -186,7 +192,9 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
           if (_submitted)
             _StatusMessage(
               key: const ValueKey('feedback-submitted'),
-              text: strings.feedbackSubmittedPending,
+              text: _submittedStatus == 'approved'
+                  ? strings.feedbackSubmittedApproved
+                  : strings.feedbackSubmittedPending,
               color: colors.primary,
             )
           else if (token == null)

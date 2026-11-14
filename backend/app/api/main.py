@@ -6,7 +6,6 @@ from app.api.routes import (
     beacons,
     dashboard,
     favorites,
-    feedback,
     feedbacks,
     languages,
     login,
@@ -29,7 +28,6 @@ api_router.include_router(sites.router)
 api_router.include_router(artifacts.router)
 api_router.include_router(beacons.router)
 api_router.include_router(favorites.router)
-api_router.include_router(feedback.router)
 api_router.include_router(feedbacks.router)
 api_router.include_router(visits.router)
 api_router.include_router(media.router)

@@ -15,7 +15,10 @@ import {
   UsersRound,
 } from "lucide-react"
 import { useState } from "react"
-import type { FeedbackReviewPublic, FeedbackStatus } from "@/client"
+import type {
+  FeedbackReviewPublic,
+  FeedbackAdminStatus,
+} from "@/client"
 import { BeaconManagement } from "@/components/Beacons/BeaconManagement"
 import {
   ApiPendingCard,
@@ -177,7 +180,7 @@ export function AnalyticsScreen() {
   )
 }
 
-type ModerationStatus = "approved" | "hidden"
+type ModerationStatus = "pending" | "approved" | "hidden"
 
 const PAGE_SIZE = 10
 
@@ -228,7 +231,7 @@ export function FeedbackScreen() {
 
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<
-    "all" | FeedbackStatus
+  "all" | FeedbackAdminStatus
   >("all")
   const [page, setPage] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -277,7 +280,7 @@ export function FeedbackScreen() {
     (item) => item.status === "hidden",
   ).length
 
-  function handleFilterChange(value: "all" | FeedbackStatus) {
+  function handleFilterChange(value: "all" | FeedbackAdminStatus) {
     setStatusFilter(value)
     setPage(0)
     setSelectedId(null)
@@ -582,10 +585,11 @@ export function FeedbackScreen() {
               <CardTitle className="text-sm">Moderation actions</CardTitle>
             </CardHeader>
 
-            <CardContent className="flex flex-wrap gap-2 p-4">
+           <CardContent className="flex flex-wrap gap-2 p-4">
               <Button
                 disabled={
-                  selectedFeedback?.status !== "pending" ||
+                  selectedFeedback?.status === "approved" ||
+                  !selectedFeedback ||
                   moderationMutation.isPending
                 }
                 onClick={() => handleModeration("approved")}
@@ -599,7 +603,8 @@ export function FeedbackScreen() {
               <Button
                 variant="destructive"
                 disabled={
-                  selectedFeedback?.status !== "pending" ||
+                  selectedFeedback?.status === "hidden" ||
+                  !selectedFeedback ||
                   moderationMutation.isPending
                 }
                 onClick={() => handleModeration("hidden")}
@@ -608,6 +613,21 @@ export function FeedbackScreen() {
                 moderationMutation.variables?.status === "hidden"
                   ? "Hiding..."
                   : "Hide"}
+              </Button>
+
+              <Button
+                variant="outline"
+                disabled={
+                  selectedFeedback?.status === "pending" ||
+                  !selectedFeedback ||
+                  moderationMutation.isPending
+                }
+                onClick={() => handleModeration("pending")}
+              >
+                {moderationMutation.isPending &&
+                moderationMutation.variables?.status === "pending"
+                  ? "Updating..."
+                  : "Set as Pending"}
               </Button>
             </CardContent>
           </Card>
@@ -625,9 +645,9 @@ export function FeedbackScreen() {
           )}
 
           <p className="text-xs text-muted-foreground">
-              Only pending submissions can be approved or hidden. Hidden
-              submissions are not displayed publicly.
-            </p>
+            Admin can change feedback status between Pending, Approved and Hidden.
+            Only approved feedback is displayed publicly.
+          </p>
         </div>
       </div>
     </div>

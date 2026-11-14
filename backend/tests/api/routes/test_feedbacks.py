@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
+from app.models import Feedback
 from tests.utils.heritage import API, create_artifact, create_site, purge_sites
 from tests.utils.user import authentication_token_from_email
 
@@ -529,8 +530,11 @@ def test_hidden_artifact_feedback_is_not_listed_or_editable(
 
 
 # ------------------------------------ Admin duyệt -------------------------------
+
+
 def test_admin_lists_and_moderates_feedback(
     client: TestClient,
+    db: Session,
     superuser_token_headers: Headers,
     normal_user_token_headers: Headers,
     other_user_headers: Headers,
@@ -552,29 +556,61 @@ def test_admin_lists_and_moderates_feedback(
         return response.json()  # type: ignore[no-any-return]
 
     assert listing()["count"] == 2
+
+    # Lọc pending và approved
     waiting = listing(status="pending")
     assert [item["id"] for item in waiting["data"]] == [pending["id"]]
-    assert [i["id"] for i in listing(status="approved")["data"]] == [auto_ok["id"]]
+    assert [item["id"] for item in listing(status="approved")["data"]] == [
+        auto_ok["id"]
+    ]
     assert listing(status="hidden")["count"] == 0
+    assert listing(status="rejected")["count"] == 0
 
-    assert (
-        _moderate(client, superuser_token_headers, pending["id"], "hidden").json()[
-            "status"
-        ]
-        == "hidden"
+    # Admin chuyển pending -> hidden
+    hidden = _moderate(client, superuser_token_headers, pending["id"], "hidden")
+    assert hidden.status_code == 200
+    assert hidden.json()["status"] == "hidden"
+    assert [item["id"] for item in listing(status="hidden")["data"]] == [pending["id"]]
+
+    # rejected là alias của hidden khi lọc
+    rejected = listing(status="rejected")
+    assert [item["id"] for item in rejected["data"]] == [pending["id"]]
+    assert rejected["data"][0]["status"] == "hidden"
+
+    # Admin có thể chuyển hidden -> pending
+    reset = _moderate(client, superuser_token_headers, pending["id"], "pending")
+    assert reset.status_code == 200
+    assert reset.json()["status"] == "pending"
+    assert [item["id"] for item in listing(status="pending")["data"]] == [pending["id"]]
+
+    # Admin gửi rejected: API và database đều phải lưu hidden
+    rejected_update = _moderate(
+        client, superuser_token_headers, pending["id"], "rejected"
     )
-    assert [i["id"] for i in listing(status="hidden")["data"]] == [pending["id"]]
-    # duyệt lại sau khi ẩn
-    assert (
-        _moderate(client, superuser_token_headers, pending["id"], "approved").json()[
-            "status"
-        ]
-        == "approved"
-    )
+    assert rejected_update.status_code == 200
+    assert rejected_update.json()["status"] == "hidden"
+
+    stored_feedback = db.get(Feedback, uuid.UUID(pending["id"]))
+    assert stored_feedback is not None
+    db.refresh(stored_feedback)
+    assert stored_feedback.status == "hidden"
+
+    # Cả hai bộ lọc hidden và rejected đều tìm thấy bản ghi
+    assert [item["id"] for item in listing(status="hidden")["data"]] == [pending["id"]]
+    assert [item["id"] for item in listing(status="rejected")["data"]] == [
+        pending["id"]
+    ]
+
+    # Admin vẫn có thể duyệt lại hidden -> approved
+    approved = _moderate(client, superuser_token_headers, pending["id"], "approved")
+    assert approved.status_code == 200
+    assert approved.json()["status"] == "approved"
     assert listing(status="pending")["count"] == 0
+    assert listing(status="hidden")["count"] == 0
+    assert listing(status="rejected")["count"] == 0
 
 
-@pytest.mark.parametrize("bad_status", ["pending", "rejected", "xyz", "", "APPROVED"])
+@pytest.mark.parametrize("bad_status", ["xyz", "", "APPROVED"])
 def test_moderation_rejects_invalid_status(
     client: TestClient,
     superuser_token_headers: Headers,
@@ -592,7 +628,7 @@ def test_moderation_rejects_invalid_status(
     assert next(i for i in mine["data"] if i["id"] == fid)["status"] == "pending"
 
 
-def test_moderation_unknown_feedback_and_invalid_filter(
+def test_moderation_unknown_feedback(
     client: TestClient, superuser_token_headers: Headers
 ) -> None:
     assert (
@@ -605,9 +641,3 @@ def test_moderation_unknown_feedback_and_invalid_filter(
         _moderate(client, superuser_token_headers, "not-a-uuid", "approved").status_code
         == 422
     )
-    bad_filter = client.get(
-        f"{API}/feedbacks/",
-        headers=superuser_token_headers,
-        params={"status": "rejected"},
-    )
-    assert bad_filter.status_code == 422
