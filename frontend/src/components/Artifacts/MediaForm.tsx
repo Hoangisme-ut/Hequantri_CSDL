@@ -1,10 +1,5 @@
-
-import { useEffect, useState, type FormEvent } from "react"
-import type {
-  LanguagePublic,
-  MediaCreate,
-  MediaPublic,
-} from "@/client"
+import { type FormEvent, useEffect, useState } from "react"
+import type { LanguagePublic, MediaCreate, MediaPublic } from "@/client"
 
 type MediaType = "image" | "video" | "audio"
 
@@ -39,8 +34,7 @@ export default function MediaForm({
   onSubmit,
   onCancel,
 }: MediaFormProps) {
-  const [formData, setFormData] =
-    useState<MediaFormState>(defaultFormState)
+  const [formData, setFormData] = useState<MediaFormState>(defaultFormState)
 
   const [error, setError] = useState("")
 
@@ -79,10 +73,7 @@ export default function MediaForm({
     try {
       const parsedUrl = new URL(formData.url.trim())
 
-      if (
-        parsedUrl.protocol !== "http:" &&
-        parsedUrl.protocol !== "https:"
-      ) {
+      if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
         setError("The URL must use HTTP or HTTPS.")
         return false
       }
@@ -96,10 +87,7 @@ export default function MediaForm({
       return false
     }
 
-    if (
-      !Number.isInteger(formData.sort_order) ||
-      formData.sort_order < 0
-    ) {
+    if (!Number.isInteger(formData.sort_order) || formData.sort_order < 0) {
       setError("Sort order must be a non-negative integer.")
       return false
     }
@@ -136,19 +124,14 @@ export default function MediaForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Media Type */}
       <div className="space-y-2">
-        <label
-          htmlFor="media_type"
-          className="block text-sm font-medium"
-        >
+        <label htmlFor="media_type" className="block text-sm font-medium">
           Media Type
         </label>
 
         <select
           id="media_type"
           value={formData.media_type}
-          onChange={(event) =>
-            handleChange("media_type", event.target.value)
-          }
+          onChange={(event) => handleChange("media_type", event.target.value)}
           disabled={isSubmitting}
           className="w-full rounded-md border px-3 py-2 text-sm"
         >
@@ -160,10 +143,7 @@ export default function MediaForm({
 
       {/* URL */}
       <div className="space-y-2">
-        <label
-          htmlFor="media_url"
-          className="block text-sm font-medium"
-        >
+        <label htmlFor="media_url" className="block text-sm font-medium">
           Media URL <span className="text-red-500">*</span>
         </label>
 
@@ -171,9 +151,7 @@ export default function MediaForm({
           id="media_url"
           type="url"
           value={formData.url}
-          onChange={(event) =>
-            handleChange("url", event.target.value)
-          }
+          onChange={(event) => handleChange("url", event.target.value)}
           placeholder="https://example.com/image.jpg"
           maxLength={500}
           required
@@ -188,19 +166,14 @@ export default function MediaForm({
 
       {/* Caption */}
       <div className="space-y-2">
-        <label
-          htmlFor="media_caption"
-          className="block text-sm font-medium"
-        >
+        <label htmlFor="media_caption" className="block text-sm font-medium">
           Caption
         </label>
 
         <textarea
           id="media_caption"
           value={formData.caption}
-          onChange={(event) =>
-            handleChange("caption", event.target.value)
-          }
+          onChange={(event) => handleChange("caption", event.target.value)}
           placeholder="Enter a description for this media..."
           rows={3}
           disabled={isSubmitting}
@@ -210,19 +183,14 @@ export default function MediaForm({
 
       {/* Language */}
       <div className="space-y-2">
-        <label
-          htmlFor="language_id"
-          className="block text-sm font-medium"
-        >
+        <label htmlFor="language_id" className="block text-sm font-medium">
           Language
         </label>
 
         <select
           id="language_id"
           value={formData.language_id}
-          onChange={(event) =>
-            handleChange("language_id", event.target.value)
-          }
+          onChange={(event) => handleChange("language_id", event.target.value)}
           disabled={isSubmitting}
           className="w-full rounded-md border px-3 py-2 text-sm"
         >
@@ -242,10 +210,7 @@ export default function MediaForm({
 
       {/* Sort Order */}
       <div className="space-y-2">
-        <label
-          htmlFor="sort_order"
-          className="block text-sm font-medium"
-        >
+        <label htmlFor="sort_order" className="block text-sm font-medium">
           Sort Order
         </label>
 
@@ -258,9 +223,7 @@ export default function MediaForm({
           onChange={(event) =>
             handleChange(
               "sort_order",
-              event.target.value === ""
-                ? 0
-                : Number(event.target.value),
+              event.target.value === "" ? 0 : Number(event.target.value),
             )
           }
           disabled={isSubmitting}

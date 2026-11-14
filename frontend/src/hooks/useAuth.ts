@@ -21,10 +21,10 @@ const useAuth = ({ enabled = true }: { enabled?: boolean } = {}) => {
   const { showErrorToast } = useCustomToast()
 
   const { data: user } = useQuery<UserMePublic | null, Error>({
-  queryKey: ["currentUser"],
-  queryFn: async () => (await UsersService.readUserMe()).data,
-  enabled: enabled && isLoggedIn(),
-})
+    queryKey: ["currentUser"],
+    queryFn: async () => (await UsersService.readUserMe()).data,
+    enabled: enabled && isLoggedIn(),
+  })
 
   const signUpMutation = useMutation({
     mutationFn: (data: UserRegister) =>

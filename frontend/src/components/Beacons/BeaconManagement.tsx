@@ -1,9 +1,4 @@
-import { useMemo, useState } from "react"
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   AlertCircle,
   Plus,
@@ -13,24 +8,12 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react"
+import { useMemo, useState } from "react"
 import { toast } from "sonner"
 
 import type { BeaconCreate, BeaconPublic } from "@/client"
-import BeaconForm from "./BeaconForm"
-import { BeaconList } from "./BeaconList"
-
-import { beaconsService, beaconKeys } from "@/services/beacon"
-import { sitesService } from "@/services/sites"
-import { artifactsService } from "@/services/artifacts"
-
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -38,6 +21,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { artifactsService } from "@/services/artifacts"
+import { beaconKeys, beaconsService } from "@/services/beacon"
+import { sitesService } from "@/services/sites"
+import BeaconForm from "./BeaconForm"
+import { BeaconList } from "./BeaconList"
 
 type StatusFilter = "all" | "active" | "inactive" | "unassigned"
 
@@ -48,12 +37,7 @@ interface StatCardProps {
   icon: React.ReactNode
 }
 
-function StatCard({
-  title,
-  value,
-  description,
-  icon,
-}: StatCardProps) {
+function StatCard({ title, value, description, icon }: StatCardProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -65,9 +49,7 @@ function StatCard({
 
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {description}
-        </p>
+        <p className="mt-1 text-xs text-muted-foreground">{description}</p>
       </CardContent>
     </Card>
   )
@@ -77,17 +59,14 @@ export function BeaconManagement() {
   const queryClient = useQueryClient()
 
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] =
-    useState<StatusFilter>("all")
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingBeacon, setEditingBeacon] =
-    useState<BeaconPublic | null>(null)
+  const [editingBeacon, setEditingBeacon] = useState<BeaconPublic | null>(null)
 
   // Load Beacon list
   const beaconsQuery = useQuery({
     queryKey: beaconKeys.list({ skip: 0, limit: 200 }),
-    queryFn: () =>
-      beaconsService.list({ skip: 0, limit: 200 }),
+    queryFn: () => beaconsService.list({ skip: 0, limit: 200 }),
   })
 
   // Load Sites for displaying Site names
@@ -112,9 +91,7 @@ export function BeaconManagement() {
   const artifacts = artifactsQuery.data?.data ?? []
 
   const siteNames = useMemo(() => {
-    return Object.fromEntries(
-      sites.map((site) => [site.id, site.name]),
-    )
+    return Object.fromEntries(sites.map((site) => [site.id, site.name]))
   }, [sites])
 
   const artifactLabels = useMemo(() => {
@@ -132,9 +109,7 @@ export function BeaconManagement() {
       total: beacons.length,
       active: beacons.filter((beacon) => beacon.is_active).length,
       inactive: beacons.filter((beacon) => !beacon.is_active).length,
-      unassigned: beacons.filter(
-        (beacon) => !beacon.artifact_id,
-      ).length,
+      unassigned: beacons.filter((beacon) => !beacon.artifact_id).length,
     }
   }, [beacons])
 
@@ -143,11 +118,10 @@ export function BeaconManagement() {
     const keyword = searchTerm.trim().toLowerCase()
 
     return beacons.filter((beacon) => {
-      const siteName =
-        siteNames[beacon.site_id]?.toLowerCase() ?? ""
+      const siteName = siteNames[beacon.site_id]?.toLowerCase() ?? ""
 
       const artifactName = beacon.artifact_id
-        ? artifactLabels[beacon.artifact_id]?.toLowerCase() ?? ""
+        ? (artifactLabels[beacon.artifact_id]?.toLowerCase() ?? "")
         : ""
 
       const matchesSearch =
@@ -166,18 +140,11 @@ export function BeaconManagement() {
 
       return matchesSearch && matchesStatus
     })
-  }, [
-    beacons,
-    searchTerm,
-    statusFilter,
-    siteNames,
-    artifactLabels,
-  ])
+  }, [beacons, searchTerm, statusFilter, siteNames, artifactLabels])
 
   // Create Beacon
   const createMutation = useMutation({
-    mutationFn: (input: BeaconCreate) =>
-      beaconsService.create(input),
+    mutationFn: (input: BeaconCreate) => beaconsService.create(input),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: beaconKeys.all,
@@ -187,9 +154,7 @@ export function BeaconManagement() {
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to create Beacon.",
+        error instanceof Error ? error.message : "Failed to create Beacon.",
       )
     },
   })
@@ -212,17 +177,14 @@ export function BeaconManagement() {
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to update Beacon.",
+        error instanceof Error ? error.message : "Failed to update Beacon.",
       )
     },
   })
 
   // Deactivate Beacon
   const deactivateMutation = useMutation({
-    mutationFn: (beaconId: string) =>
-      beaconsService.deactivate(beaconId),
+    mutationFn: (beaconId: string) => beaconsService.deactivate(beaconId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: beaconKeys.all,
@@ -231,9 +193,7 @@ export function BeaconManagement() {
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to deactivate Beacon.",
+        error instanceof Error ? error.message : "Failed to deactivate Beacon.",
       )
     },
   })
@@ -274,18 +234,13 @@ export function BeaconManagement() {
     }
   }
 
-  const isSubmitting =
-    createMutation.isPending || updateMutation.isPending
+  const isSubmitting = createMutation.isPending || updateMutation.isPending
 
   const isLoading =
-    beaconsQuery.isLoading ||
-    sitesQuery.isLoading ||
-    artifactsQuery.isLoading
+    beaconsQuery.isLoading || sitesQuery.isLoading || artifactsQuery.isLoading
 
   const hasError =
-    beaconsQuery.isError ||
-    sitesQuery.isError ||
-    artifactsQuery.isError
+    beaconsQuery.isError || sitesQuery.isError || artifactsQuery.isError
 
   return (
     <div className="space-y-6">
@@ -349,9 +304,7 @@ export function BeaconManagement() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchTerm}
-                onChange={(event) =>
-                  setSearchTerm(event.target.value)
-                }
+                onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="Search UUID, Major, Minor, Site or Artifact..."
                 className="pl-9"
               />
@@ -370,11 +323,7 @@ export function BeaconManagement() {
                   key={value}
                   type="button"
                   size="sm"
-                  variant={
-                    statusFilter === value
-                      ? "default"
-                      : "outline"
-                  }
+                  variant={statusFilter === value ? "default" : "outline"}
                   onClick={() => setStatusFilter(value)}
                 >
                   {label}
@@ -417,9 +366,7 @@ export function BeaconManagement() {
       {!hasError && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">
-              Beacon List
-            </h2>
+            <h2 className="text-lg font-semibold">Beacon List</h2>
 
             <span className="text-sm text-muted-foreground">
               {filteredBeacons.length} result
@@ -435,9 +382,7 @@ export function BeaconManagement() {
             onEdit={openEditDialog}
             onDeactivate={handleDeactivate}
             deactivatingBeaconId={
-              deactivateMutation.isPending
-                ? deactivateMutation.variables
-                : null
+              deactivateMutation.isPending ? deactivateMutation.variables : null
             }
           />
         </div>

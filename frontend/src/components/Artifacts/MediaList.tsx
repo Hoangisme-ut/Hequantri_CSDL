@@ -1,4 +1,3 @@
-
 import {
   ExternalLink,
   FileImage,
@@ -132,9 +131,7 @@ export function MediaList({
 
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={mediaType.variant}>
-                  {mediaType.label}
-                </Badge>
+                <Badge variant={mediaType.variant}>{mediaType.label}</Badge>
 
                 <Badge variant="outline">
                   {getLanguageName(item.language_id)}

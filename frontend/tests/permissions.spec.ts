@@ -54,9 +54,7 @@ test.describe("Permissions - Visitor role", () => {
 
     await expect(page).toHaveURL(/\/forbidden$/)
 
-    await expect(
-      page.getByRole("heading", { name: "403" }),
-    ).toBeVisible()
+    await expect(page.getByRole("heading", { name: "403" })).toBeVisible()
 
     await expect(
       page.getByRole("heading", { name: "Access Denied" }),

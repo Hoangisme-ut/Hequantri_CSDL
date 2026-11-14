@@ -1,6 +1,6 @@
+import { useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { ShieldX } from "lucide-react"
-import { useQueryClient } from "@tanstack/react-query"
 
 export const Route = createFileRoute("/forbidden")({
   component: Forbidden,
@@ -34,13 +34,11 @@ function Forbidden() {
 
         <h1 className="text-5xl font-bold">403</h1>
 
-        <h2 className="text-xl font-semibold">
-          Access Denied
-        </h2>
+        <h2 className="text-xl font-semibold">Access Denied</h2>
 
         <p className="text-sm text-muted-foreground">
-          You do not have permission to access the Smart Heritage
-          Administration Console.
+          You do not have permission to access the Smart Heritage Administration
+          Console.
         </p>
 
         <button

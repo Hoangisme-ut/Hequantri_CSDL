@@ -7,18 +7,18 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleAlert,
+  FileSpreadsheet,
   FileText,
   Filter,
+  LoaderCircle,
   MessageSquare,
   Search,
   Star,
   UsersRound,
 } from "lucide-react"
 import { useState } from "react"
-import type {
-  FeedbackReviewPublic,
-  FeedbackAdminStatus,
-} from "@/client"
+import { toast } from "sonner"
+import type { FeedbackAdminStatus, FeedbackReviewPublic } from "@/client"
 import { BeaconManagement } from "@/components/Beacons/BeaconManagement"
 import {
   ApiPendingCard,
@@ -37,7 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-
+import { analyticsService } from "@/services/analytics"
 import { feedbackKeys, feedbackService } from "@/services/feedback"
 
 function ScreenCard({
@@ -78,104 +78,605 @@ export function BeaconManagementScreen() {
   return <BeaconManagement />
 }
 
+function getDateString(date: Date) {
+  return date.toISOString().slice(0, 10)
+}
+
+function getDefaultDateRange() {
+  const today = new Date()
+  const thirtyDaysAgo = new Date(today)
+
+  thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 29)
+
+  return {
+    from: getDateString(thirtyDaysAgo),
+    to: getDateString(today),
+  }
+}
+
 export function AnalyticsScreen() {
+  const defaultRange = getDefaultDateRange()
+
+  const [fromDate, setFromDate] = useState(defaultRange.from)
+  const [toDate, setToDate] = useState(defaultRange.to)
+  const [selectedSiteId, setSelectedSiteId] = useState("")
+  const [isExportingPdf, setIsExportingPdf] = useState(false)
+  const [isExportingExcel, setIsExportingExcel] = useState(false)
+
+  // Analytics API sử dụng khoảng thời gian [from, to).
+  // Vì vậy, to phải là ngày tiếp theo của ngày kết thúc được chọn.
+  const analyticsFilters = {
+    from: `${fromDate}T00:00:00Z`,
+    to: `${getDateString(
+      new Date(new Date(`${toDate}T00:00:00Z`).getTime() + 86400000),
+    )}T00:00:00Z`,
+    site_id: selectedSiteId || undefined,
+  }
+
+  // Dashboard API sử dụng ngày bắt đầu và kết thúc inclusive.
+  const dashboardFilters = {
+    from_date: fromDate,
+    to_date: toDate,
+  }
+
+  // Danh sách Site cho bộ lọc, không phụ thuộc Site đang chọn.
+  const siteOptionsFilters = {
+    from: analyticsFilters.from,
+    to: analyticsFilters.to,
+    limit: 100,
+  }
+
+  const siteOptionsQuery = useQuery({
+    queryKey: ["analytics", "site-options", siteOptionsFilters],
+    queryFn: () => analyticsService.sites(siteOptionsFilters),
+  })
+
+  // Analytics API
+  const overviewQuery = useQuery({
+    queryKey: ["analytics", "overview", analyticsFilters],
+    queryFn: () => analyticsService.overview(analyticsFilters),
+  })
+
+  const visitsQuery = useQuery({
+    queryKey: ["analytics", "visits", analyticsFilters],
+    queryFn: () => analyticsService.visits(analyticsFilters),
+  })
+
+  const sitesQuery = useQuery({
+    queryKey: ["analytics", "sites", analyticsFilters],
+    queryFn: () => analyticsService.sites(analyticsFilters),
+  })
+
+  const topArtifactsQuery = useQuery({
+    queryKey: ["analytics", "top-artifacts", analyticsFilters],
+    queryFn: () =>
+      analyticsService.topArtifacts({
+        ...analyticsFilters,
+        limit: 10,
+      }),
+  })
+
+  // Dashboard API
+  const summaryQuery = useQuery({
+    queryKey: ["analytics", "dashboard-summary", dashboardFilters],
+    queryFn: () => analyticsService.summary(dashboardFilters),
+  })
+
+  const languageQuery = useQuery({
+    queryKey: ["analytics", "visits-by-language", dashboardFilters],
+    queryFn: () => analyticsService.visitsByLanguage(dashboardFilters),
+  })
+
+  const dailyVisits = visitsQuery.data ?? []
+  const siteStats = sitesQuery.data ?? []
+  const topArtifacts = topArtifactsQuery.data ?? []
+  const siteOptions = siteOptionsQuery.data ?? []
+  const languages = languageQuery.data?.data ?? []
+
+  const maxDailyViews = Math.max(1, ...dailyVisits.map((item) => item.views))
+
+  const numberFormat = new Intl.NumberFormat("vi-VN")
+
+  const isDateRangeInvalid = !fromDate || !toDate || fromDate > toDate
+
+  const handleExportPdf = async () => {
+    if (isDateRangeInvalid) return
+
+    setIsExportingPdf(true)
+
+    try {
+      await analyticsService.exportPdf(analyticsFilters)
+      toast.success("PDF report exported successfully.")
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to export PDF report.",
+      )
+    } finally {
+      setIsExportingPdf(false)
+    }
+  }
+
+  const handleExportExcel = async () => {
+    if (isDateRangeInvalid) return
+
+    setIsExportingExcel(true)
+
+    try {
+      await analyticsService.exportExcel(analyticsFilters)
+      toast.success("Excel report exported successfully.")
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to export Excel report.",
+      )
+    } finally {
+      setIsExportingExcel(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4 md:gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" disabled>
-            <CalendarDays /> Date range unavailable
+      {/* Date and Site filters */}
+      <Card className="border-border/70 bg-card shadow-sm">
+        <CardContent className="flex flex-wrap items-end gap-3 p-4">
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="analytics-from"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              From date
+            </label>
+            <Input
+              id="analytics-from"
+              type="date"
+              value={fromDate}
+              max={toDate}
+              onChange={(event) => setFromDate(event.target.value)}
+              className="w-[170px]"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="analytics-to"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              To date
+            </label>
+            <Input
+              id="analytics-to"
+              type="date"
+              value={toDate}
+              min={fromDate}
+              onChange={(event) => setToDate(event.target.value)}
+              className="w-[170px]"
+            />
+          </div>
+
+          <div className="flex min-w-[190px] flex-col gap-1.5">
+            <label
+              htmlFor="analytics-site"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              Site
+            </label>
+            <select
+              id="analytics-site"
+              value={selectedSiteId}
+              onChange={(event) => setSelectedSiteId(event.target.value)}
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">All sites</option>
+              {siteOptions.map((site) => (
+                <option key={site.site_id} value={site.site_id}>
+                  {site.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <Button
+            variant="outline"
+            disabled={isDateRangeInvalid}
+            onClick={() => {
+              setFromDate(defaultRange.from)
+              setToDate(defaultRange.to)
+              setSelectedSiteId("")
+            }}
+          >
+            Reset filters
           </Button>
-          <DisabledFilter label="All sites" />
-          <Button disabled>Apply</Button>
-          <Button variant="outline" disabled>
-            Reset
+
+          <Button
+            variant="outline"
+            disabled={isDateRangeInvalid || isExportingPdf || isExportingExcel}
+            onClick={handleExportPdf}
+            className="border-blue-500/40 text-blue-600 hover:bg-blue-500/10 dark:text-blue-400"
+          >
+            {isExportingPdf ? (
+              <LoaderCircle className="animate-spin" />
+            ) : (
+              <FileText />
+            )}
+            {isExportingPdf ? "Exporting PDF..." : "Export PDF"}
           </Button>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" disabled>
-            Export PDF
+
+          <Button
+            variant="outline"
+            disabled={isDateRangeInvalid || isExportingExcel || isExportingPdf}
+            onClick={handleExportExcel}
+            className="border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400"
+          >
+            {isExportingExcel ? (
+              <LoaderCircle className="animate-spin" />
+            ) : (
+              <FileSpreadsheet />
+            )}
+            {isExportingExcel ? "Exporting Excel..." : "Export Excel"}
           </Button>
-          <Button variant="outline" disabled>
-            Export Excel
-          </Button>
-        </div>
-      </div>
+
+          {siteOptionsQuery.isError && (
+            <p className="w-full text-xs text-destructive">
+              Unable to load Site options: {siteOptionsQuery.error.message}
+            </p>
+          )}
+
+          {isDateRangeInvalid && (
+            <p className="w-full text-xs text-destructive">
+              The start date must not be later than the end date.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Overview metrics */}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          label="Total visits"
-          value="—"
-          detail="Waiting for analytics API"
+          label="Content views"
+          value={
+            overviewQuery.isPending
+              ? "..."
+              : overviewQuery.isError
+                ? "Error"
+                : numberFormat.format(overviewQuery.data?.views ?? 0)
+          }
+          detail="Total recorded content views"
           icon={UsersRound}
         />
+
         <MetricCard
-          label="Artifact views"
-          value="—"
-          detail="Waiting for analytics API"
+          label="Unique users"
+          value={
+            overviewQuery.isPending
+              ? "..."
+              : overviewQuery.isError
+                ? "Error"
+                : numberFormat.format(overviewQuery.data?.unique_users ?? 0)
+          }
+          detail="Unique users in the selected period"
+          icon={UsersRound}
+        />
+
+        <MetricCard
+          label="Artifacts viewed"
+          value={
+            overviewQuery.isPending
+              ? "..."
+              : overviewQuery.isError
+                ? "Error"
+                : numberFormat.format(overviewQuery.data?.artifacts_viewed ?? 0)
+          }
+          detail="Artifacts with recorded views"
           icon={Archive}
         />
+
         <MetricCard
-          label="Interactions"
-          value="—"
-          detail="Waiting for analytics API"
-          icon={ChartNoAxesColumnIncreasing}
-        />
-        <MetricCard
-          label="Content views"
-          value="—"
-          detail="Waiting for analytics API"
-          icon={FileText}
+          label="Average rating"
+          value={
+            summaryQuery.isPending
+              ? "..."
+              : summaryQuery.isError
+                ? "Error"
+                : typeof summaryQuery.data?.ratings.average === "number"
+                  ? `${summaryQuery.data.ratings.average.toFixed(1)}/5`
+                  : "—"
+          }
+          detail="Overall rating, not date-filtered"
+          icon={Star}
         />
       </section>
+
+      {/* Daily visits and language */}
       <div className="grid gap-4 xl:grid-cols-[1.35fr_0.85fr]">
         <ScreenCard
-          title="Daily visits"
+          title="Daily content views"
           icon={ChartNoAxesColumnIncreasing}
-          badge="No data source"
+          badge={`${dailyVisits.length} days`}
         >
-          <EmptyState
-            title="Analytics are not available"
-            description="No visits, daily values or reporting period can be loaded from the current API."
-            icon={ChartNoAxesColumnIncreasing}
-          />
+          {visitsQuery.isPending ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              Loading daily analytics...
+            </div>
+          ) : visitsQuery.isError ? (
+            <EmptyState
+              title="Unable to load daily analytics"
+              description={visitsQuery.error.message}
+              icon={CircleAlert}
+            />
+          ) : dailyVisits.length === 0 ? (
+            <EmptyState
+              title="No daily views"
+              description="There are no recorded content views in this date range."
+              icon={ChartNoAxesColumnIncreasing}
+            />
+          ) : (
+            <div className="space-y-4 p-4">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Daily views</span>
+                <span>
+                  {numberFormat.format(
+                    dailyVisits.reduce((total, item) => total + item.views, 0),
+                  )}{" "}
+                  total views
+                </span>
+              </div>
+
+              <div className="flex h-48 items-end gap-1 overflow-x-auto border-b border-border/70 pb-1">
+                {dailyVisits.map((item) => (
+                  <div
+                    key={item.date}
+                    className="group flex h-full min-w-5 flex-1 flex-col items-center justify-end gap-1"
+                    title={`${item.date}: ${numberFormat.format(item.views)} views, ${numberFormat.format(item.unique_users)} unique users`}
+                  >
+                    <div
+                      className="w-full rounded-t-sm bg-primary/80 transition-colors group-hover:bg-primary"
+                      style={{
+                        height: `${Math.max(
+                          3,
+                          (item.views / maxDailyViews) * 100,
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-between gap-2 text-[10px] text-muted-foreground">
+                <span>{dailyVisits[0]?.date}</span>
+                <span>{dailyVisits[dailyVisits.length - 1]?.date}</span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Views</TableHead>
+                      <TableHead className="text-right">Unique users</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dailyVisits.map((item) => (
+                      <TableRow key={item.date}>
+                        <TableCell className="whitespace-nowrap">
+                          {item.date}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {numberFormat.format(item.views)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {numberFormat.format(item.unique_users)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
         </ScreenCard>
-        <ApiPendingCard
-          title="Content views by category"
-          description="Category totals require confirmed analytics events and content categories."
-        />
+
+        <ScreenCard title="Visits by language" icon={FileText}>
+          {languageQuery.isPending ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              Loading language statistics...
+            </div>
+          ) : languageQuery.isError ? (
+            <EmptyState
+              title="Unable to load language statistics"
+              description={languageQuery.error.message}
+              icon={CircleAlert}
+            />
+          ) : languages.length === 0 ? (
+            <EmptyState
+              title="No language data"
+              description="No language statistics are available for this period."
+              icon={FileText}
+            />
+          ) : (
+            <div className="divide-y divide-border/70">
+              {languages.map((item, index) => (
+                <div
+                  key={item.language_id ?? item.code ?? `language-${index}`}
+                  className="flex items-center justify-between gap-3 px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {item.name || item.code || "Unknown language"}
+                    </p>
+                    {item.code && (
+                      <p className="text-xs text-muted-foreground">
+                        {item.code}
+                      </p>
+                    )}
+                  </div>
+                  <span className="whitespace-nowrap text-sm font-semibold tabular-nums">
+                    {numberFormat.format(item.count)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </ScreenCard>
       </div>
-      <div className="grid gap-4 xl:grid-cols-[1.5fr_0.7fr]">
+
+      {/* Site performance and inventory */}
+      <div className="grid items-start gap-4 xl:grid-cols-[1.5fr_0.7fr]">
         <ScreenCard
           title="Performance by Site"
           icon={CalendarDays}
-          badge="API pending"
+          badge={`${siteStats.length} sites`}
         >
+          {sitesQuery.isPending ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              Loading Site analytics...
+            </div>
+          ) : sitesQuery.isError ? (
+            <EmptyState
+              title="Unable to load Site analytics"
+              description={sitesQuery.error.message}
+              icon={CircleAlert}
+            />
+          ) : siteStats.length === 0 ? (
+            <EmptyState
+              title="No Site analytics available"
+              description="There are no recorded views for the selected filters."
+              icon={CalendarDays}
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Site name</TableHead>
+                    <TableHead className="text-right">Views</TableHead>
+                    <TableHead className="text-right">Unique users</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {siteStats.map((site) => (
+                    <TableRow key={site.site_id}>
+                      <TableCell>
+                        <div className="min-w-[140px]">
+                          <p className="font-medium">{site.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {site.site_id}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {numberFormat.format(site.views)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {numberFormat.format(site.unique_users)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </ScreenCard>
+
+        <ScreenCard title="Inventory Summary" icon={Archive}>
+          {summaryQuery.isPending ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              Loading inventory summary...
+            </div>
+          ) : summaryQuery.isError ? (
+            <EmptyState
+              title="Unable to load inventory"
+              description={summaryQuery.error.message}
+              icon={CircleAlert}
+            />
+          ) : (
+            <div className="divide-y divide-border/70">
+              {(
+                [
+                  ["Sites", summaryQuery.data.sites],
+                  ["Artifacts", summaryQuery.data.artifacts],
+                  ["Beacons", summaryQuery.data.beacons],
+                ] as const
+              ).map(([label, item]) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between gap-3 px-4 py-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{label}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {numberFormat.format(item.active)} active
+                    </p>
+                  </div>
+                  <p className="text-lg font-semibold tabular-nums">
+                    {numberFormat.format(item.total)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </ScreenCard>
+      </div>
+
+      {/* Top artifacts */}
+      <ScreenCard title="Top Artifacts" icon={Archive} badge="Top 10">
+        {topArtifactsQuery.isPending ? (
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            Loading top artifacts...
+          </div>
+        ) : topArtifactsQuery.isError ? (
+          <EmptyState
+            title="Unable to load top artifacts"
+            description={topArtifactsQuery.error.message}
+            icon={CircleAlert}
+          />
+        ) : topArtifacts.length === 0 ? (
+          <EmptyState
+            title="No artifact views"
+            description="No artifacts have recorded views in the selected period."
+            icon={Archive}
+          />
+        ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Site name</TableHead>
-                  <TableHead>Visits</TableHead>
-                  <TableHead>Content views</TableHead>
-                  <TableHead>Interactions</TableHead>
-                  <TableHead>Artifact views</TableHead>
-                  <TableHead>Visit share</TableHead>
+                  <TableHead>Artifact code</TableHead>
+                  <TableHead>Artifact ID</TableHead>
+                  <TableHead className="text-right">Views</TableHead>
+                  <TableHead className="text-right">Unique users</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody />
+              <TableBody>
+                {topArtifacts.map((artifact) => (
+                  <TableRow key={artifact.artifact_id}>
+                    <TableCell className="font-medium">
+                      {artifact.code}
+                    </TableCell>
+                    <TableCell className="max-w-[180px] truncate text-xs text-muted-foreground">
+                      {artifact.artifact_id}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {numberFormat.format(artifact.views)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {numberFormat.format(artifact.unique_users)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
             </Table>
           </div>
-          <EmptyState
-            title="No site analytics available"
-            description="Site-level metrics will appear when an analytics API is available."
-            icon={CalendarDays}
-          />
-        </ScreenCard>
-        <ApiPendingCard
-          title="Inventory Summary"
-          description="Verified site, artifact and beacon totals are not available for reporting."
-        />
-      </div>
+        )}
+      </ScreenCard>
+
+      <p className="text-xs text-muted-foreground">
+        Analytics views represent recorded content-view events. They should not
+        be interpreted as physical visitor counts. Average rating and inventory
+        summary are provided by the Dashboard API; average rating is not
+        filtered by the selected date range or Site.
+      </p>
     </div>
   )
 }
@@ -230,9 +731,9 @@ export function FeedbackScreen() {
   const queryClient = useQueryClient()
 
   const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState<
-  "all" | FeedbackAdminStatus
-  >("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | FeedbackAdminStatus>(
+    "all",
+  )
   const [page, setPage] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -585,7 +1086,7 @@ export function FeedbackScreen() {
               <CardTitle className="text-sm">Moderation actions</CardTitle>
             </CardHeader>
 
-           <CardContent className="flex flex-wrap gap-2 p-4">
+            <CardContent className="flex flex-wrap gap-2 p-4">
               <Button
                 disabled={
                   selectedFeedback?.status === "approved" ||
@@ -645,8 +1146,8 @@ export function FeedbackScreen() {
           )}
 
           <p className="text-xs text-muted-foreground">
-            Admin can change feedback status between Pending, Approved and Hidden.
-            Only approved feedback is displayed publicly.
+            Admin can change feedback status between Pending, Approved and
+            Hidden. Only approved feedback is displayed publicly.
           </p>
         </div>
       </div>

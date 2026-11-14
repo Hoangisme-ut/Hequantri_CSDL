@@ -14,11 +14,11 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import type { Site } from "@/services/sites"
 import {
   type SiteTranslationInput,
   siteTranslationsService,
 } from "@/services/site-translations"
+import type { Site } from "@/services/sites"
 
 type LanguageCode = "en" | "vi"
 

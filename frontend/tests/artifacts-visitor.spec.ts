@@ -1,9 +1,6 @@
 import { expect, test } from "@playwright/test"
 import { createUser } from "./utils/privateApi"
-import {
-  randomEmail,
-  randomPassword,
-} from "./utils/random"
+import { randomEmail, randomPassword } from "./utils/random"
 import { logInUser } from "./utils/user"
 
 test.describe("Visitor - Artifact Management permissions", () => {
@@ -26,9 +23,7 @@ test.describe("Visitor - Artifact Management permissions", () => {
 
     await expect(page).toHaveURL(/\/forbidden$/)
 
-    await expect(
-      page.getByRole("heading", { name: "403" }),
-    ).toBeVisible()
+    await expect(page.getByRole("heading", { name: "403" })).toBeVisible()
 
     await expect(
       page.getByRole("heading", { name: "Access Denied" }),

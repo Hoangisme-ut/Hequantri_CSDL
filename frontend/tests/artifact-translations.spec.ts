@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test"
+import { expect, type Page, test } from "@playwright/test"
 
 const randomArtifactCode = () =>
   `PW-TRANS-${Date.now()}-${Math.floor(Math.random() * 10000)}`
@@ -8,37 +8,47 @@ let artifactCode = ""
 async function createArtifact(page: Page, code: string) {
   await page.goto("/items")
 
-  await page.getByRole("heading", {
-    name: "Artifact Management",
-    level: 2,
-  }).waitFor()
+  await page
+    .getByRole("heading", {
+      name: "Artifact Management",
+      level: 2,
+    })
+    .waitFor()
 
-  await page.getByRole("button", {
-    name: "Add artifact",
-  }).first().click()
+  await page
+    .getByRole("button", {
+      name: "Add artifact",
+    })
+    .first()
+    .click()
 
   const dialog = page.getByRole("dialog")
 
   await dialog.getByLabel("Artifact code").fill(code)
 
   const siteSelect = dialog.getByLabel("Site")
-  await expect(siteSelect.locator("option")).toHaveCount(2, {
-    timeout: 10000,
-  }).catch(() => undefined)
+  await expect(siteSelect.locator("option"))
+    .toHaveCount(2, {
+      timeout: 10000,
+    })
+    .catch(() => undefined)
 
   const options = await siteSelect.locator("option").count()
   expect(options).toBeGreaterThan(1)
 
   await siteSelect.selectOption({ index: 1 })
 
-  const createResponse = page.waitForResponse((response) =>
-    response.request().method() === "POST" &&
-    response.url().includes("/api/v1/artifacts/"),
+  const createResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.url().includes("/api/v1/artifacts/"),
   )
 
-  await dialog.getByRole("button", {
-    name: "Save artifact",
-  }).click()
+  await dialog
+    .getByRole("button", {
+      name: "Save artifact",
+    })
+    .click()
 
   const response = await createResponse
   expect(response.ok()).toBeTruthy()
@@ -47,15 +57,19 @@ async function createArtifact(page: Page, code: string) {
 }
 
 async function openTranslationDialog(page: Page, code: string) {
-  await page.getByRole("button", {
-    name: `Manage translations for ${code}`,
-  }).click()
+  await page
+    .getByRole("button", {
+      name: `Manage translations for ${code}`,
+    })
+    .click()
 
   const dialog = page.getByRole("dialog")
 
-  await expect(dialog.getByRole("heading", {
-    name: `Translations · ${code}`,
-  })).toBeVisible()
+  await expect(
+    dialog.getByRole("heading", {
+      name: `Translations · ${code}`,
+    }),
+  ).toBeVisible()
 
   await expect(dialog.getByLabel("Title")).toBeVisible()
   await expect(dialog.getByLabel("Description")).toBeVisible()
@@ -70,21 +84,24 @@ async function saveTranslation(
   title: string,
 ) {
   await dialog.getByLabel("Title").fill(title)
-  await dialog.getByLabel("Description").fill(
-    "Playwright translation description",
-  )
-  await dialog.getByLabel("History content").fill(
-    "Playwright translation history content",
+  await dialog
+    .getByLabel("Description")
+    .fill("Playwright translation description")
+  await dialog
+    .getByLabel("History content")
+    .fill("Playwright translation history content")
+
+  const saveResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "PUT" &&
+      response.url().includes("/translations"),
   )
 
-  const saveResponse = page.waitForResponse((response) =>
-    response.request().method() === "PUT" &&
-    response.url().includes("/translations"),
-  )
-
-  await dialog.getByRole("button", {
-    name: "Save translation",
-  }).click()
+  await dialog
+    .getByRole("button", {
+      name: "Save translation",
+    })
+    .click()
 
   const response = await saveResponse
   expect(response.ok()).toBeTruthy()
@@ -109,14 +126,17 @@ async function cleanupArtifact(page: Page, code: string) {
     if (await row.count()) {
       page.once("dialog", (dialog) => dialog.accept())
 
-      const deleteResponse = page.waitForResponse((response) =>
-        response.request().method() === "DELETE" &&
-        response.url().includes("/api/v1/artifacts/"),
+      const deleteResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().includes("/api/v1/artifacts/"),
       )
 
-      await row.getByRole("button", {
-        name: `Deactivate ${code}`,
-      }).click()
+      await row
+        .getByRole("button", {
+          name: `Deactivate ${code}`,
+        })
+        .click()
 
       const response = await deleteResponse
       expect(response.ok()).toBeTruthy()
@@ -139,23 +159,19 @@ test.describe("Artifact Translations", () => {
   test("should open translation dialog", async ({ page }) => {
     const dialog = await openTranslationDialog(page, artifactCode)
 
-    await expect(dialog.getByText(
-      "No translation for this language yet.",
-    )).toBeVisible()
+    await expect(
+      dialog.getByText("No translation for this language yet."),
+    ).toBeVisible()
   })
 
   test("should create a new translation", async ({ page }) => {
     const dialog = await openTranslationDialog(page, artifactCode)
 
-    await saveTranslation(
-      page,
-      dialog,
-      "Playwright Test Translation",
-    )
+    await saveTranslation(page, dialog, "Playwright Test Translation")
 
-    await expect(dialog.getByText(
-      "Translation exists; saving updates it.",
-    )).toBeVisible()
+    await expect(
+      dialog.getByText("Translation exists; saving updates it."),
+    ).toBeVisible()
 
     await expect(dialog.getByLabel("Title")).toHaveValue(
       "Playwright Test Translation",
@@ -165,24 +181,21 @@ test.describe("Artifact Translations", () => {
   test("should update an existing translation", async ({ page }) => {
     const dialog = await openTranslationDialog(page, artifactCode)
 
-    await saveTranslation(
-      page,
-      dialog,
-      "Original Translation",
+    await saveTranslation(page, dialog, "Original Translation")
+
+    await dialog.getByLabel("Title").fill("Updated Playwright Translation")
+
+    const updateResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "PUT" &&
+        response.url().includes("/translations"),
     )
 
-    await dialog.getByLabel("Title").fill(
-      "Updated Playwright Translation",
-    )
-
-    const updateResponse = page.waitForResponse((response) =>
-      response.request().method() === "PUT" &&
-      response.url().includes("/translations"),
-    )
-
-    await dialog.getByRole("button", {
-      name: "Save translation",
-    }).click()
+    await dialog
+      .getByRole("button", {
+        name: "Save translation",
+      })
+      .click()
 
     const response = await updateResponse
     expect(response.ok()).toBeTruthy()
@@ -197,44 +210,45 @@ test.describe("Artifact Translations", () => {
   test("should delete an existing translation", async ({ page }) => {
     const dialog = await openTranslationDialog(page, artifactCode)
 
-    await saveTranslation(
-      page,
-      dialog,
-      "Translation To Delete",
-    )
+    await saveTranslation(page, dialog, "Translation To Delete")
 
-    await expect(dialog.getByRole("button", {
-      name: "Delete translation",
-    })).toBeVisible()
+    await expect(
+      dialog.getByRole("button", {
+        name: "Delete translation",
+      }),
+    ).toBeVisible()
 
     page.once("dialog", (confirmation) => {
-      expect(confirmation.message()).toContain(
-        "Delete the",
-      )
+      expect(confirmation.message()).toContain("Delete the")
       confirmation.accept()
     })
 
-    const deleteResponse = page.waitForResponse((response) =>
-      response.request().method() === "DELETE" &&
-      response.url().includes("/translations"),
+    const deleteResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "DELETE" &&
+        response.url().includes("/translations"),
     )
 
-    await dialog.getByRole("button", {
-      name: "Delete translation",
-    }).click()
+    await dialog
+      .getByRole("button", {
+        name: "Delete translation",
+      })
+      .click()
 
     const response = await deleteResponse
     expect(response.ok()).toBeTruthy()
 
     await expect(page.getByText("Translation deleted")).toBeVisible()
 
-    await expect(dialog.getByText(
-      "No translation for this language yet.",
-    )).toBeVisible()
+    await expect(
+      dialog.getByText("No translation for this language yet."),
+    ).toBeVisible()
 
-    await expect(dialog.getByRole("button", {
-      name: "Delete translation",
-    })).toHaveCount(0)
+    await expect(
+      dialog.getByRole("button", {
+        name: "Delete translation",
+      }),
+    ).toHaveCount(0)
   })
 
   test("should disable saving when title is empty", async ({ page }) => {
