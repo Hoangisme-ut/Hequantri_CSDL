@@ -6,6 +6,7 @@ from typing import Any
 from sqlmodel import Session, col, select
 
 from app.core.security import get_password_hash, verify_password
+from app.core.transactions import commit_with_conflicts
 from app.models import (
     Artifact,
     ArtifactContentPublic,
@@ -37,7 +38,12 @@ def get_role_by_name(*, session: Session, name: str) -> Role | None:
     return session.exec(select(Role).where(Role.name == name)).first()
 
 
-def create_user(*, session: Session, user_create: UserCreate) -> User:
+def create_user(
+    *,
+    session: Session,
+    user_create: UserCreate,
+    email_conflict_detail: str = "The user with this email already exists in the system.",
+) -> User:
     # [Smart Heritage] user mới tự có role: superuser -> admin, còn lại -> visitor
     role = get_role_by_name(
         session=session,
@@ -51,7 +57,9 @@ def create_user(*, session: Session, user_create: UserCreate) -> User:
         },
     )
     session.add(db_obj)
-    session.commit()
+    commit_with_conflicts(
+        session, "ix_user_email", status_code=400, detail=email_conflict_detail
+    )
     session.refresh(db_obj)
     return db_obj
 
@@ -118,6 +126,8 @@ def authenticate(*, session: Session, email: str, password: str) -> User | None:
         session.commit()
         session.refresh(db_user)
     return db_user
+
+
 # =============================================================================
 # [Smart Heritage] Language & nội dung hiện vật theo ngôn ngữ
 # =============================================================================
@@ -291,7 +301,7 @@ def build_artifact_summaries(
 
 
 # =============================================================================
-# [Smart Heritage] Lượt xem / lịch sử tham quan
+# [Smart Heritage] Visit logging and history
 # Quy tắc ghi lượt xem (thống nhất với app - P4, BR-05):
 #  - App chỉ gọi POST /visits/ khi TriggerManager hiện nội dung hiện vật
 #    (vào vùng beacon mới), KHÔNG gọi mỗi lần nhận tín hiệu BLE.
