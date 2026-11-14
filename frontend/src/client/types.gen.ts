@@ -2976,6 +2976,10 @@ export type sitesUpsertSiteTranslationErrors = {
      */
     404: unknown;
     /**
+     * A concurrent request created this Site translation
+     */
+    409: unknown;
+    /**
      * Dữ liệu gửi lên sai định dạng
      */
     422: unknown;

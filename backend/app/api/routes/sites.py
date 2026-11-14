@@ -8,6 +8,7 @@ from sqlmodel import col, func, select
 
 from app.api.deps import AdminUser, OptionalUser, SessionDep, is_admin
 from app.api.docs import errors
+from app.core.transactions import commit_with_conflicts
 from app.models import (
     Language,
     Message,
@@ -154,7 +155,10 @@ def read_site_translations(
 @router.put(
     "/{site_id}/translations/{language_id}",
     response_model=SiteTranslationPublic,
-    responses=errors(401, 403, 404, 422),
+    responses={
+        **errors(401, 403, 404, 422),
+        409: {"description": "A concurrent request created this Site translation"},
+    },
 )
 def upsert_site_translation(
     *,
@@ -208,7 +212,7 @@ def upsert_site_translation(
         translation.is_confirmed = True
         translation.updated_at = get_datetime_utc()
     session.add(translation)
-    session.commit()
+    commit_with_conflicts(session, "uq_site_language")
     session.refresh(translation)
     return SiteTranslationPublic.model_validate(
         translation, update={"language_code": language.code, "is_stale": False}
