@@ -684,6 +684,12 @@ export type FeedbackAdminStatus = 'pending' | 'approved' | 'hidden' | 'rejected'
  */
 export type FeedbackAdminStatusUpdate = {
     status: FeedbackModerationStatus;
+    /**
+     * Expected Updated At
+     *
+     * Last observed updated_at, including null for an unedited feedback. A mismatch returns 409; omit this field to moderate without a version check.
+     */
+    expected_updated_at?: string | null;
 };
 
 /**
@@ -1709,7 +1715,7 @@ export type VisitDayCount = {
 /**
  * VisitDetailPublic
  *
- * Một lượt tham quan kèm tóm tắt hiện vật (tiêu đề theo ngôn ngữ).
+ * A visit with an artifact summary (localized title).
  */
 export type VisitDetailPublic = {
     /**
@@ -4024,6 +4030,10 @@ export type feedbacksUpdateMyFeedbackErrors = {
      */
     404: unknown;
     /**
+     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
+     */
+    409: unknown;
+    /**
      * Dữ liệu gửi lên sai định dạng
      */
     422: unknown;
@@ -4063,6 +4073,10 @@ export type feedbacksModerateFeedbackErrors = {
      * Không tìm thấy hoặc đang bị ẩn
      */
     404: unknown;
+    /**
+     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
+     */
+    409: unknown;
     /**
      * Dữ liệu gửi lên sai định dạng
      */

@@ -1009,10 +1009,10 @@ export class VisitsService {
     /**
      * Read My Visits
      *
-     * Lịch sử tham quan **của tôi** (mới nhất trước, có phân trang).
-     * **Visitor / Admin** (cần đăng nhập). Chỉ trả dữ liệu của chính người gọi.
+     * My visit history (newest first, paginated).
+     * **Visitor / Admin** (authentication required). Returns only the caller's visits.
      *
-     * Hiện vật đang bị ẩn (hoặc thuộc Site bị ẩn) không hiện trong lịch sử.
+     * Hidden artifacts and artifacts belonging to a hidden site are omitted from the history.
      */
     public static readMyVisits<ThrowOnError extends boolean = true>(options?: Options<visitsReadMyVisitsData, ThrowOnError>) {
         return (options?.client ?? client).get<visitsReadMyVisitsResponses, visitsReadMyVisitsErrors, ThrowOnError>({

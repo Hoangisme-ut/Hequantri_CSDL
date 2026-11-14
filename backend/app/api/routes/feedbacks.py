@@ -1,15 +1,17 @@
 import uuid
+from datetime import datetime
 from enum import StrEnum
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import ColumnElement, exists, or_, true
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import SQLModel, col, func, select
+from sqlmodel import Field, SQLModel, col, func, select
 from sqlmodel._compat import SQLModelConfig
 
 from app import crud
 from app.api.deps import AdminUser, SessionDep, VisitorUser, is_admin
 from app.api.docs import errors
+from app.core.transactions import acquire_transaction_lock
 from app.models import (
     Artifact,
     ArtifactReviewPublic,
@@ -62,6 +64,13 @@ class FeedbackAdminStatusUpdate(SQLModel):
         }
     )
     status: FeedbackModerationStatus
+    expected_updated_at: datetime | None = Field(
+        default=None,
+        description=(
+            "Last observed updated_at, including null for an unedited feedback. "
+            "A mismatch returns 409; omit this field to moderate without a version check."
+        ),
+    )
 
 
 def _serialize_feedback(feedback: Feedback) -> FeedbackPublic:
@@ -81,10 +90,12 @@ def _get_own_feedback(
 ) -> Feedback:
     """Get a feedback record belonging to the current user only."""
     feedback = session.exec(
-        select(Feedback).where(
+        select(Feedback)
+        .where(
             col(Feedback.id) == feedback_id,
             col(Feedback.user_id) == user_id,
         )
+        .execution_options(populate_existing=True)
     ).first()
 
     if feedback is None:
@@ -300,7 +311,7 @@ def create_feedback(
 @router.put(
     "/{feedback_id}",
     response_model=FeedbackPublic,
-    responses=errors(401, 403, 404, 422),
+    responses=errors(401, 403, 404, 409, 422),
 )
 def update_my_feedback(
     *,
@@ -318,6 +329,7 @@ def update_my_feedback(
     - Clearing a comment changes status to approved, except hidden stays hidden.
     - Changing only the rating keeps the current status.
     """
+    acquire_transaction_lock(session, f"feedback:{feedback_id}")
     feedback = _get_own_feedback(
         session=session,
         user_id=current_user.id,
@@ -507,28 +519,32 @@ def read_feedbacks(
         .limit(limit)
     ).all()
 
+    artifact_ids = {artifact.id for _, _, artifact, _ in rows}
+    titles: dict[uuid.UUID, str] = {}
+    if artifact_ids:
+        titles = dict(
+            session.exec(
+                select(ArtifactTranslation.artifact_id, ArtifactTranslation.title)
+                .join(
+                    Language,
+                    col(Language.id) == col(ArtifactTranslation.language_id),
+                )
+                .where(
+                    col(ArtifactTranslation.artifact_id).in_(artifact_ids),
+                    col(Language.is_default) == true(),
+                )
+            ).all()
+        )
+
     results: list[FeedbackReviewPublic] = []
-
     for feedback, user, artifact, site in rows:
-        title = session.exec(
-            select(ArtifactTranslation.title)
-            .join(
-                Language,
-                col(Language.id) == col(ArtifactTranslation.language_id),
-            )
-            .where(
-                col(ArtifactTranslation.artifact_id) == artifact.id,
-                col(Language.is_default) == true(),
-            )
-        ).first()
-
         results.append(
             FeedbackReviewPublic(
                 **_serialize_feedback(feedback).model_dump(),
                 visitor_name=user.full_name,
                 visitor_email=user.email,
                 artifact_code=artifact.code,
-                artifact_title=title,
+                artifact_title=titles.get(artifact.id),
                 site_name=site.name,
             )
         )
@@ -547,7 +563,7 @@ def read_feedbacks(
 @router.patch(
     "/{feedback_id}/status",
     response_model=FeedbackPublic,
-    responses=errors(401, 403, 404, 422),
+    responses=errors(401, 403, 404, 409, 422),
 )
 def moderate_feedback(
     *,
@@ -560,12 +576,21 @@ def moderate_feedback(
     Admin can set feedback status to pending, approved, or hidden.
     The legacy status "rejected" is accepted and mapped to "hidden".
     """
-    feedback = session.get(Feedback, feedback_id)
+    acquire_transaction_lock(session, f"feedback:{feedback_id}")
+    feedback = session.get(Feedback, feedback_id, populate_existing=True)
 
     if feedback is None:
         raise HTTPException(
             status_code=404,
             detail="Feedback not found",
+        )
+    if (
+        "expected_updated_at" in status_in.model_fields_set
+        and status_in.expected_updated_at != feedback.updated_at
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="Feedback changed; reload before moderating",
         )
     if status_in.status == FeedbackModerationStatus.REJECTED:
         feedback.status = FeedbackStatus.HIDDEN.value
