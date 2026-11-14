@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import ColumnElement, exists, or_, true
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import SQLModel, col, func, select
+from sqlmodel._compat import SQLModelConfig
 
 from app import crud
 from app.api.deps import AdminUser, SessionDep, VisitorUser, is_admin
@@ -50,8 +51,8 @@ class FeedbackModerationStatus(StrEnum):
 
 
 class FeedbackAdminStatusUpdate(SQLModel):
-    model_config = {
-        "json_schema_extra": {
+    model_config = SQLModelConfig(
+        json_schema_extra={
             "examples": [
                 {"status": "approved"},
                 {"status": "hidden"},
@@ -59,8 +60,9 @@ class FeedbackAdminStatusUpdate(SQLModel):
                 {"status": "rejected"},
             ]
         }
-    }
+    )
     status: FeedbackModerationStatus
+
 
 def _serialize_feedback(feedback: Feedback) -> FeedbackPublic:
     """Return the canonical API representation without mutating the ORM row."""
