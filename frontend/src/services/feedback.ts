@@ -3,7 +3,7 @@ import {
   type FeedbackReviewsPublic,
   FeedbacksService,
   type feedbacksReadFeedbacksData,
-  type FeedbackStatusUpdate,
+  type FeedbackAdminStatusUpdate,
 } from "@/client"
 import { unwrapApi } from "./api-errors"
 
@@ -35,7 +35,7 @@ export const feedbackService = {
   // Duyệt hoặc ẩn phản hồi
   async updateStatus(
     id: string,
-    input: FeedbackStatusUpdate,
+    input: FeedbackAdminStatusUpdate,
   ): Promise<FeedbackPublic> {
     return unwrapApi(
       FeedbacksService.moderateFeedback({

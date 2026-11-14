@@ -673,6 +673,20 @@ export type FavoritesDetailPublic = {
 };
 
 /**
+ * FeedbackAdminStatus
+ *
+ * Statuses supported when filtering the admin feedback list.
+ */
+export type FeedbackAdminStatus = 'pending' | 'approved' | 'hidden' | 'rejected';
+
+/**
+ * FeedbackAdminStatusUpdate
+ */
+export type FeedbackAdminStatusUpdate = {
+    status: FeedbackModerationStatus;
+};
+
+/**
  * FeedbackCreate
  */
 export type FeedbackCreate = {
@@ -689,6 +703,13 @@ export type FeedbackCreate = {
      */
     comment?: string | null;
 };
+
+/**
+ * FeedbackModerationStatus
+ *
+ * Statuses an admin can assign during moderation.
+ */
+export type FeedbackModerationStatus = 'pending' | 'approved' | 'hidden' | 'rejected';
 
 /**
  * FeedbackPublic
@@ -804,25 +825,6 @@ export type FeedbackReviewsPublic = {
      * Count
      */
     count: number;
-};
-
-/**
- * FeedbackStatus
- *
- * Trạng thái Feedback theo ERD: chỉ nhận pending / approved / hidden.
- */
-export type FeedbackStatus = 'pending' | 'approved' | 'hidden';
-
-/**
- * FeedbackStatusUpdate
- *
- * Admin duyệt (approved) hoặc từ chối/ẩn (hidden). `pending` do hệ thống tự đặt.
- */
-export type FeedbackStatusUpdate = {
-    /**
-     * Status
-     */
-    status: 'approved' | 'hidden';
 };
 
 /**
@@ -984,18 +986,6 @@ export type LanguagesPublic = {
      * Count
      */
     count: number;
-};
-
-/**
- * LegacyFeedbackStatus
- */
-export type LegacyFeedbackStatus = 'pending' | 'approved' | 'rejected';
-
-/**
- * LegacyFeedbackStatusUpdate
- */
-export type LegacyFeedbackStatusUpdate = {
-    status: LegacyFeedbackStatus;
 };
 
 /**
@@ -3778,233 +3768,6 @@ export type favoritesRemoveFavoriteResponses = {
 
 export type favoritesRemoveFavoriteResponse = favoritesRemoveFavoriteResponses[keyof favoritesRemoveFavoriteResponses];
 
-export type feedbackReadFeedbacksData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Status
-         *
-         * Filter by status: pending, approved, or rejected
-         */
-        status?: LegacyFeedbackStatus | null;
-        /**
-         * Artifact Id
-         */
-        artifact_id?: string | null;
-        /**
-         * User Id
-         */
-        user_id?: string | null;
-        /**
-         * Q
-         *
-         * Search by visitor name, email, artifact code, or feedback comment
-         */
-        q?: string | null;
-        /**
-         * Skip
-         */
-        skip?: number;
-        /**
-         * Limit
-         */
-        limit?: number;
-    };
-    url: '/api/v1/feedback/';
-};
-
-export type feedbackReadFeedbacksErrors = {
-    /**
-     * Thiếu hoặc sai token đăng nhập
-     */
-    401: unknown;
-    /**
-     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
-     */
-    403: unknown;
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type feedbackReadFeedbacksError = feedbackReadFeedbacksErrors[keyof feedbackReadFeedbacksErrors];
-
-export type feedbackReadFeedbacksResponses = {
-    /**
-     * Successful Response
-     */
-    200: FeedbackReviewsPublic;
-};
-
-export type feedbackReadFeedbacksResponse = feedbackReadFeedbacksResponses[keyof feedbackReadFeedbacksResponses];
-
-export type feedbackSubmitFeedbackData = {
-    body: FeedbackCreate;
-    path?: never;
-    query?: never;
-    url: '/api/v1/feedback/';
-};
-
-export type feedbackSubmitFeedbackErrors = {
-    /**
-     * Thiếu hoặc sai token đăng nhập
-     */
-    401: unknown;
-    /**
-     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
-     */
-    403: unknown;
-    /**
-     * Không tìm thấy hoặc đang bị ẩn
-     */
-    404: unknown;
-    /**
-     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
-     */
-    409: unknown;
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type feedbackSubmitFeedbackError = feedbackSubmitFeedbackErrors[keyof feedbackSubmitFeedbackErrors];
-
-export type feedbackSubmitFeedbackResponses = {
-    /**
-     * Successful Response
-     */
-    201: FeedbackPublic;
-};
-
-export type feedbackSubmitFeedbackResponse = feedbackSubmitFeedbackResponses[keyof feedbackSubmitFeedbackResponses];
-
-export type feedbackMyFeedbackData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Skip
-         */
-        skip?: number;
-        /**
-         * Limit
-         */
-        limit?: number;
-    };
-    url: '/api/v1/feedback/me';
-};
-
-export type feedbackMyFeedbackErrors = {
-    /**
-     * Thiếu hoặc sai token đăng nhập
-     */
-    401: unknown;
-    /**
-     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
-     */
-    403: unknown;
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type feedbackMyFeedbackError = feedbackMyFeedbackErrors[keyof feedbackMyFeedbackErrors];
-
-export type feedbackMyFeedbackResponses = {
-    /**
-     * Successful Response
-     */
-    200: FeedbacksPublic;
-};
-
-export type feedbackMyFeedbackResponse = feedbackMyFeedbackResponses[keyof feedbackMyFeedbackResponses];
-
-export type feedbackReadFeedbackData = {
-    body?: never;
-    path: {
-        /**
-         * Feedback Id
-         */
-        feedback_id: string;
-    };
-    query?: never;
-    url: '/api/v1/feedback/{feedback_id}';
-};
-
-export type feedbackReadFeedbackErrors = {
-    /**
-     * Thiếu hoặc sai token đăng nhập
-     */
-    401: unknown;
-    /**
-     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
-     */
-    403: unknown;
-    /**
-     * Không tìm thấy hoặc đang bị ẩn
-     */
-    404: unknown;
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type feedbackReadFeedbackError = feedbackReadFeedbackErrors[keyof feedbackReadFeedbackErrors];
-
-export type feedbackReadFeedbackResponses = {
-    /**
-     * Successful Response
-     */
-    200: FeedbackPublic;
-};
-
-export type feedbackReadFeedbackResponse = feedbackReadFeedbackResponses[keyof feedbackReadFeedbackResponses];
-
-export type feedbackModerateFeedbackData = {
-    body: LegacyFeedbackStatusUpdate;
-    path: {
-        /**
-         * Feedback Id
-         */
-        feedback_id: string;
-    };
-    query?: never;
-    url: '/api/v1/feedback/{feedback_id}/status';
-};
-
-export type feedbackModerateFeedbackErrors = {
-    /**
-     * Thiếu hoặc sai token đăng nhập
-     */
-    401: unknown;
-    /**
-     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
-     */
-    403: unknown;
-    /**
-     * Không tìm thấy hoặc đang bị ẩn
-     */
-    404: unknown;
-    /**
-     * Dữ liệu gửi lên sai định dạng
-     */
-    422: unknown;
-};
-
-export type feedbackModerateFeedbackResponses = {
-    /**
-     * Successful Response
-     */
-    200: FeedbackPublic;
-};
-
-export type feedbackModerateFeedbackResponse = feedbackModerateFeedbackResponses[keyof feedbackModerateFeedbackResponses];
-
 export type feedbacksReadArtifactReviewsData = {
     body?: never;
     path: {
@@ -4058,6 +3821,12 @@ export type feedbacksReadMyFeedbacksData = {
          * Limit
          */
         limit?: number;
+        /**
+         * Include Inactive
+         *
+         * Set true to include feedback whose artifact or site is inactive.
+         */
+        include_inactive?: boolean;
     };
     url: '/api/v1/feedbacks/me';
 };
@@ -4095,17 +3864,21 @@ export type feedbacksReadFeedbacksData = {
         /**
          * Status
          *
-         * pending | approved | hidden
+         * Filter by status: pending, approved, hidden, or rejected (rejected is mapped to hidden).
          */
-        status?: FeedbackStatus | null;
+        status?: FeedbackAdminStatus | null;
         /**
          * Artifact Id
          */
         artifact_id?: string | null;
         /**
+         * User Id
+         */
+        user_id?: string | null;
+        /**
          * Q
          *
-         * Tìm theo tên/email người gửi, mã hiện vật, tên Site hoặc nội dung comment
+         * Search by visitor, artifact, site, or feedback comment.
          */
         q?: string | null;
         /**
@@ -4183,6 +3956,48 @@ export type feedbacksCreateFeedbackResponses = {
 
 export type feedbacksCreateFeedbackResponse = feedbacksCreateFeedbackResponses[keyof feedbacksCreateFeedbackResponses];
 
+export type feedbacksReadFeedbackData = {
+    body?: never;
+    path: {
+        /**
+         * Feedback Id
+         */
+        feedback_id: string;
+    };
+    query?: never;
+    url: '/api/v1/feedbacks/{feedback_id}';
+};
+
+export type feedbacksReadFeedbackErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type feedbacksReadFeedbackError = feedbacksReadFeedbackErrors[keyof feedbacksReadFeedbackErrors];
+
+export type feedbacksReadFeedbackResponses = {
+    /**
+     * Successful Response
+     */
+    200: FeedbackPublic;
+};
+
+export type feedbacksReadFeedbackResponse = feedbacksReadFeedbackResponses[keyof feedbacksReadFeedbackResponses];
+
 export type feedbacksUpdateMyFeedbackData = {
     body: FeedbackUpdate;
     path: {
@@ -4224,7 +4039,7 @@ export type feedbacksUpdateMyFeedbackResponses = {
 export type feedbacksUpdateMyFeedbackResponse = feedbacksUpdateMyFeedbackResponses[keyof feedbacksUpdateMyFeedbackResponses];
 
 export type feedbacksModerateFeedbackData = {
-    body: FeedbackStatusUpdate;
+    body: FeedbackAdminStatusUpdate;
     path: {
         /**
          * Feedback Id

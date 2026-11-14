@@ -696,7 +696,7 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
     };
     final response = await _send(
       () => _client.post(
-        _uri('/feedback/'),
+        _uri('/feedbacks/'),
         headers: _headers(token, json: true),
         body: jsonEncode(payload),
       ),
@@ -709,9 +709,10 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
     }
 
     final feedback = VisitorFeedback.fromJson(_decodeObject(response));
-    if (feedback.artifactId != artifactId || feedback.status != 'pending') {
+    if (feedback.artifactId != artifactId ||
+    !{'pending', 'approved'}.contains(feedback.status)) {
       throw const FormatException(
-        'Feedback response does not match the submitted artifact or pending status.',
+        'Feedback response does not match the submitted artifact or a valid status.',
       );
     }
     return feedback;

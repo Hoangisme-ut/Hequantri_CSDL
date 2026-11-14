@@ -1,13 +1,13 @@
 import uuid
-from typing import Any
+from enum import StrEnum
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import ColumnElement, exists, or_, true
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import col, func, select
+from sqlmodel import SQLModel, col, func, select
 
 from app import crud
-from app.api.deps import AdminUser, SessionDep, VisitorUser
+from app.api.deps import AdminUser, SessionDep, VisitorUser, is_admin
 from app.api.docs import errors
 from app.models import (
     Artifact,
@@ -21,7 +21,6 @@ from app.models import (
     FeedbackReviewsPublic,
     FeedbacksPublic,
     FeedbackStatus,
-    FeedbackStatusUpdate,
     FeedbackUpdate,
     Language,
     Site,
@@ -32,21 +31,71 @@ from app.models import (
 router = APIRouter(prefix="/feedbacks", tags=["feedbacks"])
 
 
+class FeedbackAdminStatus(StrEnum):
+    """Statuses supported when filtering the admin feedback list."""
+
+    PENDING = "pending"
+    APPROVED = "approved"
+    HIDDEN = "hidden"
+    REJECTED = "rejected"
+
+
+class FeedbackModerationStatus(StrEnum):
+    """Statuses an admin can assign during moderation."""
+
+    PENDING = "pending"
+    APPROVED = "approved"
+    HIDDEN = "hidden"
+    REJECTED = "rejected"
+
+
+class FeedbackAdminStatusUpdate(SQLModel):
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {"status": "approved"},
+                {"status": "hidden"},
+                {"status": "pending"},
+                {"status": "rejected"},
+            ]
+        }
+    }
+    status: FeedbackModerationStatus
+
+def _serialize_feedback(feedback: Feedback) -> FeedbackPublic:
+    """Return the canonical API representation without mutating the ORM row."""
+    return FeedbackPublic.model_validate(feedback)
+
+
+# ---------------------------------------------------------------------------
+# Shared visitor helpers
+# ---------------------------------------------------------------------------
+
+
 def _get_own_feedback(
-    session: SessionDep, user_id: uuid.UUID, feedback_id: uuid.UUID
+    session: SessionDep,
+    user_id: uuid.UUID,
+    feedback_id: uuid.UUID,
 ) -> Feedback:
-    """Lấy feedback của CHÍNH người gọi. Của người khác -> 404 (không lộ là có tồn tại)."""
+    """Get a feedback record belonging to the current user only."""
     feedback = session.exec(
         select(Feedback).where(
-            col(Feedback.id) == feedback_id, col(Feedback.user_id) == user_id
+            col(Feedback.id) == feedback_id,
+            col(Feedback.user_id) == user_id,
         )
     ).first()
-    if not feedback:
+
+    if feedback is None:
         raise HTTPException(status_code=404, detail="Feedback not found")
+
     return feedback
 
 
-# ------------------------------- Công khai (khách) ------------------------------
+# ---------------------------------------------------------------------------
+# Public: reviews belonging to an artifact
+# ---------------------------------------------------------------------------
+
+
 @router.get(
     "/artifact/{artifact_id}",
     response_model=ArtifactReviewsPublic,
@@ -57,17 +106,18 @@ def read_artifact_reviews(
     artifact_id: uuid.UUID,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
-) -> Any:
+) -> ArtifactReviewsPublic:
     """
-    Bình luận công khai của một hiện vật. **Public** (không cần token).
+    Public reviews for a visible artifact.
 
-    - Chỉ trả feedback **đã duyệt** (`approved`) và **có comment**; nội dung
-      `pending` / `hidden` không bao giờ xuất hiện ở đây.
-    - Không trả `user_id` và `status`. Mới nhất trước, có phân trang.
-    - Hiện vật đang bị ẩn (hoặc thuộc Site bị ẩn) -> 404.
+    Only approved feedback with a non-empty comment is exposed.
+    The response does not expose user_id or moderation status.
     """
-    artifact = crud.get_visible_artifact(session=session, artifact_id=artifact_id)
-    if not artifact:
+    artifact = crud.get_visible_artifact(
+        session=session,
+        artifact_id=artifact_id,
+    )
+    if artifact is None:
         raise HTTPException(status_code=404, detail="Artifact not found")
 
     conditions: list[ColumnElement[bool]] = [
@@ -75,60 +125,102 @@ def read_artifact_reviews(
         col(Feedback.status) == FeedbackStatus.APPROVED.value,
         col(Feedback.comment).is_not(None),
     ]
+
     count = session.exec(
         select(func.count()).select_from(Feedback).where(*conditions)
     ).one()
-    reviews = session.exec(
+
+    rows = session.exec(
         select(Feedback)
         .where(*conditions)
-        .order_by(col(Feedback.created_at).desc(), col(Feedback.id))
+        .order_by(
+            col(Feedback.created_at).desc(),
+            col(Feedback.id),
+        )
         .offset(skip)
         .limit(limit)
     ).all()
+
     return ArtifactReviewsPublic(
-        data=[ArtifactReviewPublic.model_validate(r) for r in reviews], count=count
+        data=[ArtifactReviewPublic.model_validate(row) for row in rows],
+        count=count,
     )
 
 
-# --------------------------- Visitor (chỉ dữ liệu của mình) ---------------------
-@router.get("/me", response_model=FeedbacksPublic, responses=errors(401, 403))
+# ---------------------------------------------------------------------------
+# Visitor: own feedback
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/me",
+    response_model=FeedbacksPublic,
+    responses=errors(401, 403),
+)
 def read_my_feedbacks(
     session: SessionDep,
     current_user: VisitorUser,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
-) -> Any:
+    include_inactive: bool = Query(
+        default=False,
+        description=(
+            "Set true to include feedback whose artifact or site is inactive."
+        ),
+    ),
+) -> FeedbacksPublic:
     """
-    Đánh giá / phản hồi **của tôi** (mới nhất trước, có phân trang).
-    **Visitor / Admin** (cần đăng nhập). Chỉ trả dữ liệu của chính người gọi, kèm
-    `status` (pending / approved / hidden) để người dùng biết bình luận đã được duyệt chưa.
+    Retrieve the current user's feedback.
 
-    Hiện vật đang bị ẩn (hoặc thuộc Site bị ẩn) không hiện trong danh sách.
+    By default, only feedback belonging to active artifacts and sites is shown.
+    Set include_inactive=true to include all of the user's historical feedback.
     """
     conditions: list[ColumnElement[bool]] = [
         col(Feedback.user_id) == current_user.id,
-        col(Artifact.is_active) == true(),
-        col(Site.is_active) == true(),
     ]
-    count = session.exec(
+
+    statement = (
+        select(Feedback)
+        .join(Artifact, col(Artifact.id) == col(Feedback.artifact_id))
+        .join(Site, col(Site.id) == col(Artifact.site_id))
+    )
+
+    count_statement = (
         select(func.count())
         .select_from(Feedback)
         .join(Artifact, col(Artifact.id) == col(Feedback.artifact_id))
         .join(Site, col(Site.id) == col(Artifact.site_id))
-        .where(*conditions)
-    ).one()
-    feedbacks = session.exec(
-        select(Feedback)
-        .join(Artifact, col(Artifact.id) == col(Feedback.artifact_id))
-        .join(Site, col(Site.id) == col(Artifact.site_id))
-        .where(*conditions)
-        .order_by(col(Feedback.created_at).desc(), col(Feedback.id))
+    )
+
+    if not include_inactive:
+        conditions.extend(
+            [
+                col(Artifact.is_active) == true(),
+                col(Site.is_active) == true(),
+            ]
+        )
+
+    count = session.exec(count_statement.where(*conditions)).one()
+
+    rows = session.exec(
+        statement.where(*conditions)
+        .order_by(
+            col(Feedback.created_at).desc(),
+            col(Feedback.id),
+        )
         .offset(skip)
         .limit(limit)
     ).all()
+
     return FeedbacksPublic(
-        data=[FeedbackPublic.model_validate(f) for f in feedbacks], count=count
+        data=[_serialize_feedback(row) for row in rows],
+        count=count,
     )
+
+
+# ---------------------------------------------------------------------------
+# Visitor: create feedback
+# ---------------------------------------------------------------------------
 
 
 @router.post(
@@ -142,34 +234,35 @@ def create_feedback(
     session: SessionDep,
     current_user: VisitorUser,
     feedback_in: FeedbackCreate,
-) -> Any:
+) -> FeedbackPublic:
     """
-    Gửi đánh giá (1-5 sao, kèm comment tùy chọn) cho một hiện vật.
-    **Visitor / Admin** (cần đăng nhập).
+    Submit one feedback for a visible artifact.
 
-    - Trạng thái do **server** quyết định (client gửi `status` sẽ bị bỏ qua):
-      không có comment -> `approved`; có comment -> `pending` (chờ admin duyệt).
-    - Mỗi người chỉ có **1** đánh giá cho mỗi hiện vật; gửi lần hai -> **409**
-      (dùng `PUT /feedbacks/{id}` để sửa).
-    - Hiện vật không tồn tại / đang ẩn / thuộc Site ẩn -> **404**.
-    - `rating` ngoài 1-5, `comment` quá 2000 ký tự -> **422**.
+    Initial status is decided by the server:
+    - No comment: approved.
+    - Has comment: pending.
+
+    A user can submit only one feedback per artifact.
+    Use PUT /feedbacks/{feedback_id} to edit an existing feedback.
     """
     artifact = crud.get_visible_artifact(
-        session=session, artifact_id=feedback_in.artifact_id
+        session=session,
+        artifact_id=feedback_in.artifact_id,
     )
-    if not artifact:
+    if artifact is None:
         raise HTTPException(status_code=404, detail="Artifact not found")
 
-    already = session.exec(
+    existing = session.exec(
         select(Feedback).where(
             col(Feedback.user_id) == current_user.id,
             col(Feedback.artifact_id) == artifact.id,
         )
     ).first()
-    if already:
+
+    if existing is not None:
         raise HTTPException(
             status_code=409,
-            detail="Bạn đã đánh giá hiện vật này; dùng PUT /feedbacks/{id} để sửa",
+            detail=("Bạn đã đánh giá hiện vật này; dùng PUT /feedbacks/{id} để sửa"),
         )
 
     feedback = Feedback(
@@ -179,17 +272,27 @@ def create_feedback(
         comment=feedback_in.comment,
         status=crud.initial_feedback_status(feedback_in.comment).value,
     )
+
     session.add(feedback)
+
     try:
         session.commit()
     except IntegrityError:
-        # 2 request cùng lúc: ràng buộc unique (user_id, artifact_id) chặn bản thứ hai
+        # The unique constraint on (user_id, artifact_id) also protects
+        # against two simultaneous requests from the same user.
         session.rollback()
         raise HTTPException(
-            status_code=409, detail="Bạn đã đánh giá hiện vật này"
+            status_code=409,
+            detail="Bạn đã đánh giá hiện vật này",
         ) from None
+
     session.refresh(feedback)
-    return feedback
+    return _serialize_feedback(feedback)
+
+
+# ---------------------------------------------------------------------------
+# Visitor: update own feedback
+# ---------------------------------------------------------------------------
 
 
 @router.put(
@@ -203,64 +306,145 @@ def update_my_feedback(
     current_user: VisitorUser,
     feedback_id: uuid.UUID,
     feedback_in: FeedbackUpdate,
-) -> Any:
+) -> FeedbackPublic:
     """
-    Sửa đánh giá **của tôi** (`rating` và/hoặc `comment`). **Visitor / Admin**.
+    Update the current user's rating and/or comment.
 
-    - Chỉ sửa được bản ghi của chính mình; của người khác -> **404**.
-    - Đổi comment: `approved` -> `pending` (phải duyệt lại); `hidden` giữ nguyên `hidden`;
-      xóa comment (null / rỗng) thì không còn gì để duyệt -> `approved`
-      (trừ `hidden`). Chỉ đổi `rating` thì giữ nguyên trạng thái.
-    - Hiện vật đang ẩn (hoặc thuộc Site ẩn) -> **404**.
+    Status transitions:
+    - Editing an approved comment sends it back to pending.
+    - Editing a hidden feedback keeps it hidden.
+    - Clearing a comment changes status to approved, except hidden stays hidden.
+    - Changing only the rating keeps the current status.
     """
-    feedback = _get_own_feedback(session, current_user.id, feedback_id)
-    if not crud.get_visible_artifact(session=session, artifact_id=feedback.artifact_id):
+    feedback = _get_own_feedback(
+        session=session,
+        user_id=current_user.id,
+        feedback_id=feedback_id,
+    )
+
+    artifact = crud.get_visible_artifact(
+        session=session,
+        artifact_id=feedback.artifact_id,
+    )
+    if artifact is None:
         raise HTTPException(status_code=404, detail="Artifact not found")
 
     fields = feedback_in.model_fields_set
+
     new_comment = feedback_in.comment if "comment" in fields else feedback.comment
+
     feedback.status = crud.status_after_feedback_edit(
         current_status=feedback.status,
         old_comment=feedback.comment,
         new_comment=new_comment,
     )
+
     feedback.comment = new_comment
+
     if "rating" in fields and feedback_in.rating is not None:
         feedback.rating = feedback_in.rating
+
     feedback.updated_at = get_datetime_utc()
+
     session.add(feedback)
     session.commit()
     session.refresh(feedback)
-    return feedback
+
+    return _serialize_feedback(feedback)
 
 
-# ---------------------------------- Admin ---------------------------------------
-@router.get("/", response_model=FeedbackReviewsPublic, responses=errors(401, 403, 422))
+# ---------------------------------------------------------------------------
+# Visitor: read one feedback
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/{feedback_id}",
+    response_model=FeedbackPublic,
+    responses=errors(401, 403, 404),
+)
+def read_feedback(
+    session: SessionDep,
+    current_user: VisitorUser,
+    feedback_id: uuid.UUID,
+) -> FeedbackPublic:
+    """
+    Retrieve one feedback record.
+
+    Only the owner or an Admin can read the record.
+    Other users receive 404 to avoid revealing whether it exists.
+    """
+    feedback = session.get(Feedback, feedback_id)
+
+    if feedback is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Feedback not found",
+        )
+
+    if feedback.user_id != current_user.id and not is_admin(current_user):
+        raise HTTPException(
+            status_code=404,
+            detail="Feedback not found",
+        )
+
+    return _serialize_feedback(feedback)
+
+
+# ---------------------------------------------------------------------------
+# Admin: list and search feedback
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/",
+    response_model=FeedbackReviewsPublic,
+    responses=errors(401, 403, 422),
+)
 def read_feedbacks(
     session: SessionDep,
     _admin: AdminUser,
-    status_filter: FeedbackStatus | None = Query(
-        default=None, alias="status", description="pending | approved | hidden"
+    status_filter: FeedbackAdminStatus | None = Query(
+        default=None,
+        alias="status",
+        description=(
+            "Filter by status: pending, approved, hidden, or rejected "
+            "(rejected is mapped to hidden)."
+        ),
     ),
-    artifact_id: uuid.UUID | None = None,
+    artifact_id: uuid.UUID | None = Query(default=None),
+    user_id: uuid.UUID | None = Query(default=None),
     q: str | None = Query(
         default=None,
-        description="Tìm theo tên/email người gửi, mã hiện vật, tên Site hoặc nội dung comment",
+        description="Search by visitor, artifact, site, or feedback comment.",
     ),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
-) -> Any:
+) -> FeedbackReviewsPublic:
     """
-    Danh sách feedback để kiểm duyệt, kèm thông tin người gửi và hiện vật. **Chỉ Admin**.
-    Lọc theo `status` (ví dụ `pending` = đang chờ duyệt), `artifact_id` và từ khóa `q`;
-    mới nhất trước.
+    Admin feedback list with filters, search, pagination and related details.
+
+    Supports all filters from both previous routers:
+    status, artifact_id, user_id and q.
     """
     conditions: list[ColumnElement[bool]] = []
+
     if status_filter is not None:
-        conditions.append(col(Feedback.status) == status_filter.value)
+        normalized_status = (
+            FeedbackStatus.HIDDEN.value
+            if status_filter == FeedbackAdminStatus.REJECTED
+            else status_filter.value
+        )
+        conditions.append(col(Feedback.status) == normalized_status)
+
     if artifact_id is not None:
         conditions.append(col(Feedback.artifact_id) == artifact_id)
+
+    if user_id is not None:
+        conditions.append(col(Feedback.user_id) == user_id)
+
     keyword = q.strip() if q else ""
+
     if keyword:
         conditions.append(
             or_(
@@ -283,36 +467,62 @@ def read_feedbacks(
     count = session.exec(
         select(func.count())
         .select_from(Feedback)
-        .join(User, col(User.id) == col(Feedback.user_id))
-        .join(Artifact, col(Artifact.id) == col(Feedback.artifact_id))
-        .join(Site, col(Site.id) == col(Artifact.site_id))
+        .join(
+            User,
+            col(User.id) == col(Feedback.user_id),
+        )
+        .join(
+            Artifact,
+            col(Artifact.id) == col(Feedback.artifact_id),
+        )
+        .join(
+            Site,
+            col(Site.id) == col(Artifact.site_id),
+        )
         .where(*conditions)
     ).one()
+
     rows = session.exec(
         select(Feedback, User, Artifact, Site)
-        .join(User, col(User.id) == col(Feedback.user_id))
-        .join(Artifact, col(Artifact.id) == col(Feedback.artifact_id))
-        .join(Site, col(Site.id) == col(Artifact.site_id))
+        .join(
+            User,
+            col(User.id) == col(Feedback.user_id),
+        )
+        .join(
+            Artifact,
+            col(Artifact.id) == col(Feedback.artifact_id),
+        )
+        .join(
+            Site,
+            col(Site.id) == col(Artifact.site_id),
+        )
         .where(*conditions)
-        .order_by(col(Feedback.created_at).desc(), col(Feedback.id))
+        .order_by(
+            col(Feedback.created_at).desc(),
+            col(Feedback.id),
+        )
         .offset(skip)
         .limit(limit)
     ).all()
 
     results: list[FeedbackReviewPublic] = []
+
     for feedback, user, artifact, site in rows:
-        # tiêu đề hiện vật theo ngôn ngữ mặc định (không có thì để trống)
         title = session.exec(
             select(ArtifactTranslation.title)
-            .join(Language, col(Language.id) == col(ArtifactTranslation.language_id))
+            .join(
+                Language,
+                col(Language.id) == col(ArtifactTranslation.language_id),
+            )
             .where(
                 col(ArtifactTranslation.artifact_id) == artifact.id,
                 col(Language.is_default) == true(),
             )
         ).first()
+
         results.append(
             FeedbackReviewPublic(
-                **FeedbackPublic.model_validate(feedback).model_dump(),
+                **_serialize_feedback(feedback).model_dump(),
                 visitor_name=user.full_name,
                 visitor_email=user.email,
                 artifact_code=artifact.code,
@@ -320,7 +530,16 @@ def read_feedbacks(
                 site_name=site.name,
             )
         )
-    return FeedbackReviewsPublic(data=results, count=count)
+
+    return FeedbackReviewsPublic(
+        data=results,
+        count=count,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Admin: moderate feedback
+# ---------------------------------------------------------------------------
 
 
 @router.patch(
@@ -333,21 +552,28 @@ def moderate_feedback(
     session: SessionDep,
     _admin: AdminUser,
     feedback_id: uuid.UUID,
-    status_in: FeedbackStatusUpdate,
-) -> Any:
+    status_in: FeedbackAdminStatusUpdate,
+) -> FeedbackPublic:
     """
-    Duyệt hoặc từ chối feedback. **Chỉ Admin**.
-
-    - `approved`: duyệt, comment hiện công khai.
-    - `hidden`: từ chối/ẩn, comment không hiện công khai và không tính vào rating.
-    - Giá trị khác (kể cả `pending`) -> **422**.
+    Admin can set feedback status to pending, approved, or hidden.
+    The legacy status "rejected" is accepted and mapped to "hidden".
     """
     feedback = session.get(Feedback, feedback_id)
-    if not feedback:
-        raise HTTPException(status_code=404, detail="Feedback not found")
-    feedback.status = status_in.status
+
+    if feedback is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Feedback not found",
+        )
+    if status_in.status == FeedbackModerationStatus.REJECTED:
+        feedback.status = FeedbackStatus.HIDDEN.value
+    else:
+        feedback.status = status_in.status.value
+
     feedback.updated_at = get_datetime_utc()
+
     session.add(feedback)
     session.commit()
     session.refresh(feedback)
-    return feedback
+
+    return _serialize_feedback(feedback)
