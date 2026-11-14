@@ -226,9 +226,14 @@ def read_visits_by_day(
     Khoảng tối đa 366 ngày, vượt quá -> 422.
     """
     to_date = date_range.to_date or datetime.now(UTC).date()
-    from_date = date_range.from_date or (
-        to_date - timedelta(days=DEFAULT_DAYS_RANGE - 1)
-    )
+    from_date = date_range.from_date
+    if from_date is None:
+        try:
+            from_date = to_date - timedelta(days=DEFAULT_DAYS_RANGE - 1)
+        except OverflowError:
+            raise HTTPException(
+                status_code=422, detail="Default date range cannot be represented"
+            ) from None
     if from_date > to_date:
         raise HTTPException(status_code=422, detail="from_date phải <= to_date")
     if (to_date - from_date).days + 1 > MAX_DAYS_RANGE:
