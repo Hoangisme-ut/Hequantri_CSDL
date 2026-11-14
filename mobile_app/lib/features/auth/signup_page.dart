@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/app_strings.dart';
 import '../../theme/app_theme.dart';
-import 'auth_config.dart';
 import 'auth_service.dart';
 import 'auth_widgets.dart';
 
@@ -41,20 +40,17 @@ class _SignupPageState extends State<SignupPage> {
     final strings = AppStrings.of(context);
 
     if (!_agreeToTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(strings.signupTermsRequiredError),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(strings.signupTermsRequiredError)));
       return;
     }
 
-    if (widget.authService == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(strings.signupSubmitNotice),
-        ),
-      );
+    final service = widget.authService;
+
+    if (service == null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(strings.signupSubmitNotice)));
       return;
     }
 
@@ -63,54 +59,43 @@ class _SignupPageState extends State<SignupPage> {
     });
 
     try {
-      final service =
-          widget.authService ??
-          AuthService(
-            baseUrl: AuthConfig.apiBaseUrl,
-            client: IoAuthHttpClient(),
-          );
+      await service.register(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        fullName: _fullNameController.text.trim().isNotEmpty
+            ? _fullNameController.text.trim()
+            : null,
+      );
 
-      try {
-        await service.register(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-          fullName: _fullNameController.text.trim().isNotEmpty
-              ? _fullNameController.text.trim()
-              : null,
-        );
+      if (!mounted) return;
 
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppStrings.of(context).signupSuccess),
-            backgroundColor: const Color(0xFF10B981),
-          ),
-        );
-        Navigator.of(context).pop();
-      } on AuthServiceException catch (e) {
-        if (!mounted) return;
-        if (e.failure == AuthFailure.emailAlreadyRegistered) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(AppStrings.of(context).signupEmailAlreadyRegistered),
-              backgroundColor: const Color(0xFFEF4444),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(AppStrings.of(context).signupSubmitNotice),
-            ),
-          );
-        }
-      } catch (_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppStrings.of(context).signupSubmitNotice),
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppStrings.of(context).signupSuccess),
+          backgroundColor: const Color(0xFF10B981),
+        ),
+      );
+
+      Navigator.of(context).pop();
+    } on AuthServiceException catch (e) {
+      if (!mounted) return;
+
+      final message = e.failure == AuthFailure.emailAlreadyRegistered
+          ? AppStrings.of(context).signupEmailAlreadyRegistered
+          : AppStrings.of(context).signupSubmitNotice;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppStrings.of(context).signupSubmitNotice)),
+      );
     } finally {
       if (mounted) {
         setState(() {
