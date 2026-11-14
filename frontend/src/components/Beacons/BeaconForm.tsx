@@ -1,14 +1,11 @@
-
-import { useEffect, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
+import { useEffect, useState } from "react"
 
 import type { BeaconCreate, BeaconPublic } from "@/client"
-import { sitesService } from "@/services/sites"
-import { artifactsService } from "@/services/artifacts"
-import { artifactKeys } from "@/services/artifacts"
-
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { artifactKeys, artifactsService } from "@/services/artifacts"
+import { sitesService } from "@/services/sites"
 
 interface BeaconFormProps {
   initialData?: BeaconPublic | null
@@ -64,8 +61,8 @@ export default function BeaconForm({
   onSubmit,
   onCancel,
 }: BeaconFormProps) {
-  const [draft, setDraft] = useState<BeaconDraft>(
-    () => createDraft(initialData),
+  const [draft, setDraft] = useState<BeaconDraft>(() =>
+    createDraft(initialData),
   )
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -114,9 +111,7 @@ export default function BeaconForm({
     }))
   }
 
-  async function handleSubmit(
-    event: React.FormEvent<HTMLFormElement>,
-  ) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setFormError(null)
 
@@ -161,10 +156,7 @@ export default function BeaconForm({
       return
     }
 
-    if (
-      rssiThreshold !== null &&
-      !Number.isFinite(rssiThreshold)
-    ) {
+    if (rssiThreshold !== null && !Number.isFinite(rssiThreshold)) {
       setFormError("RSSI Threshold must be a valid number.")
       return
     }
@@ -174,9 +166,7 @@ export default function BeaconForm({
     )
 
     if (draft.artifact_id && !selectedArtifact) {
-      setFormError(
-        "The selected artifact is unavailable for this site.",
-      )
+      setFormError("The selected artifact is unavailable for this site.")
       return
     }
 
@@ -193,9 +183,7 @@ export default function BeaconForm({
       })
     } catch (error) {
       setFormError(
-        error instanceof Error
-          ? error.message
-          : "Could not save beacon.",
+        error instanceof Error ? error.message : "Could not save beacon.",
       )
     }
   }
@@ -231,9 +219,7 @@ export default function BeaconForm({
             max={65535}
             step={1}
             value={draft.major}
-            onChange={(event) =>
-              updateField("major", event.target.value)
-            }
+            onChange={(event) => updateField("major", event.target.value)}
             placeholder="1"
             required
             disabled={isSubmitting}
@@ -248,9 +234,7 @@ export default function BeaconForm({
             max={65535}
             step={1}
             value={draft.minor}
-            onChange={(event) =>
-              updateField("minor", event.target.value)
-            }
+            onChange={(event) => updateField("minor", event.target.value)}
             placeholder="1"
             required
             disabled={isSubmitting}
@@ -268,10 +252,7 @@ export default function BeaconForm({
           >
             <option value="">Select a site</option>
             {sites
-              .filter(
-                (site) =>
-                  site.is_active || site.id === draft.site_id,
-              )
+              .filter((site) => site.is_active || site.id === draft.site_id)
               .map((site) => (
                 <option key={site.id} value={site.id}>
                   {site.name}
@@ -279,7 +260,6 @@ export default function BeaconForm({
                 </option>
               ))}
           </select>
-
           {sitesQuery.isError && (
             <span className="text-xs text-destructive">
               {sitesQuery.error.message}
@@ -292,9 +272,7 @@ export default function BeaconForm({
           <select
             className="h-9 rounded-md border border-input bg-background px-3 text-sm"
             value={draft.artifact_id}
-            onChange={(event) =>
-              updateField("artifact_id", event.target.value)
-            }
+            onChange={(event) => updateField("artifact_id", event.target.value)}
             disabled={
               isSubmitting ||
               !draft.site_id ||
@@ -310,19 +288,16 @@ export default function BeaconForm({
               </option>
             ))}
           </select>
-
           {artifactsQuery.isLoading && (
             <span className="text-xs text-muted-foreground">
               Loading artifacts...
             </span>
           )}
-
           {artifactsQuery.isError && (
             <span className="text-xs text-destructive">
               {artifactsQuery.error.message}
             </span>
           )}
-
           <span className="text-xs font-normal text-muted-foreground">
             Only artifacts belonging to the selected site are available.
           </span>
@@ -334,9 +309,7 @@ export default function BeaconForm({
             type="number"
             step="any"
             value={draft.tx_power}
-            onChange={(event) =>
-              updateField("tx_power", event.target.value)
-            }
+            onChange={(event) => updateField("tx_power", event.target.value)}
             placeholder="Optional"
             disabled={isSubmitting}
           />
@@ -360,9 +333,7 @@ export default function BeaconForm({
           <input
             type="checkbox"
             checked={draft.is_active}
-            onChange={(event) =>
-              updateField("is_active", event.target.checked)
-            }
+            onChange={(event) => updateField("is_active", event.target.checked)}
             disabled={isSubmitting}
           />
           Active

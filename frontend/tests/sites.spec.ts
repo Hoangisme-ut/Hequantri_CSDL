@@ -10,18 +10,14 @@ test.describe("Admin - Site Management", () => {
       page.getByText("Manage heritage sites", { exact: true }),
     ).toBeVisible()
 
-    await expect(
-      page.getByRole("button", { name: "Add site" }),
-    ).toBeVisible()
+    await expect(page.getByRole("button", { name: "Add site" })).toBeVisible()
 
     await expect(
       page.getByRole("textbox", { name: "Search sites" }),
     ).toBeVisible()
   })
 
-  test("Create a site and verify persisted backend data", async ({
-    page,
-  }) => {
+  test("Create a site and verify persisted backend data", async ({ page }) => {
     const siteName = `PW-Site-${Date.now()}-${Math.floor(Math.random() * 10000)}`
     const address = "Test Address - Ho Chi Minh City"
     const description = "Playwright business flow test"
@@ -206,14 +202,18 @@ test.describe("Admin - Site Management", () => {
       await expect(page.getByText("Site updated")).toBeVisible()
       await expect(page.locator("#site-name")).toHaveValue(updatedName)
       await expect(page.locator("#site-address")).toHaveValue(updatedAddress)
-      await expect(page.locator("#site-description")).toHaveValue(updatedDescription)
+      await expect(page.locator("#site-description")).toHaveValue(
+        updatedDescription,
+      )
 
       // 6. Reload and verify persisted data
       await page.reload()
 
       await expect(page.locator("#site-name")).toHaveValue(updatedName)
       await expect(page.locator("#site-address")).toHaveValue(updatedAddress)
-      await expect(page.locator("#site-description")).toHaveValue(updatedDescription)
+      await expect(page.locator("#site-description")).toHaveValue(
+        updatedDescription,
+      )
     } finally {
       // Cleanup: deactivate the test Site
       if (createdSiteId) {
@@ -249,7 +249,6 @@ test.describe("Admin - Site Management", () => {
       }
     }
   })
-
 
   test("Deactivate a site and verify backend status", async ({ page }) => {
     const siteName = `PW-Site-Deactivate-${Date.now()}`

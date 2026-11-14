@@ -31,9 +31,7 @@ test.describe("Feedback Review", () => {
     }
   })
 
-  test("Shows feedback empty state when no records match", async ({
-    page,
-  }) => {
+  test("Shows feedback empty state when no records match", async ({ page }) => {
     await page.goto("/feedback")
 
     const search = page.getByRole("textbox", {
@@ -52,9 +50,11 @@ test.describe("Feedback Review", () => {
   }) => {
     await page.goto("/feedback")
 
-    await page.getByRole("textbox", {
-      name: "Search feedback",
-    }).fill(`no-feedback-${Date.now()}`)
+    await page
+      .getByRole("textbox", {
+        name: "Search feedback",
+      })
+      .fill(`no-feedback-${Date.now()}`)
 
     await expect(
       page.getByText("Submission Detail", { exact: true }),
@@ -73,10 +73,12 @@ test.describe("Feedback Review", () => {
     await page.goto("/feedback")
 
     for (const status of ["Pending", "Approved", "Rejected", "All"]) {
-      await page.getByRole("button", {
-        name: status,
-        exact: true,
-      }).click()
+      await page
+        .getByRole("button", {
+          name: status,
+          exact: true,
+        })
+        .click()
 
       await expect(
         page.getByText("Visitor Feedback", { exact: true }),

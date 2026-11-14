@@ -1,8 +1,7 @@
-
 import {
-  MediaService,
   type MediaCreate,
   type MediaPublic,
+  MediaService,
   type MediaUpdate,
 } from "@/client"
 import { unwrapApi } from "./api-errors"
@@ -10,8 +9,7 @@ import { unwrapApi } from "./api-errors"
 export const mediaKeys = {
   all: ["media"] as const,
 
-  byArtifact: (artifactId: string) =>
-    [...mediaKeys.all, artifactId] as const,
+  byArtifact: (artifactId: string) => [...mediaKeys.all, artifactId] as const,
 
   detail: (artifactId: string, mediaId: string) =>
     [...mediaKeys.byArtifact(artifactId), mediaId] as const,
@@ -33,10 +31,7 @@ export const mediaService = {
   /**
    * Lấy thông tin chi tiết một Media.
    */
-  async get(
-    artifactId: string,
-    mediaId: string,
-  ): Promise<MediaPublic> {
+  async get(artifactId: string, mediaId: string): Promise<MediaPublic> {
     return unwrapApi(
       MediaService.readMedia({
         path: {
@@ -51,10 +46,7 @@ export const mediaService = {
   /**
    * Thêm Media mới cho Artifact.
    */
-  async create(
-    artifactId: string,
-    input: MediaCreate,
-  ): Promise<MediaPublic> {
+  async create(artifactId: string, input: MediaCreate): Promise<MediaPublic> {
     return unwrapApi(
       MediaService.createMedia({
         path: { artifact_id: artifactId },
@@ -86,10 +78,7 @@ export const mediaService = {
 
   /**
    * Xóa metadata Media.*/
-  async remove(
-    artifactId: string,
-    mediaId: string,
-  ): Promise<void> {
+  async remove(artifactId: string, mediaId: string): Promise<void> {
     await unwrapApi(
       MediaService.deleteMedia({
         path: {

@@ -1,8 +1,7 @@
-
 import { Pencil, Radio, Trash2 } from "lucide-react"
 
 import type { BeaconPublic } from "@/client"
-import type { Site } from "@/services/sites"
+import { EmptyState } from "@/components/Common/AdminPrimitives"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -14,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { EmptyState } from "@/components/Common/AdminPrimitives"
+import type { Site } from "@/services/sites"
 
 interface BeaconListProps {
   beacons: BeaconPublic[]
@@ -50,9 +49,7 @@ export function BeaconList({
   onDeactivate,
   deactivatingBeaconId = null,
 }: BeaconListProps) {
-  const siteNames = new Map(
-    sites.map((site) => [site.id, site.name]),
-  )
+  const siteNames = new Map(sites.map((site) => [site.id, site.name]))
 
   if (isLoading) {
     return (
@@ -91,8 +88,7 @@ export function BeaconList({
         <TableBody>
           {beacons.map((beacon) => {
             const isActive = beacon.is_active ?? false
-            const isDeactivating =
-              deactivatingBeaconId === beacon.id
+            const isDeactivating = deactivatingBeaconId === beacon.id
 
             return (
               <TableRow key={beacon.id}>
@@ -109,38 +105,30 @@ export function BeaconList({
 
                 <TableCell>
                   {siteNames.get(beacon.site_id) ?? (
-                    <span className="text-muted-foreground">
-                      Unknown site
-                    </span>
+                    <span className="text-muted-foreground">Unknown site</span>
                   )}
                 </TableCell>
 
                 <TableCell>
                   {beacon.artifact_id ? (
-                    artifactLabels[beacon.artifact_id] ?? (
+                    (artifactLabels[beacon.artifact_id] ?? (
                       <span className="text-muted-foreground">
                         Artifact {beacon.artifact_id}
                       </span>
-                    )
+                    ))
                   ) : (
-                    <span className="text-muted-foreground">
-                      Unassigned
-                    </span>
+                    <span className="text-muted-foreground">Unassigned</span>
                   )}
                 </TableCell>
 
-                <TableCell>
-                  {formatBattery(beacon.battery_level)}
-                </TableCell>
+                <TableCell>{formatBattery(beacon.battery_level)}</TableCell>
 
                 <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                   {formatLastSeen(beacon.last_seen_at)}
                 </TableCell>
 
                 <TableCell>
-                  <Badge
-                    variant={isActive ? "default" : "secondary"}
-                  >
+                  <Badge variant={isActive ? "default" : "secondary"}>
                     {isActive ? "Active" : "Inactive"}
                   </Badge>
                 </TableCell>

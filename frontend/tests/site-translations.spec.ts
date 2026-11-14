@@ -62,9 +62,7 @@ test.describe("Admin - Site Translations", () => {
 
         return (
           response.request().method() === "GET" &&
-          url.pathname.endsWith(
-            `/api/v1/sites/${createdSiteId}/translations`,
-          )
+          url.pathname.endsWith(`/api/v1/sites/${createdSiteId}/translations`)
         )
       })
 
@@ -114,13 +112,13 @@ test.describe("Admin - Site Translations", () => {
       ).toHaveAttribute("readonly", "")
 
       // 8. Switch to English
-      await translationDialog.getByRole("tab", {
-        name: "English",
-      }).click()
+      await translationDialog
+        .getByRole("tab", {
+          name: "English",
+        })
+        .click()
 
-      const nameInput = translationDialog.locator(
-        "#site-translation-name",
-      )
+      const nameInput = translationDialog.locator("#site-translation-name")
       const descriptionInput = translationDialog.locator(
         "#site-translation-description",
       )
@@ -146,9 +144,11 @@ test.describe("Admin - Site Translations", () => {
         )
       })
 
-      await translationDialog.getByRole("button", {
-        name: "Save translation",
-      }).click()
+      await translationDialog
+        .getByRole("button", {
+          name: "Save translation",
+        })
+        .click()
 
       const saveResponse = await saveResponsePromise
 
@@ -170,10 +170,13 @@ test.describe("Admin - Site Translations", () => {
       ).toBeVisible()
 
       // 11. Close and reopen dialog to verify persisted translation
-      await translationDialog.getByRole("button", {
-        name: "Close",
-        exact: true,
-        }).first().click()
+      await translationDialog
+        .getByRole("button", {
+          name: "Close",
+          exact: true,
+        })
+        .first()
+        .click()
 
       await siteRow
         .getByRole("button", { name: `Translate ${siteName}` })
@@ -181,9 +184,11 @@ test.describe("Admin - Site Translations", () => {
 
       const reopenedDialog = page.getByRole("dialog")
 
-      await reopenedDialog.getByRole("tab", {
-        name: "English",
-      }).click()
+      await reopenedDialog
+        .getByRole("tab", {
+          name: "English",
+        })
+        .click()
 
       await expect(
         reopenedDialog.locator("#site-translation-name"),

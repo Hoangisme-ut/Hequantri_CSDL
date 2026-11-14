@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test"
+import { expect, type Page, test } from "@playwright/test"
 
 function randomArtifactCode() {
   return `PW-ART-${Date.now()}-${Math.floor(Math.random() * 10000)}`
@@ -109,14 +109,14 @@ async function createArtifact(page: Page, code: string) {
 
 test.describe("Admin - Artifact Management", () => {
   test.beforeEach(async ({ page }) => {
-  await page.goto("/items")
-  await expect(
-    page.getByRole("heading", {
-      name: "Artifact Management",
-      level: 2,
-    }),
-  ).toBeVisible()
-})
+    await page.goto("/items")
+    await expect(
+      page.getByRole("heading", {
+        name: "Artifact Management",
+        level: 2,
+      }),
+    ).toBeVisible()
+  })
 
   test("Artifact page is accessible and displays correct content", async ({
     page,
@@ -159,9 +159,9 @@ test.describe("Admin - Artifact Management", () => {
 
     await dialog.getByRole("button", { name: "Save artifact" }).click()
 
-    await expect(
-      page.getByRole("alert"),
-    ).toHaveText("Artifact code is required.")
+    await expect(page.getByRole("alert")).toHaveText(
+      "Artifact code is required.",
+    )
 
     await dialog.getByRole("button", { name: "Cancel" }).click()
 
@@ -179,9 +179,9 @@ test.describe("Admin - Artifact Management", () => {
 
     await dialog.getByRole("button", { name: "Save artifact" }).click()
 
-    await expect(
-      page.getByRole("alert"),
-    ).toHaveText("Latitude must be between -90 and 90.")
+    await expect(page.getByRole("alert")).toHaveText(
+      "Latitude must be between -90 and 90.",
+    )
 
     await dialog.getByRole("button", { name: "Cancel" }).click()
   })
@@ -197,9 +197,9 @@ test.describe("Admin - Artifact Management", () => {
 
     await dialog.getByRole("button", { name: "Save artifact" }).click()
 
-    await expect(
-      page.getByRole("alert"),
-    ).toHaveText("Longitude must be between -180 and 180.")
+    await expect(page.getByRole("alert")).toHaveText(
+      "Longitude must be between -180 and 180.",
+    )
 
     await dialog.getByRole("button", { name: "Cancel" }).click()
   })
@@ -223,9 +223,11 @@ test.describe("Admin - Artifact Management", () => {
     try {
       const artifact = await createArtifact(page, code)
 
-      await artifact.row.getByRole("button", {
-        name: `Edit ${code}`,
-      }).click()
+      await artifact.row
+        .getByRole("button", {
+          name: `Edit ${code}`,
+        })
+        .click()
 
       const dialog = page.getByRole("dialog")
 
@@ -275,9 +277,11 @@ test.describe("Admin - Artifact Management", () => {
             `/api/v1/artifacts/${artifact.id}`,
       )
 
-      await artifact.row.getByRole("button", {
-        name: `View ${code}`,
-      }).click()
+      await artifact.row
+        .getByRole("button", {
+          name: `View ${code}`,
+        })
+        .click()
 
       const response = await responsePromise
 
@@ -298,10 +302,13 @@ test.describe("Admin - Artifact Management", () => {
         dialog.getByRole("button", { name: "Save artifact" }),
       ).not.toBeVisible()
 
-      await dialog.getByRole("button", {
-        name: "Close",
-        exact: true,
-      }).first().click()
+      await dialog
+        .getByRole("button", {
+          name: "Close",
+          exact: true,
+        })
+        .first()
+        .click()
 
       await expect(dialog).not.toBeVisible()
     } finally {
@@ -327,9 +334,11 @@ test.describe("Admin - Artifact Management", () => {
             `/api/v1/artifacts/${artifact.id}`,
       )
 
-      await artifact.row.getByRole("button", {
-        name: `Deactivate ${code}`,
-      }).click()
+      await artifact.row
+        .getByRole("button", {
+          name: `Deactivate ${code}`,
+        })
+        .click()
 
       const response = await responsePromise
 

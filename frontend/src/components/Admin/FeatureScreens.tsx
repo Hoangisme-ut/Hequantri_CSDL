@@ -731,9 +731,9 @@ export function FeedbackScreen() {
   const queryClient = useQueryClient()
 
   const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState<
-  "all" | FeedbackAdminStatus
-  >("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | FeedbackAdminStatus>(
+    "all",
+  )
   const [page, setPage] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -1086,7 +1086,7 @@ export function FeedbackScreen() {
               <CardTitle className="text-sm">Moderation actions</CardTitle>
             </CardHeader>
 
-           <CardContent className="flex flex-wrap gap-2 p-4">
+            <CardContent className="flex flex-wrap gap-2 p-4">
               <Button
                 disabled={
                   selectedFeedback?.status === "approved" ||
@@ -1146,8 +1146,8 @@ export function FeedbackScreen() {
           )}
 
           <p className="text-xs text-muted-foreground">
-            Admin can change feedback status between Pending, Approved and Hidden.
-            Only approved feedback is displayed publicly.
+            Admin can change feedback status between Pending, Approved and
+            Hidden. Only approved feedback is displayed publicly.
           </p>
         </div>
       </div>

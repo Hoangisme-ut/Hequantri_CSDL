@@ -1,16 +1,14 @@
 import {
+  type FeedbackAdminStatusUpdate,
   type FeedbackPublic,
   type FeedbackReviewsPublic,
   FeedbacksService,
   type feedbacksReadFeedbacksData,
-  type FeedbackAdminStatusUpdate,
 } from "@/client"
 import { unwrapApi } from "./api-errors"
 
 // Bộ lọc danh sách phản hồi
-export type FeedbackFilters = NonNullable<
-  feedbacksReadFeedbacksData["query"]
->
+export type FeedbackFilters = NonNullable<feedbacksReadFeedbacksData["query"]>
 
 // Query keys dành cho React Query
 export const feedbackKeys = {
