@@ -137,6 +137,7 @@ class UsersPublic(SQLModel):
 class UserMePublic(UserPublic):
     role_name: str
 
+
 # =============================================================================
 # SMART HERITAGE – các bảng mới (khớp với ERD)
 # Quy ước giống template: XxxBase -> XxxCreate / XxxUpdate -> Xxx (table) -> XxxPublic
@@ -991,7 +992,7 @@ class FavoritesDetailPublic(SQLModel):
 
 
 class VisitDetailPublic(VisitLogPublic):
-    """Một lượt tham quan kèm tóm tắt hiện vật (tiêu đề theo ngôn ngữ)."""
+    """A visit with an artifact summary (localized title)."""
 
     artifact: ArtifactSummary
 

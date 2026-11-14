@@ -1715,7 +1715,7 @@ export type VisitDayCount = {
 /**
  * VisitDetailPublic
  *
- * Một lượt tham quan kèm tóm tắt hiện vật (tiêu đề theo ngôn ngữ).
+ * A visit with an artifact summary (localized title).
  */
 export type VisitDetailPublic = {
     /**
