@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { PreviewScreen, type PreviewScreenName } from "@/components/Admin/PreviewScreen"
+import {
+  PreviewScreen,
+  type PreviewScreenName,
+} from "@/components/Admin/PreviewScreen"
 
 export const Route = createFileRoute("/preview/$screen")({
   component: ScreenRoute,
