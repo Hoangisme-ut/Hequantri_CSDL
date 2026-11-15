@@ -1,9 +1,12 @@
 import uuid
 from datetime import UTC, datetime, timedelta
+from io import BytesIO
 
 import pytest
+from openpyxl import load_workbook
 from sqlalchemy import event
 
+from app.api.routes.analytics import _register_pdf_fonts
 from app.core.db import engine
 from app.models import VisitLog
 from tests.utils.heritage import API, create_artifact, create_site, purge_sites
@@ -120,3 +123,145 @@ def test_empty_and_bad_ranges(client, superuser_token_headers):
             ).status_code
             == 422
         )
+
+
+EXPORT_SHEETS = [
+    "Tong quan",
+    "Luot xem theo ngay",
+    "Thong ke Site",
+    "Top 10 hien vat",
+    "Theo ngon ngu",
+]
+
+
+def _rows(workbook, name):
+    return [list(row) for row in workbook[name].iter_rows(values_only=True)]
+
+
+@pytest.mark.parametrize("path", ["export/excel", "export/pdf"])
+def test_export_admin_only(client, normal_user_token_headers, path):
+    assert client.get(f"{API}/analytics/{path}").status_code == 401
+    assert (
+        client.get(
+            f"{API}/analytics/{path}", headers=normal_user_token_headers
+        ).status_code
+        == 403
+    )
+
+
+def test_export_excel_content(client, superuser_token_headers, sample):
+    site, artifacts = sample
+    response = client.get(
+        f"{API}/analytics/export/excel",
+        headers=superuser_token_headers,
+        params={"site_id": site["id"]},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    assert "analytics-report.xlsx" in response.headers["content-disposition"]
+
+    workbook = load_workbook(BytesIO(response.content))
+    assert workbook.sheetnames == EXPORT_SHEETS
+
+    assert _rows(workbook, "Tong quan") == [
+        ["Chi so", "Gia tri"],
+        ["Tong luot xem", 5],
+        ["Nguoi dung duy nhat", 2],
+        ["Hien vat duoc xem", 2],
+    ]
+    daily = _rows(workbook, "Luot xem theo ngay")
+    assert len(daily) == 5  # header + 4 days with views
+    assert sum(row[1] for row in daily[1:]) == 5
+    assert _rows(workbook, "Thong ke Site")[1:] == [[site["id"], site["name"], 5, 2]]
+    top = _rows(workbook, "Top 10 hien vat")[1:]
+    assert [(row[0], row[2]) for row in top] == [
+        (artifacts[1]["id"], 3),
+        (artifacts[0]["id"], 2),
+    ]
+    # Sample visits have no language: they are reported as "unknown".
+    assert _rows(workbook, "Theo ngon ngu")[1:] == [["unknown", "Khong xac dinh", 5]]
+
+
+def test_export_excel_respects_time_range(client, superuser_token_headers, sample):
+    site, _ = sample
+    response = client.get(
+        f"{API}/analytics/export/excel",
+        headers=superuser_token_headers,
+        params={
+            "site_id": site["id"],
+            "from": "2025-01-01T00:00:00Z",
+            "to": "2025-01-02T00:00:00Z",
+        },
+    )
+    assert response.status_code == 200
+    workbook = load_workbook(BytesIO(response.content))
+    assert _rows(workbook, "Tong quan")[1:] == [
+        ["Tong luot xem", 2],
+        ["Nguoi dung duy nhat", 1],
+        ["Hien vat duoc xem", 1],
+    ]
+
+
+def test_export_excel_empty_result(client, superuser_token_headers):
+    response = client.get(
+        f"{API}/analytics/export/excel",
+        headers=superuser_token_headers,
+        params={"site_id": str(uuid.uuid4())},
+    )
+    assert response.status_code == 200
+    workbook = load_workbook(BytesIO(response.content))
+    assert workbook.sheetnames == EXPORT_SHEETS
+    assert _rows(workbook, "Tong quan")[1][1] == 0
+    for name in EXPORT_SHEETS[1:]:
+        assert len(_rows(workbook, name)) == 1  # header only
+
+
+@pytest.mark.parametrize("path", ["export/excel", "export/pdf"])
+def test_export_rejects_bad_ranges(client, superuser_token_headers, path):
+    for params in (
+        {"from": "2025-01-01"},
+        {"from": "2025-02-01T00:00:00Z", "to": "2025-01-01T00:00:00Z"},
+    ):
+        assert (
+            client.get(
+                f"{API}/analytics/{path}",
+                headers=superuser_token_headers,
+                params=params,
+            ).status_code
+            == 422
+        )
+
+
+@pytest.fixture
+def pdf_font() -> None:
+    try:
+        _register_pdf_fonts()
+    except RuntimeError:
+        pytest.skip("No Vietnamese-compatible TrueType font installed")
+
+
+@pytest.mark.usefixtures("pdf_font")
+def test_export_pdf(client, superuser_token_headers, sample):
+    site, _ = sample
+    response = client.get(
+        f"{API}/analytics/export/pdf",
+        headers=superuser_token_headers,
+        params={"site_id": site["id"]},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert "analytics-report.pdf" in response.headers["content-disposition"]
+    assert response.content.startswith(b"%PDF")
+
+
+@pytest.mark.usefixtures("pdf_font")
+def test_export_pdf_empty_result(client, superuser_token_headers):
+    response = client.get(
+        f"{API}/analytics/export/pdf",
+        headers=superuser_token_headers,
+        params={"site_id": str(uuid.uuid4())},
+    )
+    assert response.status_code == 200
+    assert response.content.startswith(b"%PDF")
