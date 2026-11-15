@@ -1,0 +1,45 @@
+# Standalone test stack: never merge with the application Compose files.
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${TEST_DB_PASSWORD:?Run bash scripts/test.sh}
+    volumes:
+      - test-db-data:/var/opt/mssql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$${MSSQL_SA_PASSWORD}" -Q 'SELECT 1' -b
+      interval: 10s
+      retries: 10
+      start_period: 30s
+      timeout: 10s
+
+  mailpit:
+    image: axllent/mailpit
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      PROJECT_NAME: Smart Heritage Tests
+      SECRET_KEY: ${TEST_SECRET_KEY:?Run bash scripts/test.sh}
+      FIRST_SUPERUSER: admin@example.com
+      FIRST_SUPERUSER_PASSWORD: TestOnlyAdmin123!
+      FASTAPI_ENV: development
+      # This database is never created or used; the test guard requires a
+      # different application database name before it activates the test URL.
+      DATABASE_URL: mssql+pymssql://sa:${TEST_DB_PASSWORD:?Run bash scripts/test.sh}@db:1433/unused_application
+      TEST_DATABASE_URL: ${TEST_DATABASE_URL:?Run bash scripts/test.sh}
+      TEST_DATABASE_TOKEN: ${TEST_DATABASE_TOKEN:?Run bash scripts/test.sh}
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_TLS: "false"
+      EMAILS_FROM_EMAIL: tests@example.com
+    volumes:
+      - ./backend/htmlcov:/app/backend/htmlcov
+
+volumes:
+  test-db-data:
