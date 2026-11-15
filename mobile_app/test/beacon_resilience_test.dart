@@ -99,8 +99,6 @@ Future<void> _open(
   await tester.pump();
 }
 
-/// Trạng thái thông báo và bộ đếm nằm trong ExpansionTile.
-/// Cần mở mục này trước khi kiểm tra các nội dung bên trong.
 Future<void> _openTechnicalDetails(WidgetTester tester) async {
   final pageContext = tester.element(find.byType(BeaconTestPage));
 
@@ -122,14 +120,12 @@ Future<void> _openTechnicalDetails(WidgetTester tester) async {
   await Scrollable.ensureVisible(tester.element(title), alignment: 0.3);
   await tester.pumpAndSettle();
 
-  final tile = find.widgetWithText(ExpansionTile, 'Thông tin kỹ thuật');
+  final tile = find.byKey(const ValueKey<String>('beacon-technical-details'));
 
   final counter = find.descendant(
     of: tile,
     matching: find.textContaining('Lần báo mới:'),
   );
-
-  // Nếu đang mở thì giữ nguyên, tránh bấm làm đóng lại.
   if (counter.evaluate().isEmpty) {
     expect(
       title.hitTestable(),
@@ -183,15 +179,17 @@ Future<void> _cleanup(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('iOS ranging is restricted to the configured UUID', () {
-    final ios = BeaconScanner.regions(isIOS: true).single;
+  test('Android and iOS ranging use the configured heritage UUID', () {
+    for (final isIOS in [false, true]) {
+      final region = BeaconScanner.regions(isIOS: isIOS).single;
 
-    expect(ios.proximityUUID, heritageBeaconUuid);
-    expect(ios.major, isNull);
-    expect(ios.minor, isNull);
-    expect(BeaconScanner.regions(isIOS: false).single.proximityUUID, isNull);
+      expect(region.identifier, 'smart-heritage');
+      expect(region.proximityUUID, heritageBeaconUuid);
+
+      expect(region.major, isNull);
+      expect(region.minor, isNull);
+    }
   });
-
   group('native preflight', () {
     const channel = MethodChannel('flutter_beacon');
 
@@ -200,7 +198,6 @@ void main() {
     var location = true;
 
     final methods = <MethodCall>[];
-
     setUp(() {
       platform.debugDefaultTargetPlatformOverride =
           platform.TargetPlatform.android;
@@ -430,7 +427,6 @@ void main() {
         expect(content.calls, 2);
         expect(find.text('Nội dung A'), findsOneWidget);
 
-        // Nội dung vừa tải lại có thể làm thay đổi vị trí mục kỹ thuật.
         await _openTechnicalDetails(tester);
 
         expect(
@@ -475,6 +471,35 @@ void main() {
           findsOneWidget,
         );
         expect(find.textContaining('không báo lại'), findsOneWidget);
+
+        scanner.source.add([_a()]);
+        await tester.pumpAndSettle();
+
+        expect(find.byType(SelectableText), findsOneWidget);
+        expect(
+          find.text('Lần báo mới: 1 · lần lặp đã chặn: 2'),
+          findsOneWidget,
+        );
+        expect(content.calls, 1);
+
+        final title = find.text('Thông tin kỹ thuật');
+
+        await tester.ensureVisible(title);
+        await tester.pumpAndSettle();
+
+        await tester.tap(title.hitTestable());
+        await tester.pumpAndSettle();
+
+        expect(find.byType(SelectableText), findsNothing);
+        expect(find.textContaining('Lần báo mới:'), findsNothing);
+
+        await _openTechnicalDetails(tester);
+
+        expect(find.byType(SelectableText), findsOneWidget);
+        expect(
+          find.text('Lần báo mới: 1 · lần lặp đã chặn: 2'),
+          findsOneWidget,
+        );
       } finally {
         await _cleanup(tester, scanner, content);
       }
@@ -502,6 +527,9 @@ void main() {
         find.text('Đã dừng quét — hiển thị dữ liệu lần nhận cuối'),
         findsOneWidget,
       );
+
+      await _openTechnicalDetails(tester);
+
       expect(find.byType(SelectableText), findsOneWidget);
       expect(find.text('Nội dung A'), findsNothing);
       expect(scanner.source.hasListener, isFalse);
