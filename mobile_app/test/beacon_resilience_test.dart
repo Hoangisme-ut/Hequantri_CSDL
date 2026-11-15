@@ -99,8 +99,6 @@ Future<void> _open(
   await tester.pump();
 }
 
-/// Trạng thái thông báo, bộ đếm và dữ liệu beacon nằm trong ExpansionTile.
-/// Cần mở mục này trước khi kiểm tra các nội dung bên trong.
 Future<void> _openTechnicalDetails(WidgetTester tester) async {
   final pageContext = tester.element(find.byType(BeaconTestPage));
 
@@ -122,7 +120,7 @@ Future<void> _openTechnicalDetails(WidgetTester tester) async {
   await Scrollable.ensureVisible(tester.element(title), alignment: 0.3);
   await tester.pumpAndSettle();
 
-  final tile = find.widgetWithText(ExpansionTile, 'Thông tin kỹ thuật');
+  final tile = find.byKey(const ValueKey<String>('beacon-technical-details'));
 
   final counter = find.descendant(
     of: tile,
@@ -475,6 +473,38 @@ void main() {
           findsOneWidget,
         );
         expect(find.textContaining('không báo lại'), findsOneWidget);
+
+        // Có tín hiệu mới thì mục kỹ thuật vẫn phải giữ trạng thái mở.
+        scanner.source.add([_a()]);
+        await tester.pumpAndSettle();
+
+        expect(find.byType(SelectableText), findsOneWidget);
+        expect(
+          find.text('Lần báo mới: 1 · lần lặp đã chặn: 2'),
+          findsOneWidget,
+        );
+        expect(content.calls, 1);
+
+        // Đóng phải ẩn bộ đếm và dữ liệu beacon.
+        final title = find.text('Thông tin kỹ thuật');
+
+        await tester.ensureVisible(title);
+        await tester.pumpAndSettle();
+
+        await tester.tap(title.hitTestable());
+        await tester.pumpAndSettle();
+
+        expect(find.byType(SelectableText), findsNothing);
+        expect(find.textContaining('Lần báo mới:'), findsNothing);
+
+        // Mở lại phải hiển thị được dữ liệu hiện tại.
+        await _openTechnicalDetails(tester);
+
+        expect(find.byType(SelectableText), findsOneWidget);
+        expect(
+          find.text('Lần báo mới: 1 · lần lặp đã chặn: 2'),
+          findsOneWidget,
+        );
       } finally {
         await _cleanup(tester, scanner, content);
       }

@@ -182,6 +182,9 @@ class BeaconTestPageState extends State<BeaconTestPage>
   bool _scanning = false;
   bool _busy = false;
 
+  bool _technicalDetailsExpanded = false;
+  final GlobalKey _technicalDetailsHeaderKey = GlobalKey();
+
   String? _lastNotifiedBeaconKey;
   String? _candidateBeaconKey;
 
@@ -1339,59 +1342,108 @@ class BeaconTestPageState extends State<BeaconTestPage>
               ),
             ),
             SliverToBoxAdapter(
-              child: ExpansionTile(
-                key: const PageStorageKey<String>('beacon-technical-details'),
-                title: Text(
-                  isEnglish ? 'Technical details' : 'Thông tin kỹ thuật',
-                ),
-                childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                key: const ValueKey<String>('beacon-technical-details'),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(notification),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      isEnglish
-                          ? 'New notifications: $_notificationCount · suppressed repeats: $_suppressedCount'
-                          : 'Lần báo mới: $_notificationCount · lần lặp đã chặn: $_suppressedCount',
+                  ListTile(
+                    key: _technicalDetailsHeaderKey,
+                    title: Text(
+                      isEnglish ? 'Technical details' : 'Thông tin kỹ thuật',
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  for (final beacon in technicalBeacons)
-                    Card(
-                      key: ValueKey<String>(
-                        'beacon-reading-${_beaconKey(beacon)}',
-                      ),
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                Chip(label: Text('Major ${beacon.major}')),
-                                Chip(label: Text('Minor ${beacon.minor}')),
-                                Chip(label: Text('RSSI ${beacon.rssi} dBm')),
-                                Chip(
-                                  label: Text(
-                                    '${isEnglish ? 'Distance' : 'Khoảng cách'}: '
-                                    '${_distanceText(beacon.accuracy)}',
-                                  ),
-                                ),
-                              ],
+                    trailing: Icon(
+                      _technicalDetailsExpanded
+                          ? Icons.expand_less
+                          : Icons.expand_more,
+                    ),
+                    onTap: () {
+                      setState(() {
+                        _technicalDetailsExpanded = !_technicalDetailsExpanded;
+                      });
+
+                      if (_technicalDetailsExpanded) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (!mounted || !_technicalDetailsExpanded) {
+                            return;
+                          }
+
+                          final headerContext =
+                              _technicalDetailsHeaderKey.currentContext;
+
+                          if (headerContext == null) return;
+
+                          unawaited(
+                            Scrollable.ensureVisible(
+                              headerContext,
+                              alignment: 0,
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeOut,
                             ),
-                            const SizedBox(height: 8),
-                            const Text('UUID'),
-                            SelectableText(
-                              beacon.proximityUUID,
-                              key: PageStorageKey<String>(
-                                'beacon-uuid-${_beaconKey(beacon)}',
+                          );
+                        });
+                      }
+                    },
+                  ),
+                  if (_technicalDetailsExpanded)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(notification),
+                          Text(
+                            isEnglish
+                                ? 'New notifications: $_notificationCount · suppressed repeats: $_suppressedCount'
+                                : 'Lần báo mới: $_notificationCount · lần lặp đã chặn: $_suppressedCount',
+                          ),
+                          const SizedBox(height: 8),
+                          for (final beacon in technicalBeacons)
+                            Card(
+                              key: ValueKey<String>(
+                                'beacon-reading-${_beaconKey(beacon)}',
+                              ),
+                              margin: const EdgeInsets.symmetric(vertical: 6),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: [
+                                        Chip(
+                                          label: Text('Major ${beacon.major}'),
+                                        ),
+                                        Chip(
+                                          label: Text('Minor ${beacon.minor}'),
+                                        ),
+                                        Chip(
+                                          label: Text(
+                                            'RSSI ${beacon.rssi} dBm',
+                                          ),
+                                        ),
+                                        Chip(
+                                          label: Text(
+                                            '${isEnglish ? 'Distance' : 'Khoảng cách'}: '
+                                            '${_distanceText(beacon.accuracy)}',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    const Text('UUID'),
+                                    SelectableText(
+                                      beacon.proximityUUID,
+                                      key: PageStorageKey<String>(
+                                        'beacon-uuid-${_beaconKey(beacon)}',
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ],
-                        ),
+                        ],
                       ),
                     ),
                 ],
