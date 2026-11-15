@@ -105,7 +105,7 @@ Notes:
 - The `sa` password must satisfy the SQL Server password policy (at least 8 characters, with upper case, lower case, digits and symbols). If it does not, the `db` container exits right after starting.
 - Docker needs at least 2 GB of memory available for SQL Server.
 - Data is stored in the `app-db-data` volume. To reset the database completely, run `docker compose down -v`.
-- Inside Docker the backend connects to `db:1433`; from your machine (local FastAPI, tests, database clients) use `localhost:14330`.
+- Inside the development stack the backend connects to `db:1433`; from your machine (local FastAPI and database clients) use `localhost:14330`. Backend tests use a separately provisioned test instance, never this database.
 
 ## Mailpit
 
@@ -140,6 +140,33 @@ GitHub Actions runs these workflows on pull requests and on pushes to `main`:
 - **pre-commit**: runs `prek` for linting and formatting.
 
 All of them must pass before merging a Pull Request.
+
+Deployment is manual. `deploy.yml` targets FastAPI Cloud, not Azure, and runs
+only through `workflow_dispatch`; start it only after tests are green for the
+same commit. `deploy-docker-compose.yml` is also manual only. Neither workflow
+automatically waits for or verifies the test results.
+
+## Isolated Backend Tests
+
+From the repository root, use Docker Compose v2+, Bash and OpenSSL:
+
+```bash
+bash scripts/test.sh
+# scripts/test-local.sh delegates to the same isolated runner.
+```
+
+The runner explicitly selects `compose.test.yml` with a fresh
+`smart-heritage-test-<random>` project, its own SQL Server storage and no host
+ports. It does not load the development `.env`. It provisions a new `test_*`
+database and identity token, migrates only that database, then passes both
+`TEST_DATABASE_URL` and `TEST_DATABASE_TOKEN` to the backend tests. Exit and
+signal handlers tear down only the test project and its database volume;
+`backend/htmlcov` is retained. An uncatchable termination requires manual
+cleanup of that test project only.
+
+Do not run tests against an already running development stack. For host-based
+tests or focused Pytest options, follow the [backend test instructions](./backend/README.md#backend-tests).
+The runner's arguments specify the coverage title rather than Pytest options.
 
 ## Pre-commit Hooks and Code Linting
 

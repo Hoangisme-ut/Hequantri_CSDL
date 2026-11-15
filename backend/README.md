@@ -35,17 +35,48 @@ Consumed-token records are retained; no automatic destructive cleanup is added.
 
 ## Feedback API
 
-Authenticated Visitors/Admins can POST `/api/v1/feedback/` with `artifact_id`,
-`rating` (1–5), and optional `comment`. The server assigns ownership and
-`pending` status. The artifact and its site must be visible. GET `/feedback/me`
-returns only the caller's submissions. GET `/feedback/{id}` permits the owner
-or an Admin; other users receive 404 regardless of moderation status.
+All paths below are relative to `/api/v1`. Authenticated Visitors/Admins can
+POST `/feedbacks/` with `artifact_id`, `rating` (1–5), and optional `comment`.
+The server assigns ownership: a non-empty comment starts as `pending`, while
+a rating without a comment is `approved`. The artifact and its site must be
+visible. Each user may submit one feedback per artifact; duplicates return 409.
 
-Admin-only GET `/feedback/` supports `status`, `artifact_id`, `user_id`, `skip`,
-and `limit`. PATCH `/feedback/{id}/status` accepts `pending`, `approved`, or
-`rejected`. No public feedback feed is exposed. Migration `b2c3d4e5f6a7` adds
-rating/status CHECK constraints; invalid legacy rows stop the migration for
-review instead of being changed or deleted automatically.
+GET `/feedbacks/me` returns the caller's submissions for active artifacts/sites;
+`include_inactive=true` includes historical feedback. GET `/feedbacks/{feedback_id}`
+permits the owner or an Admin; other users receive 404. PUT on that same path
+edits the owner's rating/comment. Editing an approved comment resets it to
+`pending`; hidden feedback stays `hidden`. Clearing a comment approves it unless
+hidden, and changing only the rating preserves status.
+
+Admin-only GET `/feedbacks/` supports `status`, `artifact_id`, `user_id`, `q`,
+`skip`, and `limit`. PATCH `/feedbacks/{feedback_id}/status` sets `pending`,
+`approved`, or `hidden`. The legacy `rejected` value remains accepted for
+moderation/filtering and maps to `hidden`; it is not a stored status.
+
+The moderation body accepts optional `expected_updated_at`, the last observed
+timestamp (or explicit null for an unedited row). A mismatch returns 409 with
+no change; reload the feedback before retrying. Omitting the field preserves
+moderation without a version check. Editing and moderation share a transaction
+lock on the feedback ID.
+
+Public GET `/feedbacks/artifact/{artifact_id}` needs no authentication and returns
+approved comments for a visible artifact, with `skip`/`limit` pagination. It
+excludes rating-only feedback and does not expose `user_id` or moderation status.
+List endpoints default to `skip=0`, `limit=20` and allow at most 100 rows per page.
+
+Migration `b2c3d4e5f6a7` is now a compatibility no-op. Migration `e5f6a7b8c9d0`
+drops existing feedback checks/uniqueness before repairs, adds `updated_at` if
+missing, then restores rating/status checks and unique `(user_id, artifact_id)`.
+It clamps ratings to 1–5, maps `rejected` to `hidden` and other invalid statuses
+to `pending`, and keeps the newest duplicate by `created_at` with ID as a
+tie-breaker. Before changing/deleting rows, it saves their original values in
+`feedback_migration_backup` without overwriting existing backups on retry.
+Migration logs report backed-up, changed and deleted row counts; downgrade
+retains the backup table for manual recovery.
+
+Migration `9398b7ad0549` refuses to drop a non-empty legacy `item` table. Back it
+up first, then explicitly archive or remove its rows before retrying. An empty
+table is dropped; a missing table is left alone.
 
 ## SQL Server verification for phases 2, 4 and 5
 
@@ -69,8 +100,8 @@ correctness for Admin writes; high-volume write throughput has not been load
 tested. Database constraints remain the final protection against uniqueness
 violations. Only recognized duplicate constraints are mapped to HTTP 409.
 
-Query-count tests compare pages of 1 and 5 rows: Artifact list uses 6 SELECTs
-in both cases, Favorites/Visit History use 7 in both cases (including auth).
+Query-count tests compare pages of 1 and 5 rows: Artifact list uses 6 SELECT
+statements in both cases, Favorites/Visit History use 7 in both cases (including auth).
 Analytics executes one aggregate query per endpoint. These measurements do not
 claim production latency or query-plan improvements.
 
@@ -213,7 +244,7 @@ Never point tests at the application's `DATABASE_URL`. Before running tests:
 
 The fixture verifies the database name and marker before importing the app's
 engine and again before setup/cleanup. A name alone is not proof of isolation.
-No test command provisions, marks, or migrates an existing database automatically.
+The provisioning script refuses to reuse or mark an existing database.
 The GitHub Backend workflow provisions a new test database on its disposable runner.
 For pure model/guard tests with no DB fixtures, `pytest --noconftest` can be used
 explicitly; it is not a substitute for the integration suite.
@@ -228,21 +259,37 @@ The tests run with Pytest. Modify existing tests or add new ones in `./backend/t
 
 If you use GitHub Actions, the tests will run automatically.
 
-### Test a Running Stack
+### Isolated Docker Test Stack
 
-If your stack is already up and you just want to run the tests, you can use:
-
-```bash
-docker compose exec backend bash scripts/tests-start.sh
-```
-
-The `/app/backend/scripts/tests-start.sh` script calls `pytest`. If you need to pass extra arguments to `pytest`, you can pass them to that command and they will be forwarded.
-
-For example, to stop on first error:
+From the repository root, with Docker Compose v2+, Bash and OpenSSL available:
 
 ```bash
-docker compose exec backend bash scripts/tests-start.sh -x
+bash scripts/test.sh
+# Equivalent entry point:
+bash scripts/test-local.sh
 ```
+
+These root scripts use only `compose.test.yml` and a fresh
+`smart-heritage-test-<random>` project. They do not load the development `.env`,
+publish host ports, reuse the application's Compose project, or mount its SQL
+Server volume. Each run builds its own backend image, starts SQL Server and
+Mailpit, provisions a new `test_backend` database with a random identity token,
+migrates that database, and invokes the backend test script with both
+`TEST_DATABASE_URL` and `TEST_DATABASE_TOKEN`. The safety checks remain enabled.
+
+On exit, failure, SIGINT or SIGTERM, cleanup removes only that run's containers,
+network and test database volume. Coverage HTML remains in `backend/htmlcov`.
+If cleanup fails or the process is killed without a catchable signal, remove
+only the printed test project using `compose.test.yml`; never clean up the
+application project as part of testing. For manual teardown, use the exact
+printed `-p` name, `-f compose.test.yml` and `--env-file /dev/null`. Set non-empty
+placeholder values for `TEST_DB_PASSWORD`, `TEST_SECRET_KEY`, `TEST_DATABASE_URL`
+and `TEST_DATABASE_TOKEN` only to satisfy Compose interpolation during cleanup.
+
+Arguments to these scripts set the coverage report title, not Pytest options.
+For a focused Pytest run, use the separately provisioned host test database
+procedure above and invoke `uv run coverage run -m pytest tests/ -x` from
+`backend/`. Do not run tests inside the development backend container.
 
 ### Test Coverage
 

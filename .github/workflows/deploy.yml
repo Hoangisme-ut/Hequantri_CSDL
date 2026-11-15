@@ -1,11 +1,8 @@
+# Manual deployment only: start after tests are green for the same commit.
+# This workflow targets FastAPI Cloud, not Azure.
 name: Deploy
 
 on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - release-notes.md
   workflow_dispatch:
 
 permissions:
