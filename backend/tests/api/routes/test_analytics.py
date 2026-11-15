@@ -1,9 +1,13 @@
 import uuid
 from datetime import UTC, datetime, timedelta
+from io import BytesIO
+from unittest.mock import patch
 
 import pytest
+from openpyxl import load_workbook
 from sqlalchemy import event
 
+from app.api.routes import analytics
 from app.core.db import engine
 from app.models import VisitLog
 from tests.utils.heritage import API, create_artifact, create_site, purge_sites
@@ -39,7 +43,10 @@ def sample(client, db, superuser_token_headers, normal_user_token_headers):
     purge_sites(db, [site["id"]])
 
 
-@pytest.mark.parametrize("path", ["overview", "visits", "top-artifacts", "sites"])
+@pytest.mark.parametrize(
+    "path",
+    ["overview", "visits", "top-artifacts", "sites", "export/excel", "export/pdf"],
+)
 def test_analytics_admin_only(client, normal_user_token_headers, path):
     assert client.get(f"{API}/analytics/{path}").status_code == 401
     assert (
@@ -120,3 +127,62 @@ def test_empty_and_bad_ranges(client, superuser_token_headers):
             ).status_code
             == 422
         )
+
+
+@pytest.mark.parametrize("kind", ["excel", "pdf"])
+def test_exports_match_filtered_sql_server_aggregates(
+    client, superuser_token_headers, sample, kind
+):
+    site, artifacts = sample
+    with (
+        patch.object(
+            analytics,
+            "_register_pdf_fonts",
+            return_value=("Helvetica", "Helvetica-Bold"),
+        ),
+        patch.object(analytics, "LongTable", wraps=analytics.LongTable) as tables,
+    ):
+        response = client.get(
+            f"{API}/analytics/export/{kind}",
+            headers=superuser_token_headers,
+            params={
+                "site_id": site["id"],
+                "from": "2025-01-01T07:00:00+07:00",
+                "to": "2025-01-03T00:00:00Z",
+            },
+        )
+    assert response.status_code == 200
+    assert response.headers["content-disposition"] == (
+        f'attachment; filename="analytics-report.{"xlsx" if kind == "excel" else "pdf"}"'
+    )
+    if kind == "excel":
+        workbook = load_workbook(BytesIO(response.content))
+        try:
+            overview, daily, sites, top, languages = workbook.worksheets
+            assert [overview.cell(i, 2).value for i in (2, 3, 4)] == [3, 2, 2]
+            assert list(daily.values)[1:] == [
+                (datetime(2025, 1, 1), 2, 1),
+                (datetime(2025, 1, 2), 1, 1),
+            ]
+            assert list(sites.values)[1] == (site["id"], site["name"], 3, 2)
+            assert list(top.values)[1] == (
+                artifacts[0]["id"],
+                artifacts[0]["code"],
+                2,
+                1,
+            )
+            assert sum(row[2] for row in list(languages.values)[1:]) == 3
+        finally:
+            workbook.close()
+    else:
+        assert response.headers["content-type"] == "application/pdf"
+        assert response.content.startswith(b"%PDF-")
+        assert response.content.rstrip().endswith(b"%%EOF")
+        rows = [item.args[0] for item in tables.call_args_list]
+        assert [row[1].getPlainText() for row in rows[0][1:]] == ["3", "2", "2"]
+        assert [[cell.getPlainText() for cell in row] for row in rows[1][1:]] == [
+            ["2025-01-01", "2", "1"],
+            ["2025-01-02", "1", "1"],
+        ]
+        assert rows[2][1][0].getPlainText() == site["name"]
+        assert rows[3][1][0].getPlainText() == artifacts[0]["code"]

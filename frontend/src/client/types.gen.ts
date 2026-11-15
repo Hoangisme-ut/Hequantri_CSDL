@@ -2059,6 +2059,78 @@ export type analyticsSitesResponses = {
 
 export type analyticsSitesResponse = analyticsSitesResponses[keyof analyticsSitesResponses];
 
+export type analyticsExportExcelData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * From
+         */
+        from?: string | null;
+        /**
+         * To
+         */
+        to?: string | null;
+        /**
+         * Site Id
+         */
+        site_id?: string | null;
+    };
+    url: '/api/v1/analytics/export/excel';
+};
+
+export type analyticsExportExcelErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type analyticsExportExcelError = analyticsExportExcelErrors[keyof analyticsExportExcelErrors];
+
+export type analyticsExportExcelResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type analyticsExportPdfData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * From
+         */
+        from?: string | null;
+        /**
+         * To
+         */
+        to?: string | null;
+        /**
+         * Site Id
+         */
+        site_id?: string | null;
+    };
+    url: '/api/v1/analytics/export/pdf';
+};
+
+export type analyticsExportPdfErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type analyticsExportPdfError = analyticsExportPdfErrors[keyof analyticsExportPdfErrors];
+
+export type analyticsExportPdfResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
 export type loginLoginAccessTokenData = {
     body: Body_login_login_access_token;
     path?: never;
