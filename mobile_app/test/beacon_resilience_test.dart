@@ -99,7 +99,7 @@ Future<void> _open(
   await tester.pump();
 }
 
-/// Trạng thái thông báo và bộ đếm nằm trong ExpansionTile.
+/// Trạng thái thông báo, bộ đếm và dữ liệu beacon nằm trong ExpansionTile.
 /// Cần mở mục này trước khi kiểm tra các nội dung bên trong.
 Future<void> _openTechnicalDetails(WidgetTester tester) async {
   final pageContext = tester.element(find.byType(BeaconTestPage));
@@ -502,6 +502,10 @@ void main() {
         find.text('Đã dừng quét — hiển thị dữ liệu lần nhận cuối'),
         findsOneWidget,
       );
+
+      // Dữ liệu beacon hiện nằm bên trong mục Thông tin kỹ thuật.
+      await _openTechnicalDetails(tester);
+
       expect(find.byType(SelectableText), findsOneWidget);
       expect(find.text('Nội dung A'), findsNothing);
       expect(scanner.source.hasListener, isFalse);

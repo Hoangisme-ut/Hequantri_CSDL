@@ -223,11 +223,14 @@ class BeaconTestPageState extends State<BeaconTestPage>
         service: service,
         readToken: () => widget.readToken?.call(),
       );
+
       _visitorApi = widget.visitorApi;
       _siteApi = widget.siteApi;
+
       if (widget.visitorApi case final SiteApi injectedSiteApi) {
         _siteApi ??= injectedSiteApi;
       }
+
       if (_visitorApi == null && widget.contentService == null) {
         final api = HttpVisitorApi(baseUrl: ApiConfig.baseUrl);
         _visitorApi = api;
@@ -316,7 +319,9 @@ class BeaconTestPageState extends State<BeaconTestPage>
 
   Future<void> _checkServicesOnResume(int epoch) async {
     if (_checkingServices) return;
+
     _checkingServices = true;
+
     try {
       await _scanner.checkReady();
     } catch (error) {
@@ -351,16 +356,20 @@ class BeaconTestPageState extends State<BeaconTestPage>
 
   void _armSelectionExpiry() {
     _selectionExpiryTimer?.cancel();
+
     final epoch = _scanEpoch;
+
     _selectionExpiryTimer = Timer(
       const Duration(milliseconds: _keepBeaconMilliseconds),
       () {
         if (!_isCurrentScan(epoch)) return;
+
         _selectedBeacon = null;
         _lastNotifiedBeaconKey = null;
         _candidateBeaconKey = null;
         _candidateHits = 0;
         _contentController?.reset();
+
         setState(() {
           _notificationStatus =
               'Đã mất tín hiệu beacon đang chọn. Chờ nhận lại.';
@@ -374,11 +383,14 @@ class BeaconTestPageState extends State<BeaconTestPage>
 
     if (detectedBeacons.isNotEmpty) {
       _rawExpiryTimer?.cancel();
+
       final epoch = _scanEpoch;
+
       _rawExpiryTimer = Timer(
         const Duration(milliseconds: _keepBeaconMilliseconds),
         () {
           if (!_isCurrentScan(epoch)) return;
+
           setState(() {
             _beacons = [];
             _status = 'Đang quét — chưa phát hiện iBeacon';
@@ -386,6 +398,7 @@ class BeaconTestPageState extends State<BeaconTestPage>
         },
       );
     }
+
     final selectedReadings = detectedBeacons.where(
       (beacon) =>
           _eligible(beacon) && _beaconKey(beacon) == _lastNotifiedBeaconKey,
@@ -522,7 +535,9 @@ class BeaconTestPageState extends State<BeaconTestPage>
 
     try {
       await _cancelSubscriptions();
+
       if (!mounted) return;
+
       final Stream<List<Beacon>> detections;
       final testStream = widget.beaconStream;
 
@@ -532,7 +547,9 @@ class BeaconTestPageState extends State<BeaconTestPage>
         _setStatus('Đang kiểm tra quyền và dịch vụ...');
 
         await _scanner.prepare();
+
         if (!mounted) return;
+
         detections = _scanner.detections;
       }
 
@@ -542,6 +559,7 @@ class BeaconTestPageState extends State<BeaconTestPage>
       _rssiThresholds.clear();
       _contentController?.reset();
       _selectedBeacon = null;
+
       final epoch = ++_scanEpoch;
 
       setState(() {
@@ -579,6 +597,7 @@ class BeaconTestPageState extends State<BeaconTestPage>
           }
         },
       );
+
       if (testStream == null) {
         _bluetoothSubscription = _scanner.bluetoothChanges.listen(
           (state) {
@@ -592,6 +611,7 @@ class BeaconTestPageState extends State<BeaconTestPage>
             }
           },
         );
+
         _authorizationSubscription = _scanner.authorizationChanges.listen(
           (state) {
             if (_isCurrentScan(epoch) && !BeaconScanner.isAuthorized(state)) {
@@ -606,21 +626,26 @@ class BeaconTestPageState extends State<BeaconTestPage>
             }
           },
         );
+
         await _scanner.checkReady();
       }
     } catch (error) {
       if (!mounted) return;
+
       _cancelExpiryTimers();
       _scanEpoch++;
       _contentController?.reset();
       _selectedBeacon = null;
       _scanning = false;
+
       try {
         await _cancelSubscriptions();
       } catch (cancelError) {
         debugPrint('BLE cancellation failed: $cancelError');
       }
+
       if (!mounted) return;
+
       setState(() {
         _scanning = false;
         _status = _scanError(error);
@@ -628,19 +653,25 @@ class BeaconTestPageState extends State<BeaconTestPage>
     } finally {
       if (mounted) {
         setState(() => _busy = false);
+
         final problem = _pendingScanProblem;
         _pendingScanProblem = null;
-        if (_scanning && problem != null) _interruptScan(problem);
+
+        if (_scanning && problem != null) {
+          _interruptScan(problem);
+        }
       }
     }
   }
 
   Future<void> _cancelSubscriptions() async {
-    // Clear handles only after cancellation succeeds, allowing an explicit retry.
+    // Chỉ xóa handle sau khi hủy thành công để có thể thử lại nếu cần.
     await _subscription?.cancel();
     _subscription = null;
+
     await _bluetoothSubscription?.cancel();
     _bluetoothSubscription = null;
+
     await _authorizationSubscription?.cancel();
     _authorizationSubscription = null;
   }
@@ -650,6 +681,7 @@ class BeaconTestPageState extends State<BeaconTestPage>
     bool clearReadings = false,
   }) async {
     if (_busy) return false;
+
     if (!_scanning &&
         _subscription == null &&
         _bluetoothSubscription == null &&
@@ -677,6 +709,7 @@ class BeaconTestPageState extends State<BeaconTestPage>
 
       setState(() {
         if (clearReadings) _beacons = [];
+
         _status =
             message ??
             (_beacons.isEmpty
@@ -715,6 +748,7 @@ class BeaconTestPageState extends State<BeaconTestPage>
     AuthToken resolvedWith,
   ) {
     final controller = _contentController;
+
     return mounted &&
         widget.isActive &&
         identical(controller?.content, content) &&
@@ -726,10 +760,12 @@ class BeaconTestPageState extends State<BeaconTestPage>
 
   void _openArtifact(BeaconContent content) {
     final resolvedToken = _contentController?.contentToken;
+
     if (resolvedToken == null ||
         !_isVisibleResolvedContent(content, resolvedToken)) {
       return;
     }
+
     final artifact = Artifact(
       id: content.artifactId,
       titleVi: content.title ?? content.code,
@@ -741,7 +777,9 @@ class BeaconTestPageState extends State<BeaconTestPage>
       descriptionEn: content.description ?? '',
       imageUrl: content.coverImageUrl ?? '',
     );
+
     final visitRssi = _selectedBeacon?.rssi;
+
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (_) => ArtifactDetailPage(
@@ -759,6 +797,7 @@ class BeaconTestPageState extends State<BeaconTestPage>
     final strings = AppStrings.of(context);
     final resolvedToken = _contentController?.contentToken;
     final languageCode = strings.locale.languageCode;
+
     if (api == null || resolvedToken == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -771,16 +810,19 @@ class BeaconTestPageState extends State<BeaconTestPage>
       );
       return;
     }
+
     try {
       final site = await api.loadSite(
         siteId: content.siteId,
         languageCode: languageCode,
       );
+
       if (!mounted ||
           AppStrings.of(context).locale.languageCode != languageCode ||
           !_isVisibleResolvedContent(content, resolvedToken)) {
         return;
       }
+
       await Navigator.of(context).push<void>(
         MaterialPageRoute<void>(
           builder: (_) => SiteDetailPage(site: site, siteApi: api),
@@ -788,6 +830,7 @@ class BeaconTestPageState extends State<BeaconTestPage>
       );
     } catch (_) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -817,6 +860,7 @@ class BeaconTestPageState extends State<BeaconTestPage>
       builder: (context, child) {
         final content = controller.content;
         final error = controller.errorMessage;
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -947,11 +991,17 @@ class BeaconTestPageState extends State<BeaconTestPage>
     WidgetsBinding.instance.removeObserver(this);
     _scanEpoch++;
     _cancelExpiryTimers();
+
     unawaited(_subscription?.cancel());
     unawaited(_bluetoothSubscription?.cancel());
     unawaited(_authorizationSubscription?.cancel());
+
     _contentController?.dispose();
-    if (_ownsVisitService) _visitService?.close();
+
+    if (_ownsVisitService) {
+      _visitService?.close();
+    }
+
     if (_ownsVisitorApi && _visitorApi is HttpVisitorApi) {
       (_visitorApi as HttpVisitorApi).close();
     }
@@ -965,43 +1015,59 @@ class BeaconTestPageState extends State<BeaconTestPage>
 
   String _localizedStatus(bool isEnglish) {
     if (!isEnglish) return _status;
-    if (_status == 'Chưa bắt đầu quét') return 'Ready to scan';
+
+    if (_status == 'Chưa bắt đầu quét') {
+      return 'Ready to scan';
+    }
+
     if (_status == 'Đang kiểm tra quyền và dịch vụ...') {
       return 'Checking permissions and services…';
     }
+
     if (_status == 'Đang quét — chưa phát hiện iBeacon') {
       return 'Scanning — no iBeacon detected yet';
     }
+
     if (_status == 'Đang quét — chờ tín hiệu iBeacon') {
       return 'Scanning — waiting for an iBeacon signal';
     }
+
     if (_status.startsWith('Phát hiện ')) {
       return 'Found ${_beacons.length} beacon(s)';
     }
+
     if (_status.startsWith('Chưa được cấp quyền')) {
       return 'Beacon scanning permission is unavailable. Check app settings.';
     }
+
     if (_status.startsWith('Bluetooth')) {
       return 'Bluetooth is unavailable. Turn it on and try again.';
     }
+
     if (_status.startsWith('Vị trí đang tắt')) {
       return 'Location services are off. Turn them on and try again.';
     }
+
     if (_status.startsWith('Quét BLE cần thiết bị')) {
       return 'BLE scanning requires an Android or iOS device.';
     }
+
     if (_status.startsWith('Luồng quét đã kết thúc')) {
       return 'The scan stream has ended.';
     }
+
     if (_status.startsWith('Đã dừng quét')) {
       return 'Scanning stopped';
     }
+
     if (_status.startsWith('Không thể') || _status.startsWith('Lỗi')) {
       return 'Scanning failed. Check Bluetooth and app permissions.';
     }
+
     if (_status.startsWith('Tạm chưa nhận tín hiệu')) {
       return 'Signal temporarily unavailable — keeping the last readings';
     }
+
     return _status;
   }
 
@@ -1011,21 +1077,27 @@ class BeaconTestPageState extends State<BeaconTestPage>
     if (_notificationStatus.startsWith('Tín hiệu beacon yếu')) {
       return 'Beacon signal is below its threshold. Move closer.';
     }
+
     if (_notificationStatus == 'Chưa nhận beacon để thông báo') {
       return 'No beacon notification yet';
     }
+
     if (_notificationStatus.contains('không báo lại')) {
       return 'Still at the selected beacon — repeat notification suppressed';
     }
+
     if (_notificationStatus.startsWith('Đang xác nhận chuyển beacon')) {
       return 'Confirming beacon change ($_candidateHits/$_requiredCandidateHits)';
     }
+
     if (_notificationStatus.startsWith('Beacon mới:')) {
       return 'New beacon detected';
     }
+
     if (_notificationStatus.startsWith('Đã mất tín hiệu')) {
       return 'The selected Beacon signal was lost. Waiting to detect it again.';
     }
+
     return _notificationStatus;
   }
 
@@ -1035,9 +1107,11 @@ class BeaconTestPageState extends State<BeaconTestPage>
         status.contains('Bluetooth đang tắt') ||
         status.contains('permission') ||
         status.contains('quyền');
+
     final accent = hasError
         ? theme.colorScheme.error
         : HeritagePalette.actionBlue;
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.medium),
       decoration: BoxDecoration(
@@ -1121,6 +1195,25 @@ class BeaconTestPageState extends State<BeaconTestPage>
     final theme = Theme.of(context);
     final status = _localizedStatus(isEnglish);
     final notification = _localizedNotification(isEnglish);
+
+    final selectedKey = _selectedBeacon == null
+        ? null
+        : _beaconKey(_selectedBeacon!);
+
+    final technicalBeacons = List<Beacon>.of(_beacons)
+      ..sort((a, b) {
+        final aKey = _beaconKey(a);
+        final bKey = _beaconKey(b);
+        final aSelected = aKey == selectedKey;
+        final bSelected = bKey == selectedKey;
+
+        if (aSelected != bSelected) {
+          return aSelected ? -1 : 1;
+        }
+
+        return aKey.compareTo(bKey);
+      });
+
     return Scaffold(
       appBar: AppBar(
         leading: Navigator.of(context).canPop() ? const BackButton() : null,
@@ -1236,7 +1329,7 @@ class BeaconTestPageState extends State<BeaconTestPage>
                     children: [
                       Text(
                         isEnglish ? 'Heritage guide' : 'Nội dung thuyết minh',
-                        style: Theme.of(context).textTheme.titleMedium,
+                        style: theme.textTheme.titleMedium,
                       ),
                       const SizedBox(height: 12),
                       _buildBackendContent(),
@@ -1247,10 +1340,11 @@ class BeaconTestPageState extends State<BeaconTestPage>
             ),
             SliverToBoxAdapter(
               child: ExpansionTile(
+                key: const PageStorageKey<String>('beacon-technical-details'),
                 title: Text(
                   isEnglish ? 'Technical details' : 'Thông tin kỹ thuật',
                 ),
-                childrenPadding: const EdgeInsets.symmetric(horizontal: 16),
+                childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 children: [
                   Text(notification),
                   Align(
@@ -1261,49 +1355,48 @@ class BeaconTestPageState extends State<BeaconTestPage>
                           : 'Lần báo mới: $_notificationCount · lần lặp đã chặn: $_suppressedCount',
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  for (final beacon in technicalBeacons)
+                    Card(
+                      key: ValueKey<String>(
+                        'beacon-reading-${_beaconKey(beacon)}',
+                      ),
+                      margin: const EdgeInsets.symmetric(vertical: 6),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                Chip(label: Text('Major ${beacon.major}')),
+                                Chip(label: Text('Minor ${beacon.minor}')),
+                                Chip(label: Text('RSSI ${beacon.rssi} dBm')),
+                                Chip(
+                                  label: Text(
+                                    '${isEnglish ? 'Distance' : 'Khoảng cách'}: '
+                                    '${_distanceText(beacon.accuracy)}',
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            const Text('UUID'),
+                            SelectableText(
+                              beacon.proximityUUID,
+                              key: PageStorageKey<String>(
+                                'beacon-uuid-${_beaconKey(beacon)}',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
-            if (_beacons.isNotEmpty)
-              SliverList.builder(
-                itemCount: _beacons.length,
-                itemBuilder: (context, index) {
-                  final beacon = _beacons[index];
-
-                  return Card(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 6,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              Chip(label: Text('Major ${beacon.major}')),
-                              Chip(label: Text('Minor ${beacon.minor}')),
-                              Chip(label: Text('RSSI ${beacon.rssi} dBm')),
-                              Chip(
-                                label: Text(
-                                  '${isEnglish ? 'Distance' : 'Khoảng cách'}: '
-                                  '${_distanceText(beacon.accuracy)}',
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          const Text('UUID'),
-                          SelectableText(beacon.proximityUUID),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
           ],
         ),
       ),
