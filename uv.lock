@@ -93,6 +93,8 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
     { name = "ty" },
+    { name = "types-openpyxl" },
+    { name = "types-reportlab" },
 ]
 
 [package.metadata]
@@ -122,6 +124,8 @@ dev = [
     { name = "pytest", specifier = ">=7.4.3,<10.0.0" },
     { name = "ruff", specifier = ">=0.2.2,<1.0.0" },
     { name = "ty", specifier = ">=0.0.25" },
+    { name = "types-openpyxl", specifier = ">=3.1.5.20261017" },
+    { name = "types-reportlab", specifier = ">=5.1.0.20261104" },
 ]
 
 [[package]]
@@ -1589,6 +1593,24 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/16/f7/57713ba479fd405eb76de31404b2c744c289e336b2d999511ebf51e496f7/typer-0.27.2.tar.gz", hash = "sha256:269b7eb9d3c202ca84b4bc9618cb04ebb43d3d4d1e567e4c768607232c05f945", size = 204045, upload-time = "2026-08-28T10:26:55.046Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/dc/bf/205d0004930ede8f542fb58f601526fccf4ae7626075ca1e6c4de5d3d652/typer-0.27.2-py3-none-any.whl", hash = "sha256:b3a5fc4342d5fc8fda8fc3010b1cf117e9249aab7fae800c2eff62fd3842d97d", size = 123130, upload-time = "2026-08-28T10:26:53.752Z" },
+]
+
+[[package]]
+name = "types-openpyxl"
+version = "3.1.5.20261017"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/af/13/ce0b36e7e29ee31ec75d6718d48d28d2d48ad319ddf4665f81c8f3a8fc95/types_openpyxl-3.1.5.20261017.tar.gz", hash = "sha256:3deb3b6279b65ab379c126df0ee1fd27500c9628edb8d9667d73f637462917dc", size = 102026, upload-time = "2026-10-17T06:20:01.431Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2b/17/a091e90fde3e90eff9168354269626e210a4c3c688910d8c9176b8a08cb4/types_openpyxl-3.1.5.20261017-py3-none-any.whl", hash = "sha256:3315cfebad290cc7ade1fccaf3a46ee820b3a8e7df726ff4f18d30ab7f383d68", size = 165886, upload-time = "2026-10-17T06:19:59.944Z" },
+]
+
+[[package]]
+name = "types-reportlab"
+version = "5.1.0.20261104"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f1/3b/37b677439070293eb8f189b671965da53bf92f88ff985f36f69d25614d45/types_reportlab-5.1.0.20261104.tar.gz", hash = "sha256:5a214b6a53a4f719ce0e8a0081107b54a6d44e0fed25b8e167332a95e3163b17", size = 73428, upload-time = "2026-11-04T08:14:02.731Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9b/7a/c8ce7d2dd43c79ed05a8f97b573a4549d217983952e20da26e6a8cb21535/types_reportlab-5.1.0.20261104-py3-none-any.whl", hash = "sha256:d1410bafa695bc6f38a3f38426b8393f7311ca69a350e99cefadf6103e254202", size = 113474, upload-time = "2026-11-04T08:14:01.308Z" },
 ]
 
 [[package]]
