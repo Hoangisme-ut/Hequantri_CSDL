@@ -126,8 +126,6 @@ Future<void> _openTechnicalDetails(WidgetTester tester) async {
     of: tile,
     matching: find.textContaining('Lần báo mới:'),
   );
-
-  // Nếu đang mở thì giữ nguyên, tránh bấm làm đóng lại.
   if (counter.evaluate().isEmpty) {
     expect(
       title.hitTestable(),
@@ -188,7 +186,6 @@ void main() {
       expect(region.identifier, 'smart-heritage');
       expect(region.proximityUUID, heritageBeaconUuid);
 
-      // Không giới hạn Major/Minor trong UUID di sản.
       expect(region.major, isNull);
       expect(region.minor, isNull);
     }
@@ -430,7 +427,6 @@ void main() {
         expect(content.calls, 2);
         expect(find.text('Nội dung A'), findsOneWidget);
 
-        // Nội dung vừa tải lại có thể làm thay đổi vị trí mục kỹ thuật.
         await _openTechnicalDetails(tester);
 
         expect(
@@ -476,7 +472,6 @@ void main() {
         );
         expect(find.textContaining('không báo lại'), findsOneWidget);
 
-        // Có tín hiệu mới thì mục kỹ thuật vẫn phải giữ trạng thái mở.
         scanner.source.add([_a()]);
         await tester.pumpAndSettle();
 
@@ -487,7 +482,6 @@ void main() {
         );
         expect(content.calls, 1);
 
-        // Đóng phải ẩn bộ đếm và dữ liệu beacon.
         final title = find.text('Thông tin kỹ thuật');
 
         await tester.ensureVisible(title);
@@ -499,7 +493,6 @@ void main() {
         expect(find.byType(SelectableText), findsNothing);
         expect(find.textContaining('Lần báo mới:'), findsNothing);
 
-        // Mở lại phải hiển thị được dữ liệu hiện tại.
         await _openTechnicalDetails(tester);
 
         expect(find.byType(SelectableText), findsOneWidget);
@@ -535,7 +528,6 @@ void main() {
         findsOneWidget,
       );
 
-      // Dữ liệu beacon hiện nằm bên trong mục Thông tin kỹ thuật.
       await _openTechnicalDetails(tester);
 
       expect(find.byType(SelectableText), findsOneWidget);
