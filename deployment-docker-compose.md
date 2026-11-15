@@ -56,6 +56,12 @@ docker compose -f compose.yml -f compose.deploy.yml run --rm backend bash script
 docker compose -f compose.yml -f compose.deploy.yml up -d
 ```
 
+The backend depends on the `db-init` service completing database creation first.
+`prestart.sh` only checks the existing target database with `SELECT 1` (up to
+10 attempts, 3 seconds apart), then runs migrations and initial data setup.
+It never connects to `master` or creates a database itself. If you use an external
+database, provision it beforehand; create Azure SQL Database in the Azure portal.
+
 The `compose.deploy.yml` file adds HTTPS and automatic certificate handling to the shared `compose.yml` configuration. Explicitly listing both files excludes the local settings from `compose.override.yml`.
 
 The backend Docker image builds the frontend, so the server does not need Bun or prebuilt frontend files.

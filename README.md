@@ -104,6 +104,12 @@ project/database and never the development stack or its database volume.
 See the [isolated test setup](./backend/README.md#isolated-docker-test-stack)
 for lifecycle, cleanup and coverage details.
 
+The database must exist before backend startup. Startup never connects to
+`master` or runs `CREATE DATABASE`. Docker Compose uses `db-init` to create the
+local database; on Azure SQL Database, create the database in the Azure portal
+before configuring `DATABASE_URL`. Backend startup checks the existing target
+database, then runs migrations and initial data setup.
+
 ## Frontend Development
 
 Frontend docs: [frontend/README.md](./frontend/README.md).

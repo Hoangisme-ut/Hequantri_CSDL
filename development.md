@@ -66,6 +66,12 @@ docker compose watch
 
 The `db-init` service creates the `app` database automatically before the backend starts.
 
+Backend startup does not create databases or connect to `master`. It checks the
+existing database in `DATABASE_URL` with `SELECT 1`, trying up to 10 times with
+3 seconds between attempts, then runs migrations and initial data setup. If the
+check still fails, startup stops before migrations. When running outside
+Compose, provision the database first; for Azure SQL Database, use the Azure portal.
+
 Now you can open these URLs:
 
 Application, with the frontend and API served by FastAPI: <http://localhost:8000>
