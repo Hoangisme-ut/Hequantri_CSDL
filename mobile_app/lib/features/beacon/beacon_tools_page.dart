@@ -1161,35 +1161,72 @@ class BeaconTestPageState extends State<BeaconTestPage>
     );
   }
 
-  Widget _buildSignalCard(bool isEnglish, ThemeData theme) => Container(
-    padding: const EdgeInsets.all(AppSpacing.medium),
-    decoration: BoxDecoration(
-      color: theme.colorScheme.surface,
-      borderRadius: BorderRadius.circular(AppRadii.medium),
-      border: Border.all(color: HeritagePalette.border),
-    ),
-    child: Row(
-      children: [
-        Icon(
-          _beacons.isEmpty ? Icons.sensors_off : Icons.sensors,
-          color: HeritagePalette.actionBlue,
+  Widget _buildSignalCard(bool isEnglish, ThemeData theme) {
+    final controller = _contentController;
+
+    Widget buildCard() {
+      final String message;
+
+      if (!_scanning) {
+        message = isEnglish
+            ? 'Press Start scanning to discover heritage content.'
+            : 'Bấm Bắt đầu quét để tìm nội dung di sản.';
+      } else if (controller?.isLoading ?? false) {
+        message = isEnglish
+            ? 'Loading heritage content…'
+            : 'Đang tải nội dung di sản…';
+      } else if (controller?.content != null) {
+        message = isEnglish
+            ? 'Heritage content is ready.'
+            : 'Nội dung di sản đã sẵn sàng.';
+      } else if (controller?.errorMessage != null) {
+        message = isEnglish
+            ? 'Content could not be loaded. See the message below.'
+            : 'Chưa tải được nội dung. Xem thông báo bên dưới.';
+      } else {
+        message = _beacons.isEmpty
+            ? (isEnglish
+                  ? 'Bring your phone near an active Beacon to discover heritage content.'
+                  : 'Đưa điện thoại lại gần Beacon đang hoạt động để khám phá nội dung di sản.')
+            : (isEnglish
+                  ? 'Beacon signal detected. Waiting for an eligible selection.'
+                  : 'Đã nhận tín hiệu Beacon. Đang chờ beacon đủ điều kiện.');
+      }
+
+      return Container(
+        padding: const EdgeInsets.all(AppSpacing.medium),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppRadii.medium),
+          border: Border.all(color: HeritagePalette.border),
         ),
-        const SizedBox(width: AppSpacing.small),
-        Expanded(
-          child: Text(
-            _beacons.isEmpty
-                ? (isEnglish
-                      ? 'Bring your phone near an active Beacon to discover heritage content.'
-                      : 'Đưa điện thoại lại gần Beacon đang hoạt động để khám phá nội dung di sản.')
-                : (isEnglish
-                      ? 'Beacon detected. Looking up its heritage content…'
-                      : 'Đã phát hiện Beacon. Đang tìm nội dung di sản…'),
-            style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
-          ),
+        child: Row(
+          children: [
+            Icon(
+              _scanning && _beacons.isNotEmpty
+                  ? Icons.sensors
+                  : Icons.sensors_off,
+              color: HeritagePalette.actionBlue,
+            ),
+            const SizedBox(width: AppSpacing.small),
+            Expanded(
+              child: Text(
+                message,
+                style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
+              ),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      );
+    }
+
+    if (controller == null) return buildCard();
+
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, child) => buildCard(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
