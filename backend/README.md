@@ -18,6 +18,48 @@ counts across groups must not be summed to infer a global unique count.
 `top-artifacts` accepts `limit` (1–100); `sites` accepts `skip` and `limit`
 (1–200). Each endpoint aggregates in one SQL query instead of loading events.
 
+## Visit log rules
+
+`POST /api/v1/visits/` records **one content view** of an artifact for the
+logged-in Visitor/Admin.
+
+- **When one row is written:** the mobile app calls it only when it *shows* the
+  artifact content after entering a new beacon zone, not on every BLE signal.
+  Backend dedup adds a second guard: the same user and artifact within the last
+  300 seconds counts as one view. The repeat call returns 200 with the existing
+  row; a new view returns 201. The check runs under a per user/artifact
+  transaction lock so concurrent requests cannot create duplicates.
+- **Viewing time:** the server does not measure it. `duration_seconds` is
+  optional (>= 0), sent by the app (time the content stayed open) and stored
+  as is; `null` means unknown. `visited_at` is set by the server in UTC when the
+  row is created. `rssi` is optional and informational only.
+- **Validation:** the artifact must be visible (active artifact and site, else
+  404). A `beacon_id` must be an active beacon attached to that artifact and
+  site (404/400). An explicit `language_id` must exist (404) and be enabled
+  (400); when omitted it falls back to the user's language, then the default.
+- **Analytics:** `views` counts VisitLog rows, see Visit analytics above.
+
+## Role API decision
+
+There is **no separate Role API**. Role is a fixed two-value lookup (`admin`,
+`visitor`) seeded at startup (`app/core/db.py`), so CRUD over it would add attack surface
+without a use case. Roles are assigned through the User API
+(`POST /users/`, `PATCH /users/{id}` with `role_id`), and user management stays
+limited to `is_superuser`. See "User management and Heritage roles" below for
+the assignment rules. Revisit only if admins need custom roles or permissions.
+
+## Analytics export
+
+Admin-only, same optional `from`, `to` and `site_id` filters and UTC
+semantics as the analytics endpoints above.
+
+- `GET /api/v1/analytics/export/excel` returns `analytics-report.xlsx` with
+  sheets: `Tong quan` (overview), `Luot xem theo ngay`, `Thong ke Site`,
+  `Top 10 hien vat`, `Theo ngon ngu`.
+- `GET /api/v1/analytics/export/pdf` returns the same report as a PDF. It needs
+  a Vietnamese-capable TrueType font on the server, otherwise it fails with an
+  error.
+
 ## Token compatibility and reset replay protection
 
 New JWTs carry `purpose=access` or `purpose=password_reset`. Legacy access
