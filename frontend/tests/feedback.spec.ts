@@ -72,29 +72,30 @@ test.describe("Feedback Review", () => {
   test("Can switch between feedback status filters", async ({ page }) => {
     await page.goto("/feedback")
 
-for (const [label, value] of [
-  ["Pending", "pending"],
-  ["Approved", "approved"],
-  ["Hidden", "hidden"],
-  ["All", null],
-] as const) {
-  const feedbackResponse = page.waitForResponse((response) => {
-    const url = new URL(response.url())
+    for (const [label, value] of [
+      ["Pending", "pending"],
+      ["Approved", "approved"],
+      ["Hidden", "hidden"],
+      ["All", null],
+    ] as const) {
+      const feedbackResponse = page.waitForResponse((response) => {
+        const url = new URL(response.url())
 
-    return (
-      url.pathname === "/api/v1/feedbacks/" &&
-      url.searchParams.get("status") === value &&
-      response.request().method() === "GET"
-    )
-  })
+        return (
+          url.pathname === "/api/v1/feedbacks/" &&
+          url.searchParams.get("status") === value &&
+          response.request().method() === "GET"
+        )
+      })
 
-  await page.getByRole("button", {
-    name: label,
-    exact: true,
-  }).click()
+      await page
+        .getByRole("button", {
+          name: label,
+          exact: true,
+        })
+        .click()
 
-  expect((await feedbackResponse).status()).toBe(200)
-}
+      expect((await feedbackResponse).status()).toBe(200)
 
       await expect(
         page.getByText("Visitor Feedback", { exact: true }),

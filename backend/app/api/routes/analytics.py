@@ -5,12 +5,14 @@ from datetime import UTC, date, datetime
 from io import BytesIO
 from pathlib import Path
 from typing import Annotated, Any
+from typing import cast as typing_cast
 from xml.sax.saxutils import escape
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.worksheet.worksheet import Worksheet
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4, landscape
@@ -19,12 +21,14 @@ from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
+    Flowable,
     LongTable,
     Paragraph,
     SimpleDocTemplate,
     TableStyle,
 )
-from sqlalchemy import Date, Select, cast, distinct, select
+from sqlalchemy import Date, cast, distinct, select
+from sqlalchemy.sql.elements import Label
 from sqlmodel import SQLModel, col, func
 
 from app.api.deps import AdminUser, SessionDep
@@ -169,6 +173,7 @@ def sites(
     )
     return session.connection().execute(stmt).mappings().all()
 
+
 def _format_export_sheet(ws: Any) -> None:
     """Format an Excel worksheet for readability."""
     header_fill = PatternFill(
@@ -227,20 +232,14 @@ def _register_pdf_fonts() -> tuple[str, str]:
     for regular_path, bold_path in font_candidates:
         if regular_path.is_file() and bold_path.is_file():
             if "AnalyticsRegular" not in pdfmetrics.getRegisteredFontNames():
-                pdfmetrics.registerFont(
-                    TTFont("AnalyticsRegular", str(regular_path))
-                )
+                pdfmetrics.registerFont(TTFont("AnalyticsRegular", str(regular_path)))
 
             if "AnalyticsBold" not in pdfmetrics.getRegisteredFontNames():
-                pdfmetrics.registerFont(
-                    TTFont("AnalyticsBold", str(bold_path))
-                )
+                pdfmetrics.registerFont(TTFont("AnalyticsBold", str(bold_path)))
 
             return "AnalyticsRegular", "AnalyticsBold"
 
-    raise RuntimeError(
-        "Cannot find a Vietnamese-compatible PDF font."
-    )
+    raise RuntimeError("Cannot find a Vietnamese-compatible PDF font.")
 
 
 @router.get("/export/excel")
@@ -259,18 +258,14 @@ def export_excel(
     overview_stmt = (
         select(
             *_counts(),
-            func.count(
-                distinct(col(VisitLog.artifact_id))
-            ).label("artifacts_viewed"),
+            func.count(distinct(col(VisitLog.artifact_id))).label("artifacts_viewed"),
         )
         .select_from(VisitLog)
         .join(Artifact)
         .where(*conditions)
     )
 
-    overview_data = connection.execute(
-        overview_stmt
-    ).mappings().one()
+    overview_data = connection.execute(overview_stmt).mappings().one()
 
     # --------------------------------------------------
     # 2. Visits by day
@@ -281,9 +276,7 @@ def export_excel(
         select(
             day.label("date"),
             func.count().label("views"),
-            func.count(
-                distinct(col(VisitLog.user_id))
-            ).label("unique_users"),
+            func.count(distinct(col(VisitLog.user_id))).label("unique_users"),
         )
         .select_from(VisitLog)
         .join(Artifact)
@@ -295,21 +288,19 @@ def export_excel(
         .order_by(day)
     )
 
-    daily_data = connection.execute(
-        daily_stmt
-    ).mappings().all()
+    daily_data = connection.execute(daily_stmt).mappings().all()
 
     # --------------------------------------------------
     # 3. Statistics by Site
     # --------------------------------------------------
-    site_stmt: Select[Any] = (
+    site_id: Label[uuid.UUID] = col(Site.id).label("site_id")
+    site_name: Label[str] = col(Site.name).label("name")
+    site_stmt = (
         select(
-            col(Site.id).label("site_id"),
-            col(Site.name).label("name"),
+            site_id,
+            site_name,
             func.count().label("views"),
-            func.count(
-                distinct(col(VisitLog.user_id))
-            ).label("unique_users"),
+            func.count(distinct(col(VisitLog.user_id))).label("unique_users"),
         )
         .select_from(VisitLog)
         .join(Artifact)
@@ -325,21 +316,19 @@ def export_excel(
         )
     )
 
-    site_data = connection.execute(
-        site_stmt
-    ).mappings().all()
+    site_data = connection.execute(site_stmt).mappings().all()
 
     # --------------------------------------------------
     # 4. Top 10 artifacts
     # --------------------------------------------------
-    artifact_stmt: Select[Any] = (
+    artifact_id: Label[uuid.UUID] = col(Artifact.id).label("artifact_id")
+    artifact_code: Label[str] = col(Artifact.code).label("code")
+    artifact_stmt = (
         select(
-            col(Artifact.id).label("artifact_id"),
-            col(Artifact.code).label("code"),
+            artifact_id,
+            artifact_code,
             func.count().label("views"),
-            func.count(
-                distinct(col(VisitLog.user_id))
-            ).label("unique_users"),
+            func.count(distinct(col(VisitLog.user_id))).label("unique_users"),
         )
         .select_from(VisitLog)
         .join(Artifact)
@@ -355,17 +344,17 @@ def export_excel(
         .limit(10)
     )
 
-    artifact_data = connection.execute(
-        artifact_stmt
-    ).mappings().all()
+    artifact_data = connection.execute(artifact_stmt).mappings().all()
 
     # --------------------------------------------------
     # 5. Statistics by language
     # --------------------------------------------------
-    language_stmt: Select[Any] = (
+    language_code: Label[str] = col(Language.code).label("code")
+    language_name: Label[str] = col(Language.name).label("name")
+    language_stmt = (
         select(
-            col(Language.code).label("code"),
-            col(Language.name).label("name"),
+            language_code,
+            language_name,
             func.count().label("views"),
         )
         .select_from(VisitLog)
@@ -385,9 +374,7 @@ def export_excel(
         )
     )
 
-    language_data = connection.execute(
-        language_stmt
-    ).mappings().all()
+    language_data = connection.execute(language_stmt).mappings().all()
 
     # --------------------------------------------------
     # 6. Create Excel workbook
@@ -395,95 +382,116 @@ def export_excel(
     workbook = Workbook()
 
     # Sheet 1: Overview
-    ws = workbook.active
+    # A default Workbook always starts with an active Worksheet.
+    ws = typing_cast(Worksheet, workbook.active)
     ws.title = "Tong quan"
 
     ws.append(["Chi so", "Gia tri"])
     ws.append(["Tong luot xem", overview_data["views"]])
-    ws.append([
-        "Nguoi dung duy nhat",
-        overview_data["unique_users"],
-    ])
-    ws.append([
-        "Hien vat duoc xem",
-        overview_data["artifacts_viewed"],
-    ])
+    ws.append(
+        [
+            "Nguoi dung duy nhat",
+            overview_data["unique_users"],
+        ]
+    )
+    ws.append(
+        [
+            "Hien vat duoc xem",
+            overview_data["artifacts_viewed"],
+        ]
+    )
 
     _format_export_sheet(ws)
 
     # Sheet 2: Visits by day
     ws = workbook.create_sheet("Luot xem theo ngay")
 
-    ws.append([
-        "Ngay",
-        "Luot xem",
-        "Nguoi dung duy nhat",
-    ])
+    ws.append(
+        [
+            "Ngay",
+            "Luot xem",
+            "Nguoi dung duy nhat",
+        ]
+    )
 
     for item in daily_data:
-        ws.append([
-            item["date"],
-            item["views"],
-            item["unique_users"],
-        ])
+        ws.append(
+            [
+                item["date"],
+                item["views"],
+                item["unique_users"],
+            ]
+        )
 
     _format_export_sheet(ws)
 
     # Sheet 3: Statistics by Site
     ws = workbook.create_sheet("Thong ke Site")
 
-    ws.append([
-        "Site ID",
-        "Ten Site",
-        "Luot xem",
-        "Nguoi dung duy nhat",
-    ])
+    ws.append(
+        [
+            "Site ID",
+            "Ten Site",
+            "Luot xem",
+            "Nguoi dung duy nhat",
+        ]
+    )
 
     for item in site_data:
-        ws.append([
-            str(item["site_id"]),
-            item["name"],
-            item["views"],
-            item["unique_users"],
-        ])
+        ws.append(
+            [
+                str(item["site_id"]),
+                item["name"],
+                item["views"],
+                item["unique_users"],
+            ]
+        )
 
     _format_export_sheet(ws)
 
     # Sheet 4: Top 10 artifacts
     ws = workbook.create_sheet("Top 10 hien vat")
 
-    ws.append([
-        "Artifact ID",
-        "Ma hien vat",
-        "Luot xem",
-        "Nguoi dung duy nhat",
-    ])
+    ws.append(
+        [
+            "Artifact ID",
+            "Ma hien vat",
+            "Luot xem",
+            "Nguoi dung duy nhat",
+        ]
+    )
 
     for item in artifact_data:
-        ws.append([
-            str(item["artifact_id"]),
-            item["code"],
-            item["views"],
-            item["unique_users"],
-        ])
+        ws.append(
+            [
+                str(item["artifact_id"]),
+                item["code"],
+                item["views"],
+                item["unique_users"],
+            ]
+        )
 
     _format_export_sheet(ws)
 
     # Sheet 5: Visits by language
     ws = workbook.create_sheet("Theo ngon ngu")
 
-    ws.append([
-        "Ma ngon ngu",
-        "Ten ngon ngu",
-        "Luot xem",
-    ])
+    ws.append(
+        [
+            "Ma ngon ngu",
+            "Ten ngon ngu",
+            "Luot xem",
+        ]
+    )
 
     for item in language_data:
-        ws.append([
-            item["code"] or "unknown",
-            item["name"] or "Khong xac dinh",
-            item["views"],
-        ])
+        ws.append(
+            [
+                item["code"] or "unknown",
+                item["name"] or "Khong xac dinh",
+                item["views"],
+            ]
+        )
 
     _format_export_sheet(ws)
 
@@ -497,13 +505,10 @@ def export_excel(
     return StreamingResponse(
         output,
         media_type=(
-            "application/vnd.openxmlformats-officedocument."
-            "spreadsheetml.sheet"
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         ),
         headers={
-            "Content-Disposition": (
-                'attachment; filename="analytics-report.xlsx"'
-            )
+            "Content-Disposition": ('attachment; filename="analytics-report.xlsx"')
         },
     )
 
@@ -524,18 +529,14 @@ def export_pdf(
     overview_stmt = (
         select(
             *_counts(),
-            func.count(
-                distinct(col(VisitLog.artifact_id))
-            ).label("artifacts_viewed"),
+            func.count(distinct(col(VisitLog.artifact_id))).label("artifacts_viewed"),
         )
         .select_from(VisitLog)
         .join(Artifact)
         .where(*conditions)
     )
 
-    overview_data = connection.execute(
-        overview_stmt
-    ).mappings().one()
+    overview_data = connection.execute(overview_stmt).mappings().one()
 
     # --------------------------------------------------
     # 2. Visits by day
@@ -546,9 +547,7 @@ def export_pdf(
         select(
             day.label("date"),
             func.count().label("views"),
-            func.count(
-                distinct(col(VisitLog.user_id))
-            ).label("unique_users"),
+            func.count(distinct(col(VisitLog.user_id))).label("unique_users"),
         )
         .select_from(VisitLog)
         .join(Artifact)
@@ -560,21 +559,19 @@ def export_pdf(
         .order_by(day)
     )
 
-    daily_data = connection.execute(
-        daily_stmt
-    ).mappings().all()
+    daily_data = connection.execute(daily_stmt).mappings().all()
 
     # --------------------------------------------------
     # 3. Statistics by Site
     # --------------------------------------------------
-    site_stmt: Select[Any] = (
+    site_id: Label[uuid.UUID] = col(Site.id).label("site_id")
+    site_name: Label[str] = col(Site.name).label("name")
+    site_stmt = (
         select(
-            col(Site.id).label("site_id"),
-            col(Site.name).label("name"),
+            site_id,
+            site_name,
             func.count().label("views"),
-            func.count(
-                distinct(col(VisitLog.user_id))
-            ).label("unique_users"),
+            func.count(distinct(col(VisitLog.user_id))).label("unique_users"),
         )
         .select_from(VisitLog)
         .join(Artifact)
@@ -590,21 +587,19 @@ def export_pdf(
         )
     )
 
-    site_data = connection.execute(
-        site_stmt
-    ).mappings().all()
+    site_data = connection.execute(site_stmt).mappings().all()
 
     # --------------------------------------------------
     # 4. Top 10 artifacts
     # --------------------------------------------------
-    artifact_stmt: Select[Any] = (
+    artifact_id: Label[uuid.UUID] = col(Artifact.id).label("artifact_id")
+    artifact_code: Label[str] = col(Artifact.code).label("code")
+    artifact_stmt = (
         select(
-            col(Artifact.id).label("artifact_id"),
-            col(Artifact.code).label("code"),
+            artifact_id,
+            artifact_code,
             func.count().label("views"),
-            func.count(
-                distinct(col(VisitLog.user_id))
-            ).label("unique_users"),
+            func.count(distinct(col(VisitLog.user_id))).label("unique_users"),
         )
         .select_from(VisitLog)
         .join(Artifact)
@@ -620,17 +615,17 @@ def export_pdf(
         .limit(10)
     )
 
-    artifact_data = connection.execute(
-        artifact_stmt
-    ).mappings().all()
+    artifact_data = connection.execute(artifact_stmt).mappings().all()
 
     # --------------------------------------------------
     # 5. Statistics by language
     # --------------------------------------------------
-    language_stmt: Select[Any] = (
+    language_code: Label[str] = col(Language.code).label("code")
+    language_name: Label[str] = col(Language.name).label("name")
+    language_stmt = (
         select(
-            col(Language.code).label("code"),
-            col(Language.name).label("name"),
+            language_code,
+            language_name,
             func.count().label("views"),
         )
         .select_from(VisitLog)
@@ -650,9 +645,7 @@ def export_pdf(
         )
     )
 
-    language_data = connection.execute(
-        language_stmt
-    ).mappings().all()
+    language_data = connection.execute(language_stmt).mappings().all()
 
     # --------------------------------------------------
     # 6. Register Vietnamese-compatible fonts
@@ -705,12 +698,7 @@ def export_pdf(
         rows: list[list[Any]],
         column_widths: list[float],
     ) -> LongTable:
-        table_data = [
-            [
-                Paragraph(escape(header), header_style)
-                for header in headers
-            ]
-        ]
+        table_data = [[Paragraph(escape(header), header_style) for header in headers]]
 
         if rows:
             for row in rows:
@@ -724,14 +712,9 @@ def export_pdf(
                     ]
                 )
         else:
-            empty_row = [
-                Paragraph("Không có dữ liệu", cell_style)
-            ]
+            empty_row = [Paragraph("Không có dữ liệu", cell_style)]
 
-            empty_row.extend(
-                Paragraph("", cell_style)
-                for _ in range(len(headers) - 1)
-            )
+            empty_row.extend(Paragraph("", cell_style) for _ in range(len(headers) - 1))
 
             table_data.append(empty_row)
 
@@ -828,7 +811,7 @@ def export_pdf(
         author="Smart Heritage",
     )
 
-    story = []
+    story: list[Flowable] = []
 
     story.append(
         Paragraph(
@@ -838,9 +821,7 @@ def export_pdf(
     )
 
     # Section 1: Overview
-    story.append(
-        Paragraph("1. Tổng quan", section_style)
-    )
+    story.append(Paragraph("1. Tổng quan", section_style))
 
     overview_rows = [
         ["Tổng lượt xem", overview_data["views"]],
@@ -857,9 +838,7 @@ def export_pdf(
     )
 
     # Section 2: Daily views
-    story.append(
-        Paragraph("2. Lượt xem theo ngày", section_style)
-    )
+    story.append(Paragraph("2. Lượt xem theo ngày", section_style))
 
     daily_rows = [
         [
@@ -879,9 +858,7 @@ def export_pdf(
     )
 
     # Section 3: Site statistics
-    story.append(
-        Paragraph("3. Thống kê theo Site", section_style)
-    )
+    story.append(Paragraph("3. Thống kê theo Site", section_style))
 
     site_rows = [
         [
@@ -901,9 +878,7 @@ def export_pdf(
     )
 
     # Section 4: Top 10 artifacts
-    story.append(
-        Paragraph("4. Top 10 hiện vật", section_style)
-    )
+    story.append(Paragraph("4. Top 10 hiện vật", section_style))
 
     artifact_rows = [
         [
@@ -923,9 +898,7 @@ def export_pdf(
     )
 
     # Section 5: Language statistics
-    story.append(
-        Paragraph("5. Thống kê theo ngôn ngữ", section_style)
-    )
+    story.append(Paragraph("5. Thống kê theo ngôn ngữ", section_style))
 
     language_rows = [
         [
@@ -955,8 +928,6 @@ def export_pdf(
         output,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": (
-                'attachment; filename="analytics-report.pdf"'
-            )
+            "Content-Disposition": ('attachment; filename="analytics-report.pdf"')
         },
     )

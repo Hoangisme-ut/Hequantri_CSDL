@@ -29,6 +29,8 @@ dev = [
     "ty>=0.0.25",
     "ruff<1.0.0,>=0.2.2",
     "coverage<8.0.0,>=7.4.3",
+    "types-openpyxl>=3.1.5.20261017",
+    "types-reportlab>=5.1.0.20261104",
 ]
 
 [build-system]
@@ -38,10 +40,6 @@ build-backend = "hatchling.build"
 [tool.mypy]
 strict = true
 exclude = ["venv", ".venv", "alembic"]
-
-[[tool.mypy.overrides]]
-module = ["openpyxl.*", "reportlab.*"]
-ignore_missing_imports = true
 
 [tool.ruff]
 target-version = "py314"
