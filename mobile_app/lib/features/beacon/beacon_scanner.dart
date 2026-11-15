@@ -6,18 +6,16 @@ const heritageBeaconUuid = 'FDA50693-A4E2-4FB1-AFCF-C6EB07647825';
 
 class BeaconScanException implements Exception {
   const BeaconScanException(this.message);
+
   final String message;
 }
 
-/// Foreground scanning only. iOS requires a UUID-specific region.
+/// Quét trong foreground, giới hạn theo UUID di sản đã cấu hình.
 class BeaconScanner {
   bool get isIOS => defaultTargetPlatform == TargetPlatform.iOS;
 
   static List<Region> regions({required bool isIOS}) => [
-    Region(
-      identifier: isIOS ? 'smart-heritage' : 'all-beacons',
-      proximityUUID: isIOS ? heritageBeaconUuid : null,
-    ),
+    Region(identifier: 'smart-heritage', proximityUUID: heritageBeaconUuid),
   ];
 
   Future<void> prepare() async {
@@ -31,9 +29,10 @@ class BeaconScanner {
       await flutterBeacon.setLocationAuthorizationTypeDefault(
         AuthorizationStatus.whenInUse,
       );
+
       try {
-        // The native iOS implementation may return null on success.
-        // Read actual authorization and service states below.
+        // Native iOS có thể trả null khi khởi tạo thành công.
+        // Quyền và trạng thái dịch vụ được kiểm tra lại bên dưới.
         await flutterBeacon.initializeAndCheckScanning;
       } on PlatformException {
         await checkReady();
@@ -51,6 +50,7 @@ class BeaconScanner {
     }
 
     await checkReady();
+
     if (!isIOS && !await flutterBeacon.initializeScanning) {
       throw const BeaconScanException(
         'Chưa thể khởi tạo quét BLE. Hãy thử lại.',
@@ -65,10 +65,13 @@ class BeaconScanner {
         'Vị trí và quyền Bluetooth nếu có, rồi thử lại.',
       );
     }
+
     final bluetooth = await flutterBeacon.bluetoothState;
+
     if (bluetooth != BluetoothState.stateOn) {
       throw BeaconScanException(bluetoothProblem(bluetooth));
     }
+
     if (!await flutterBeacon.checkLocationServicesIfEnabled) {
       throw const BeaconScanException(
         'Vị trí đang tắt. Hãy bật Dịch vụ vị trí rồi bấm Bắt đầu quét.',
@@ -85,9 +88,11 @@ class BeaconScanner {
     if (state == BluetoothState.stateUnauthorized) {
       return 'Chưa được cấp quyền Bluetooth. Hãy kiểm tra Cài đặt ứng dụng.';
     }
+
     if (state == BluetoothState.stateUnsupported) {
       return 'Thiết bị không hỗ trợ Bluetooth BLE hoặc chưa cho phép truy cập.';
     }
+
     return 'Bluetooth chưa bật hoặc chưa sẵn sàng. '
         'Hãy bật Bluetooth rồi bấm Bắt đầu quét.';
   }

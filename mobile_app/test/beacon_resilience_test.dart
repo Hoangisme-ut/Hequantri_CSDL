@@ -181,15 +181,18 @@ Future<void> _cleanup(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('iOS ranging is restricted to the configured UUID', () {
-    final ios = BeaconScanner.regions(isIOS: true).single;
+  test('Android and iOS ranging use the configured heritage UUID', () {
+    for (final isIOS in [false, true]) {
+      final region = BeaconScanner.regions(isIOS: isIOS).single;
 
-    expect(ios.proximityUUID, heritageBeaconUuid);
-    expect(ios.major, isNull);
-    expect(ios.minor, isNull);
-    expect(BeaconScanner.regions(isIOS: false).single.proximityUUID, isNull);
+      expect(region.identifier, 'smart-heritage');
+      expect(region.proximityUUID, heritageBeaconUuid);
+
+      // Không giới hạn Major/Minor trong UUID di sản.
+      expect(region.major, isNull);
+      expect(region.minor, isNull);
+    }
   });
-
   group('native preflight', () {
     const channel = MethodChannel('flutter_beacon');
 
@@ -198,7 +201,6 @@ void main() {
     var location = true;
 
     final methods = <MethodCall>[];
-
     setUp(() {
       platform.debugDefaultTargetPlatformOverride =
           platform.TargetPlatform.android;
