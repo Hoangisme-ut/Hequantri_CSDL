@@ -24,7 +24,7 @@ from reportlab.platypus import (
     SimpleDocTemplate,
     TableStyle,
 )
-from sqlalchemy import Date, cast, distinct, select
+from sqlalchemy import Date, Select, cast, distinct, select
 from sqlmodel import SQLModel, col, func
 
 from app.api.deps import AdminUser, SessionDep
@@ -302,7 +302,7 @@ def export_excel(
     # --------------------------------------------------
     # 3. Statistics by Site
     # --------------------------------------------------
-    site_stmt = (
+    site_stmt: Select[Any] = (
         select(
             col(Site.id).label("site_id"),
             col(Site.name).label("name"),
@@ -332,7 +332,7 @@ def export_excel(
     # --------------------------------------------------
     # 4. Top 10 artifacts
     # --------------------------------------------------
-    artifact_stmt = (
+    artifact_stmt: Select[Any] = (
         select(
             col(Artifact.id).label("artifact_id"),
             col(Artifact.code).label("code"),
@@ -362,7 +362,7 @@ def export_excel(
     # --------------------------------------------------
     # 5. Statistics by language
     # --------------------------------------------------
-    language_stmt = (
+    language_stmt: Select[Any] = (
         select(
             col(Language.code).label("code"),
             col(Language.name).label("name"),
@@ -567,7 +567,7 @@ def export_pdf(
     # --------------------------------------------------
     # 3. Statistics by Site
     # --------------------------------------------------
-    site_stmt = (
+    site_stmt: Select[Any] = (
         select(
             col(Site.id).label("site_id"),
             col(Site.name).label("name"),
@@ -597,7 +597,7 @@ def export_pdf(
     # --------------------------------------------------
     # 4. Top 10 artifacts
     # --------------------------------------------------
-    artifact_stmt = (
+    artifact_stmt: Select[Any] = (
         select(
             col(Artifact.id).label("artifact_id"),
             col(Artifact.code).label("code"),
@@ -627,7 +627,7 @@ def export_pdf(
     # --------------------------------------------------
     # 5. Statistics by language
     # --------------------------------------------------
-    language_stmt = (
+    language_stmt: Select[Any] = (
         select(
             col(Language.code).label("code"),
             col(Language.name).label("name"),
