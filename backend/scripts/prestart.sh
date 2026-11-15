@@ -3,7 +3,7 @@
 set -e
 set -x
 
-# Let the DB start and create database if needed
+# Wait for the existing target database to accept queries
 python app/backend_pre_start.py
 
 # Run migrations

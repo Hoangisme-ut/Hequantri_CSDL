@@ -98,6 +98,15 @@ $ uv run bash scripts/prestart.sh
 $ uv run fastapi dev
 ```
 
+`prestart.sh` checks the existing database in `DATABASE_URL`, runs
+`alembic upgrade head`, then initializes the first superuser, in that order.
+The check only runs `SELECT 1`, with up to 10 attempts and a fixed 3-second delay
+between attempts. It stops immediately on success and aborts startup after the
+last failure. It never connects to `master` or creates a database. Locally,
+`db-init` provisions the database; on Azure SQL Database, create it in the Azure
+portal before startup. The startup account does not need database-creation
+permissions. Sample heritage data is seeded separately, not during startup.
+
 The API is available at `http://localhost:8000`, with automatic interactive docs at `http://localhost:8000/docs`.
 
 ### Sample Smart Heritage data

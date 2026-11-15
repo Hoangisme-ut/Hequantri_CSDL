@@ -93,6 +93,11 @@ The Android emulator reaches your computer at `http://10.0.2.2:8000`.
 
 Backend docs: [backend/README.md](./backend/README.md).
 
+The database must exist before backend startup. Docker Compose uses `db-init`
+to create the local database; create Azure SQL Database in the Azure portal
+before configuring `DATABASE_URL`. Backend startup checks the existing target
+database, then runs migrations and initial data setup.
+
 ## Frontend Development
 
 Frontend docs: [frontend/README.md](./frontend/README.md).

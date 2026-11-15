@@ -68,10 +68,16 @@ Add these repository secrets:
 
 Use the same values configured in FastAPI Cloud. For `DATABASE_URL`, use the connection URL from your database provider. The database must be reachable from GitHub-hosted runners so the preparation step can connect to it.
 
+The target database must already exist. Backend startup checks it with `SELECT 1`
+and retries up to 10 times with 3 seconds between attempts; it never connects to
+`master` or creates a database. Provision the local database with Compose's
+`db-init` service, or create Azure SQL Database in the Azure portal before startup.
+The application account does not need access to `master` or database-creation permissions.
+
 The deployment workflow performs these steps:
 
 1. Installs and builds the frontend into `backend/app/frontend`.
-2. Runs `backend/scripts/prestart.sh` to apply database migrations and create the first superuser.
+2. Runs `backend/scripts/prestart.sh` to check the existing target database, apply migrations, then create the first superuser. A failed readiness check stops these steps.
 3. Deploys the project with `uv run fastapi deploy`.
 
 ## URLs
