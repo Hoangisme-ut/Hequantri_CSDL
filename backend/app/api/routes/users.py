@@ -16,6 +16,7 @@ from app.api.deps import (
 )
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
+from app.core.transactions import commit_with_conflicts
 from app.models import (
     Message,
     UpdatePassword,
@@ -123,7 +124,13 @@ def update_user_me(
     user_data = user_in.model_dump(exclude_unset=True)
     current_user.sqlmodel_update(user_data)
     session.add(current_user)
-    session.commit()
+    # A concurrent request may take the email after the pre-check: answer 409, not 500.
+    commit_with_conflicts(
+        session,
+        "ix_user_email",
+        status_code=409,
+        detail="User with this email already exists",
+    )
     session.refresh(current_user)
     return current_user
 
