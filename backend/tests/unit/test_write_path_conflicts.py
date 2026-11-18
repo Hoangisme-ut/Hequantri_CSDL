@@ -184,6 +184,69 @@ class WritePathConflictTests(TestCase):
                     )
                     self.assertEqual(next_response.status_code, 200)
 
+    def test_user_email_update_races_return_conflict_and_keep_data(self) -> None:
+        for endpoint in ("/users/{id}", "/users/me"):
+            for code in (2601, 2627):
+                with self.subTest(endpoint=endpoint, code=code):
+                    taken = f"{uuid.uuid4().hex}@example.com"
+                    winner = User(email=taken, hashed_password="winner hash")
+                    target = User(
+                        email=f"{uuid.uuid4().hex}@example.com",
+                        hashed_password="target hash",
+                    )
+                    self.session.add_all([winner, target])
+                    self.session.commit()
+                    if endpoint == "/users/me":
+                        self.admin = target
+                        target.is_superuser = True
+                    path = endpoint.format(id=target.id)
+                    original_email = target.email
+                    expected = self.client.patch(
+                        f"{settings.API_V1_STR}{path}", json={"email": taken}
+                    )
+                    self.assertEqual(expected.status_code, 409)
+                    with (
+                        patch.object(crud, "get_user_by_email", return_value=None),
+                        patch.object(
+                            self.session,
+                            "commit",
+                            side_effect=duplicate_error(code, "ix_user_email"),
+                        ),
+                        patch.object(
+                            self.session, "rollback", wraps=self.session.rollback
+                        ) as rollback,
+                    ):
+                        response = self.client.patch(
+                            f"{settings.API_V1_STR}{path}", json={"email": taken}
+                        )
+                    self.assertEqual(response.status_code, 409)
+                    self.assertEqual(response.json(), expected.json())
+                    rollback.assert_called_once()
+                    self.session.refresh(target)
+                    self.session.refresh(winner)
+                    self.assertEqual(target.email, original_email)
+                    self.assertEqual(winner.email, taken)
+                    self.assertEqual(target.hashed_password, "target hash")
+                    # The session still works after the rollback.
+                    ok = self.client.patch(
+                        f"{settings.API_V1_STR}{path}",
+                        json={"full_name": "After conflict"},
+                    )
+                    self.assertEqual(ok.status_code, 200)
+
+    def test_user_email_update_unrelated_integrity_error_is_reraised(self) -> None:
+        target = User(email=f"{uuid.uuid4().hex}@example.com", hashed_password="x")
+        self.session.add(target)
+        self.session.commit()
+        with patch.object(
+            self.session, "commit", side_effect=duplicate_error(2627, "other_key")
+        ):
+            response = self.client.patch(
+                f"{settings.API_V1_STR}/users/{target.id}",
+                json={"email": f"{uuid.uuid4().hex}@example.com"},
+            )
+        self.assertEqual(response.status_code, 500)
+
     def test_translation_race_returns_conflict_and_next_upsert_works(self) -> None:
         for code in (2601, 2627):
             with self.subTest(code=code):
