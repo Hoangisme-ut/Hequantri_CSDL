@@ -64,7 +64,13 @@ def create_user(
     return db_obj
 
 
-def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any:
+def update_user(
+    *,
+    session: Session,
+    db_user: User,
+    user_in: UserUpdate,
+    email_conflict_detail: str = "User with this email already exists",
+) -> Any:
     user_data = user_in.model_dump(exclude_unset=True)
     extra_data: dict[str, Any] = {}
     # [Smart Heritage] đổi is_superuser mà không chỉ định role_id -> đổi role theo
@@ -94,7 +100,11 @@ def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any:
         extra_data["hashed_password"] = get_password_hash(user_data["password"])
     db_user.sqlmodel_update(user_data, update=extra_data)
     session.add(db_user)
-    session.commit()
+    # Two requests can pass the email pre-check together; the unique index decides.
+    # The loser is rolled back and gets 409 instead of an unhandled HTTP 500.
+    commit_with_conflicts(
+        session, "ix_user_email", status_code=409, detail=email_conflict_detail
+    )
     session.refresh(db_user)
     return db_user
 
