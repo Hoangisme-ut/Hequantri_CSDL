@@ -97,7 +97,7 @@ def test_reset_password(client: TestClient, db: Session) -> None:
         is_superuser=False,
     )
     user = create_user(session=db, user_create=user_create)
-    token = generate_password_reset_token(email=email)
+    token = generate_password_reset_token(user_id=user.id)
     headers = user_authentication_headers(client=client, email=email, password=password)
     data = {"new_password": new_password, "token": token}
 
@@ -145,8 +145,8 @@ def test_reset_password_token_replay_is_rejected(
         is_active=True,
         is_superuser=False,
     )
-    create_user(session=db, user_create=user_create)
-    token = generate_password_reset_token(email=email)
+    user = create_user(session=db, user_create=user_create)
+    token = generate_password_reset_token(user_id=user.id)
     data = {"new_password": new_password, "token": token}
 
     # First use: must succeed.

@@ -35,8 +35,7 @@ def test_invalid_access_subject_and_purpose(client, claims):
     assert client.get(f"{API}/artifacts/", headers=headers).status_code == 200
 
 
-@pytest.mark.parametrize("legacy", [True, False])
-def test_reset_is_consumed_atomically_and_access_sessions_survive(client, db, legacy):
+def test_reset_is_consumed_atomically_and_access_sessions_survive(client, db):
     user = crud.create_user(
         session=db,
         user_create=UserCreate(
@@ -46,17 +45,7 @@ def test_reset_is_consumed_atomically_and_access_sessions_survive(client, db, le
     access = signed(
         {"sub": str(user.id), "exp": datetime.now(UTC) + timedelta(minutes=5)}
     )
-    token = (
-        signed(
-            {
-                "sub": user.email,
-                "exp": datetime.now(UTC) + timedelta(minutes=5),
-                "nbf": datetime.now(UTC),
-            }
-        )
-        if legacy
-        else generate_password_reset_token(user.email)
-    )
+    token = generate_password_reset_token(user.id)
     assert (
         client.get(
             f"{API}/users/me", headers={"Authorization": f"Bearer {token}"}

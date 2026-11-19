@@ -54,7 +54,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
     final colorScheme = Theme.of(context).colorScheme;
 
     final List<Widget> pages = [
-      const HomePage(),
+      HomePage(visitorApi: _visitorApi),
       const MapPage(),
       ArtifactListPage(
         catalog: ArtifactCatalog(),

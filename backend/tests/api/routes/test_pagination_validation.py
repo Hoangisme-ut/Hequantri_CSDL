@@ -5,7 +5,7 @@ from tests.utils.heritage import API
 
 
 @pytest.mark.parametrize(
-    "endpoint", ["sites", "artifacts", "beacons", "users", "items"]
+    "endpoint", ["sites", "artifacts", "beacons", "users"]
 )
 @pytest.mark.parametrize("query", ["skip=-1", "limit=-1", "limit=0"])
 def test_pagination_rejects_invalid_bounds(
@@ -20,7 +20,7 @@ def test_pagination_rejects_invalid_bounds(
 
 
 @pytest.mark.parametrize(
-    "endpoint", ["sites", "artifacts", "beacons", "users", "items"]
+    "endpoint", ["sites", "artifacts", "beacons", "users"]
 )
 def test_valid_pagination_keeps_existing_limits(
     client: TestClient, superuser_token_headers: dict[str, str], endpoint: str
@@ -31,4 +31,4 @@ def test_valid_pagination_keeps_existing_limits(
     assert small.status_code == 200
     assert len(small.json()["data"]) <= 1
     high = client.get(f"{API}/{endpoint}/?limit=201", headers=superuser_token_headers)
-    assert high.status_code == (200 if endpoint in {"users", "items"} else 422)
+    assert high.status_code == (200 if endpoint == "users" else 422)

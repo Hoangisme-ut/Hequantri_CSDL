@@ -2,7 +2,7 @@
 
 import { type Client, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { analyticsOverviewData, analyticsOverviewErrors, analyticsOverviewResponses, analyticsSitesData, analyticsSitesErrors, analyticsSitesResponses, analyticsTopArtifactsData, analyticsTopArtifactsErrors, analyticsTopArtifactsResponses, analyticsVisitsData, analyticsVisitsErrors, analyticsVisitsResponses, artifactsCreateArtifactData, artifactsCreateArtifactErrors, artifactsCreateArtifactResponses, artifactsDeleteArtifactData, artifactsDeleteArtifactErrors, artifactsDeleteArtifactResponses, artifactsDeleteTranslationData, artifactsDeleteTranslationErrors, artifactsDeleteTranslationResponses, artifactsReadArtifactData, artifactsReadArtifactErrors, artifactsReadArtifactResponses, artifactsReadArtifactsData, artifactsReadArtifactsErrors, artifactsReadArtifactsResponses, artifactsReadTranslationsData, artifactsReadTranslationsErrors, artifactsReadTranslationsResponses, artifactsUpdateArtifactData, artifactsUpdateArtifactErrors, artifactsUpdateArtifactResponses, artifactsUpsertTranslationData, artifactsUpsertTranslationErrors, artifactsUpsertTranslationResponses, beaconsCreateBeaconData, beaconsCreateBeaconErrors, beaconsCreateBeaconResponses, beaconsDeleteBeaconData, beaconsDeleteBeaconErrors, beaconsDeleteBeaconResponses, beaconsReadBeaconData, beaconsReadBeaconErrors, beaconsReadBeaconResponses, beaconsReadBeaconsData, beaconsReadBeaconsErrors, beaconsReadBeaconsResponses, beaconsResolveBeaconData, beaconsResolveBeaconErrors, beaconsResolveBeaconResponses, beaconsUpdateBeaconData, beaconsUpdateBeaconErrors, beaconsUpdateBeaconResponses, dashboardReadSummaryData, dashboardReadSummaryErrors, dashboardReadSummaryResponses, dashboardReadTopArtifactsData, dashboardReadTopArtifactsErrors, dashboardReadTopArtifactsResponses, dashboardReadVisitsByDayData, dashboardReadVisitsByDayErrors, dashboardReadVisitsByDayResponses, dashboardReadVisitsByLanguageData, dashboardReadVisitsByLanguageErrors, dashboardReadVisitsByLanguageResponses, favoritesAddFavoriteData, favoritesAddFavoriteErrors, favoritesAddFavoriteResponses, favoritesReadMyFavoritesData, favoritesReadMyFavoritesErrors, favoritesReadMyFavoritesResponses, favoritesRemoveFavoriteData, favoritesRemoveFavoriteErrors, favoritesRemoveFavoriteResponses, feedbackModerateFeedbackData, feedbackModerateFeedbackErrors, feedbackModerateFeedbackResponses, feedbackMyFeedbackData, feedbackMyFeedbackErrors, feedbackMyFeedbackResponses, feedbackReadFeedbackData, feedbackReadFeedbackErrors, feedbackReadFeedbackResponses, feedbackReadFeedbacksData, feedbackReadFeedbacksErrors, feedbackReadFeedbacksResponses, feedbacksCreateFeedbackData, feedbacksCreateFeedbackErrors, feedbacksCreateFeedbackResponses, feedbacksModerateFeedbackData, feedbacksModerateFeedbackErrors, feedbacksModerateFeedbackResponses, feedbacksReadArtifactReviewsData, feedbacksReadArtifactReviewsErrors, feedbacksReadArtifactReviewsResponses, feedbacksReadFeedbacksData, feedbacksReadFeedbacksErrors, feedbacksReadFeedbacksResponses, feedbacksReadMyFeedbacksData, feedbacksReadMyFeedbacksErrors, feedbacksReadMyFeedbacksResponses, feedbackSubmitFeedbackData, feedbackSubmitFeedbackErrors, feedbackSubmitFeedbackResponses, feedbacksUpdateMyFeedbackData, feedbacksUpdateMyFeedbackErrors, feedbacksUpdateMyFeedbackResponses, itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, languagesCreateLanguageData, languagesCreateLanguageErrors, languagesCreateLanguageResponses, languagesDeleteLanguageData, languagesDeleteLanguageErrors, languagesDeleteLanguageResponses, languagesReadLanguagesData, languagesReadLanguagesErrors, languagesReadLanguagesResponses, languagesUpdateLanguageData, languagesUpdateLanguageErrors, languagesUpdateLanguageResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, mediaCreateMediaData, mediaCreateMediaErrors, mediaCreateMediaResponses, mediaDeleteMediaData, mediaDeleteMediaErrors, mediaDeleteMediaResponses, mediaReadMediaData, mediaReadMediaErrors, mediaReadMediaListData, mediaReadMediaListErrors, mediaReadMediaListResponses, mediaReadMediaResponses, mediaUpdateMediaData, mediaUpdateMediaErrors, mediaUpdateMediaResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, sitesCreateSiteData, sitesCreateSiteErrors, sitesCreateSiteResponses, sitesDeleteSiteData, sitesDeleteSiteErrors, sitesDeleteSiteResponses, sitesDeleteSiteTranslationData, sitesDeleteSiteTranslationErrors, sitesDeleteSiteTranslationResponses, sitesReadSiteData, sitesReadSiteErrors, sitesReadSiteResponses, sitesReadSitesData, sitesReadSitesErrors, sitesReadSitesResponses, sitesReadSiteTranslationsData, sitesReadSiteTranslationsErrors, sitesReadSiteTranslationsResponses, sitesUpdateSiteData, sitesUpdateSiteErrors, sitesUpdateSiteResponses, sitesUpsertSiteTranslationData, sitesUpsertSiteTranslationErrors, sitesUpsertSiteTranslationResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses, visitsReadMyVisitsData, visitsReadMyVisitsErrors, visitsReadMyVisitsResponses, visitsRecordVisitData, visitsRecordVisitErrors, visitsRecordVisitResponses } from './types.gen';
+import type { analyticsExportExcelData, analyticsExportExcelErrors, analyticsExportExcelResponses, analyticsExportPdfData, analyticsExportPdfErrors, analyticsExportPdfResponses, analyticsOverviewData, analyticsOverviewErrors, analyticsOverviewResponses, analyticsSitesData, analyticsSitesErrors, analyticsSitesResponses, analyticsTopArtifactsData, analyticsTopArtifactsErrors, analyticsTopArtifactsResponses, analyticsVisitsData, analyticsVisitsErrors, analyticsVisitsResponses, artifactsCreateArtifactData, artifactsCreateArtifactErrors, artifactsCreateArtifactResponses, artifactsDeleteArtifactData, artifactsDeleteArtifactErrors, artifactsDeleteArtifactResponses, artifactsDeleteTranslationData, artifactsDeleteTranslationErrors, artifactsDeleteTranslationResponses, artifactsReadArtifactData, artifactsReadArtifactErrors, artifactsReadArtifactResponses, artifactsReadArtifactsData, artifactsReadArtifactsErrors, artifactsReadArtifactsResponses, artifactsReadTranslationsData, artifactsReadTranslationsErrors, artifactsReadTranslationsResponses, artifactsUpdateArtifactData, artifactsUpdateArtifactErrors, artifactsUpdateArtifactResponses, artifactsUpsertTranslationData, artifactsUpsertTranslationErrors, artifactsUpsertTranslationResponses, beaconsCreateBeaconData, beaconsCreateBeaconErrors, beaconsCreateBeaconResponses, beaconsDeleteBeaconData, beaconsDeleteBeaconErrors, beaconsDeleteBeaconResponses, beaconsReadBeaconData, beaconsReadBeaconErrors, beaconsReadBeaconResponses, beaconsReadBeaconsData, beaconsReadBeaconsErrors, beaconsReadBeaconsResponses, beaconsResolveBeaconData, beaconsResolveBeaconErrors, beaconsResolveBeaconResponses, beaconsUpdateBeaconData, beaconsUpdateBeaconErrors, beaconsUpdateBeaconResponses, dashboardReadSummaryData, dashboardReadSummaryErrors, dashboardReadSummaryResponses, dashboardReadTopArtifactsData, dashboardReadTopArtifactsErrors, dashboardReadTopArtifactsResponses, dashboardReadVisitsByDayData, dashboardReadVisitsByDayErrors, dashboardReadVisitsByDayResponses, dashboardReadVisitsByLanguageData, dashboardReadVisitsByLanguageErrors, dashboardReadVisitsByLanguageResponses, favoritesAddFavoriteData, favoritesAddFavoriteErrors, favoritesAddFavoriteResponses, favoritesReadMyFavoritesData, favoritesReadMyFavoritesErrors, favoritesReadMyFavoritesResponses, favoritesRemoveFavoriteData, favoritesRemoveFavoriteErrors, favoritesRemoveFavoriteResponses, feedbacksCreateFeedbackData, feedbacksCreateFeedbackErrors, feedbacksCreateFeedbackResponses, feedbacksModerateFeedbackData, feedbacksModerateFeedbackErrors, feedbacksModerateFeedbackResponses, feedbacksReadArtifactReviewsData, feedbacksReadArtifactReviewsErrors, feedbacksReadArtifactReviewsResponses, feedbacksReadFeedbackData, feedbacksReadFeedbackErrors, feedbacksReadFeedbackResponses, feedbacksReadFeedbacksData, feedbacksReadFeedbacksErrors, feedbacksReadFeedbacksResponses, feedbacksReadMyFeedbacksData, feedbacksReadMyFeedbacksErrors, feedbacksReadMyFeedbacksResponses, feedbacksUpdateMyFeedbackData, feedbacksUpdateMyFeedbackErrors, feedbacksUpdateMyFeedbackResponses, languagesCreateLanguageData, languagesCreateLanguageErrors, languagesCreateLanguageResponses, languagesDeleteLanguageData, languagesDeleteLanguageErrors, languagesDeleteLanguageResponses, languagesReadLanguagesData, languagesReadLanguagesErrors, languagesReadLanguagesResponses, languagesUpdateLanguageData, languagesUpdateLanguageErrors, languagesUpdateLanguageResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, mediaCreateMediaData, mediaCreateMediaErrors, mediaCreateMediaResponses, mediaDeleteMediaData, mediaDeleteMediaErrors, mediaDeleteMediaResponses, mediaReadMediaData, mediaReadMediaErrors, mediaReadMediaListData, mediaReadMediaListErrors, mediaReadMediaListResponses, mediaReadMediaResponses, mediaUpdateMediaData, mediaUpdateMediaErrors, mediaUpdateMediaResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, sitesCreateSiteData, sitesCreateSiteErrors, sitesCreateSiteResponses, sitesDeleteSiteData, sitesDeleteSiteErrors, sitesDeleteSiteResponses, sitesDeleteSiteTranslationData, sitesDeleteSiteTranslationErrors, sitesDeleteSiteTranslationResponses, sitesReadSiteData, sitesReadSiteErrors, sitesReadSiteResponses, sitesReadSitesData, sitesReadSitesErrors, sitesReadSitesResponses, sitesReadSiteTranslationsData, sitesReadSiteTranslationsErrors, sitesReadSiteTranslationsResponses, sitesUpdateSiteData, sitesUpdateSiteErrors, sitesUpdateSiteResponses, sitesUpsertSiteTranslationData, sitesUpsertSiteTranslationErrors, sitesUpsertSiteTranslationResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses, visitsReadMyVisitsData, visitsReadMyVisitsErrors, visitsReadMyVisitsResponses, visitsRecordVisitData, visitsRecordVisitErrors, visitsRecordVisitResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -30,7 +30,7 @@ export class AnalyticsService {
             ...options
         });
     }
-    
+
     /**
      * Visits
      */
@@ -42,7 +42,7 @@ export class AnalyticsService {
             ...options
         });
     }
-    
+
     /**
      * Top Artifacts
      */
@@ -54,7 +54,7 @@ export class AnalyticsService {
             ...options
         });
     }
-    
+
     /**
      * Sites
      */
@@ -63,6 +63,34 @@ export class AnalyticsService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/analytics/sites',
+            ...options
+        });
+    }
+
+    /**
+     * Export Excel
+     *
+     * Export analytics report to Excel. Admin only.
+     */
+    public static exportExcel<ThrowOnError extends boolean = true>(options?: Options<analyticsExportExcelData, ThrowOnError>) {
+        return (options?.client ?? client).get<analyticsExportExcelResponses, analyticsExportExcelErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/analytics/export/excel',
+            ...options
+        });
+    }
+
+    /**
+     * Export Pdf
+     *
+     * Export analytics report to PDF. Admin only.
+     */
+    public static exportPdf<ThrowOnError extends boolean = true>(options?: Options<analyticsExportPdfData, ThrowOnError>) {
+        return (options?.client ?? client).get<analyticsExportPdfResponses, analyticsExportPdfErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/analytics/export/pdf',
             ...options
         });
     }
@@ -86,7 +114,7 @@ export class LoginService {
             }
         });
     }
-    
+
     /**
      * Test Token
      *
@@ -100,7 +128,7 @@ export class LoginService {
             ...options
         });
     }
-    
+
     /**
      * Recover Password
      *
@@ -113,7 +141,7 @@ export class LoginService {
             ...options
         });
     }
-    
+
     /**
      * Reset Password
      *
@@ -130,7 +158,7 @@ export class LoginService {
             }
         });
     }
-    
+
     /**
      * Recover Password Html Content
      *
@@ -160,7 +188,7 @@ export class UsersService {
             ...options
         });
     }
-    
+
     /**
      * Create User
      *
@@ -178,7 +206,7 @@ export class UsersService {
             }
         });
     }
-    
+
     /**
      * Delete User Me
      *
@@ -192,7 +220,7 @@ export class UsersService {
             ...options
         });
     }
-    
+
     /**
      * Read User Me
      *
@@ -206,7 +234,7 @@ export class UsersService {
             ...options
         });
     }
-    
+
     /**
      * Update User Me
      *
@@ -228,7 +256,7 @@ export class UsersService {
             }
         });
     }
-    
+
     /**
      * Update Password Me
      *
@@ -246,7 +274,7 @@ export class UsersService {
             }
         });
     }
-    
+
     /**
      * Register User
      *
@@ -263,7 +291,7 @@ export class UsersService {
             }
         });
     }
-    
+
     /**
      * Delete User
      *
@@ -277,7 +305,7 @@ export class UsersService {
             ...options
         });
     }
-    
+
     /**
      * Read User By Id
      *
@@ -294,7 +322,7 @@ export class UsersService {
             ...options
         });
     }
-    
+
     /**
      * Update User
      *
@@ -337,7 +365,7 @@ export class UtilsService {
             ...options
         });
     }
-    
+
     /**
      * Health Check
      */
@@ -346,86 +374,6 @@ export class UtilsService {
             responseType: 'json',
             url: '/api/v1/utils/health-check/',
             ...options
-        });
-    }
-}
-
-export class ItemsService {
-    /**
-     * Read Items
-     *
-     * Retrieve items.
-     */
-    public static readItems<ThrowOnError extends boolean = true>(options?: Options<itemsReadItemsData, ThrowOnError>) {
-        return (options?.client ?? client).get<itemsReadItemsResponses, itemsReadItemsErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/items/',
-            ...options
-        });
-    }
-    
-    /**
-     * Create Item
-     *
-     * Create new item.
-     */
-    public static createItem<ThrowOnError extends boolean = true>(options: Options<itemsCreateItemData, ThrowOnError>) {
-        return (options.client ?? client).post<itemsCreateItemResponses, itemsCreateItemErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/items/',
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        });
-    }
-    
-    /**
-     * Delete Item
-     *
-     * Delete an item.
-     */
-    public static deleteItem<ThrowOnError extends boolean = true>(options: Options<itemsDeleteItemData, ThrowOnError>) {
-        return (options.client ?? client).delete<itemsDeleteItemResponses, itemsDeleteItemErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/items/{id}',
-            ...options
-        });
-    }
-    
-    /**
-     * Read Item
-     *
-     * Get item by ID.
-     */
-    public static readItem<ThrowOnError extends boolean = true>(options: Options<itemsReadItemData, ThrowOnError>) {
-        return (options.client ?? client).get<itemsReadItemResponses, itemsReadItemErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/items/{id}',
-            ...options
-        });
-    }
-    
-    /**
-     * Update Item
-     *
-     * Update an item.
-     */
-    public static updateItem<ThrowOnError extends boolean = true>(options: Options<itemsUpdateItemData, ThrowOnError>) {
-        return (options.client ?? client).put<itemsUpdateItemResponses, itemsUpdateItemErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/items/{id}',
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
         });
     }
 }
@@ -444,7 +392,7 @@ export class LanguagesService {
             ...options
         });
     }
-    
+
     /**
      * Create Language
      *
@@ -462,7 +410,7 @@ export class LanguagesService {
             }
         });
     }
-    
+
     /**
      * Delete Language
      *
@@ -476,7 +424,7 @@ export class LanguagesService {
             ...options
         });
     }
-    
+
     /**
      * Update Language
      *
@@ -515,7 +463,7 @@ export class SitesService {
             ...options
         });
     }
-    
+
     /**
      * Create Site
      *
@@ -533,7 +481,7 @@ export class SitesService {
             }
         });
     }
-    
+
     /**
      * Delete Site
      *
@@ -547,7 +495,7 @@ export class SitesService {
             ...options
         });
     }
-    
+
     /**
      * Read Site
      *
@@ -561,7 +509,7 @@ export class SitesService {
             ...options
         });
     }
-    
+
     /**
      * Update Site
      *
@@ -579,7 +527,7 @@ export class SitesService {
             }
         });
     }
-    
+
     /**
      * Read Site Translations
      *
@@ -596,7 +544,7 @@ export class SitesService {
             ...options
         });
     }
-    
+
     /**
      * Delete Site Translation
      *
@@ -613,7 +561,7 @@ export class SitesService {
             ...options
         });
     }
-    
+
     /**
      * Upsert Site Translation
      *
@@ -651,7 +599,7 @@ export class ArtifactsService {
             ...options
         });
     }
-    
+
     /**
      * Create Artifact
      *
@@ -670,7 +618,7 @@ export class ArtifactsService {
             }
         });
     }
-    
+
     /**
      * Delete Artifact
      *
@@ -684,7 +632,7 @@ export class ArtifactsService {
             ...options
         });
     }
-    
+
     /**
      * Read Artifact
      *
@@ -699,7 +647,7 @@ export class ArtifactsService {
             ...options
         });
     }
-    
+
     /**
      * Update Artifact
      *
@@ -720,7 +668,7 @@ export class ArtifactsService {
             }
         });
     }
-    
+
     /**
      * Read Translations
      *
@@ -734,7 +682,7 @@ export class ArtifactsService {
             ...options
         });
     }
-    
+
     /**
      * Delete Translation
      *
@@ -748,7 +696,7 @@ export class ArtifactsService {
             ...options
         });
     }
-    
+
     /**
      * Upsert Translation
      *
@@ -784,7 +732,7 @@ export class BeaconsService {
             ...options
         });
     }
-    
+
     /**
      * Delete Beacon
      *
@@ -798,7 +746,7 @@ export class BeaconsService {
             ...options
         });
     }
-    
+
     /**
      * Read Beacon
      *
@@ -812,7 +760,7 @@ export class BeaconsService {
             ...options
         });
     }
-    
+
     /**
      * Update Beacon
      *
@@ -830,7 +778,7 @@ export class BeaconsService {
             }
         });
     }
-    
+
     /**
      * Read Beacons
      *
@@ -844,7 +792,7 @@ export class BeaconsService {
             ...options
         });
     }
-    
+
     /**
      * Create Beacon
      *
@@ -882,7 +830,7 @@ export class FavoritesService {
             ...options
         });
     }
-    
+
     /**
      * Add Favorite
      *
@@ -903,7 +851,7 @@ export class FavoritesService {
             }
         });
     }
-    
+
     /**
      * Remove Favorite
      *
@@ -920,96 +868,14 @@ export class FavoritesService {
     }
 }
 
-export class FeedbackService {
-    /**
-     * Read Feedbacks
-     *
-     * Retrieve feedback records with visitor and artifact information. Admin only.
-     */
-    public static readFeedbacks<ThrowOnError extends boolean = true>(options?: Options<feedbackReadFeedbacksData, ThrowOnError>) {
-        return (options?.client ?? client).get<feedbackReadFeedbacksResponses, feedbackReadFeedbacksErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/feedback/',
-            ...options
-        });
-    }
-    
-    /**
-     * Submit Feedback
-     *
-     * Submit a feedback for a visible artifact. Visitor / Authenticated user.
-     */
-    public static submitFeedback<ThrowOnError extends boolean = true>(options: Options<feedbackSubmitFeedbackData, ThrowOnError>) {
-        return (options.client ?? client).post<feedbackSubmitFeedbackResponses, feedbackSubmitFeedbackErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/feedback/',
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        });
-    }
-    
-    /**
-     * My Feedback
-     *
-     * Retrieve own feedback submissions. Visitor.
-     */
-    public static myFeedback<ThrowOnError extends boolean = true>(options?: Options<feedbackMyFeedbackData, ThrowOnError>) {
-        return (options?.client ?? client).get<feedbackMyFeedbackResponses, feedbackMyFeedbackErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/feedback/me',
-            ...options
-        });
-    }
-    
-    /**
-     * Read Feedback
-     *
-     * Retrieve a specific feedback record. Owner or Admin only.
-     */
-    public static readFeedback<ThrowOnError extends boolean = true>(options: Options<feedbackReadFeedbackData, ThrowOnError>) {
-        return (options.client ?? client).get<feedbackReadFeedbackResponses, feedbackReadFeedbackErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/feedback/{feedback_id}',
-            ...options
-        });
-    }
-    
-    /**
-     * Moderate Feedback
-     *
-     * Approve, reject, or reset a feedback record. Admin only.
-     */
-    public static moderateFeedback<ThrowOnError extends boolean = true>(options: Options<feedbackModerateFeedbackData, ThrowOnError>) {
-        return (options.client ?? client).patch<feedbackModerateFeedbackResponses, feedbackModerateFeedbackErrors, ThrowOnError>({
-            responseType: 'json',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/feedback/{feedback_id}/status',
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        });
-    }
-}
-
 export class FeedbacksService {
     /**
      * Read Artifact Reviews
      *
-     * Bình luận công khai của một hiện vật. **Public** (không cần token).
+     * Public reviews for a visible artifact.
      *
-     * - Chỉ trả feedback **đã duyệt** (`approved`) và **có comment**; nội dung
-     * `pending` / `hidden` không bao giờ xuất hiện ở đây.
-     * - Không trả `user_id` và `status`. Mới nhất trước, có phân trang.
-     * - Hiện vật đang bị ẩn (hoặc thuộc Site bị ẩn) -> 404.
+     * Only approved feedback with a non-empty comment is exposed.
+     * The response does not expose user_id or moderation status.
      */
     public static readArtifactReviews<ThrowOnError extends boolean = true>(options: Options<feedbacksReadArtifactReviewsData, ThrowOnError>) {
         return (options.client ?? client).get<feedbacksReadArtifactReviewsResponses, feedbacksReadArtifactReviewsErrors, ThrowOnError>({
@@ -1018,15 +884,14 @@ export class FeedbacksService {
             ...options
         });
     }
-    
+
     /**
      * Read My Feedbacks
      *
-     * Đánh giá / phản hồi **của tôi** (mới nhất trước, có phân trang).
-     * **Visitor / Admin** (cần đăng nhập). Chỉ trả dữ liệu của chính người gọi, kèm
-     * `status` (pending / approved / hidden) để người dùng biết bình luận đã được duyệt chưa.
+     * Retrieve the current user's feedback.
      *
-     * Hiện vật đang bị ẩn (hoặc thuộc Site bị ẩn) không hiện trong danh sách.
+     * By default, only feedback belonging to active artifacts and sites is shown.
+     * Set include_inactive=true to include all of the user's historical feedback.
      */
     public static readMyFeedbacks<ThrowOnError extends boolean = true>(options?: Options<feedbacksReadMyFeedbacksData, ThrowOnError>) {
         return (options?.client ?? client).get<feedbacksReadMyFeedbacksResponses, feedbacksReadMyFeedbacksErrors, ThrowOnError>({
@@ -1036,13 +901,14 @@ export class FeedbacksService {
             ...options
         });
     }
-    
+
     /**
      * Read Feedbacks
      *
-     * Danh sách feedback để kiểm duyệt, kèm thông tin người gửi và hiện vật. **Chỉ Admin**.
-     * Lọc theo `status` (ví dụ `pending` = đang chờ duyệt), `artifact_id` và từ khóa `q`;
-     * mới nhất trước.
+     * Admin feedback list with filters, search, pagination and related details.
+     *
+     * Supports all filters from both previous routers:
+     * status, artifact_id, user_id and q.
      */
     public static readFeedbacks<ThrowOnError extends boolean = true>(options?: Options<feedbacksReadFeedbacksData, ThrowOnError>) {
         return (options?.client ?? client).get<feedbacksReadFeedbacksResponses, feedbacksReadFeedbacksErrors, ThrowOnError>({
@@ -1052,19 +918,18 @@ export class FeedbacksService {
             ...options
         });
     }
-    
+
     /**
      * Create Feedback
      *
-     * Gửi đánh giá (1-5 sao, kèm comment tùy chọn) cho một hiện vật.
-     * **Visitor / Admin** (cần đăng nhập).
+     * Submit one feedback for a visible artifact.
      *
-     * - Trạng thái do **server** quyết định (client gửi `status` sẽ bị bỏ qua):
-     * không có comment -> `approved`; có comment -> `pending` (chờ admin duyệt).
-     * - Mỗi người chỉ có **1** đánh giá cho mỗi hiện vật; gửi lần hai -> **409**
-     * (dùng `PUT /feedbacks/{id}` để sửa).
-     * - Hiện vật không tồn tại / đang ẩn / thuộc Site ẩn -> **404**.
-     * - `rating` ngoài 1-5, `comment` quá 2000 ký tự -> **422**.
+     * Initial status is decided by the server:
+     * - No comment: approved.
+     * - Has comment: pending.
+     *
+     * A user can submit only one feedback per artifact.
+     * Use PUT /feedbacks/{feedback_id} to edit an existing feedback.
      */
     public static createFeedback<ThrowOnError extends boolean = true>(options: Options<feedbacksCreateFeedbackData, ThrowOnError>) {
         return (options.client ?? client).post<feedbacksCreateFeedbackResponses, feedbacksCreateFeedbackErrors, ThrowOnError>({
@@ -1078,17 +943,34 @@ export class FeedbacksService {
             }
         });
     }
-    
+
+    /**
+     * Read Feedback
+     *
+     * Retrieve one feedback record.
+     *
+     * Only the owner or an Admin can read the record.
+     * Other users receive 404 to avoid revealing whether it exists.
+     */
+    public static readFeedback<ThrowOnError extends boolean = true>(options: Options<feedbacksReadFeedbackData, ThrowOnError>) {
+        return (options.client ?? client).get<feedbacksReadFeedbackResponses, feedbacksReadFeedbackErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/feedbacks/{feedback_id}',
+            ...options
+        });
+    }
+
     /**
      * Update My Feedback
      *
-     * Sửa đánh giá **của tôi** (`rating` và/hoặc `comment`). **Visitor / Admin**.
+     * Update the current user's rating and/or comment.
      *
-     * - Chỉ sửa được bản ghi của chính mình; của người khác -> **404**.
-     * - Đổi comment: `approved` -> `pending` (phải duyệt lại); `hidden` giữ nguyên `hidden`;
-     * xóa comment (null / rỗng) thì không còn gì để duyệt -> `approved`
-     * (trừ `hidden`). Chỉ đổi `rating` thì giữ nguyên trạng thái.
-     * - Hiện vật đang ẩn (hoặc thuộc Site ẩn) -> **404**.
+     * Status transitions:
+     * - Editing an approved comment sends it back to pending.
+     * - Editing a hidden feedback keeps it hidden.
+     * - Clearing a comment changes status to approved, except hidden stays hidden.
+     * - Changing only the rating keeps the current status.
      */
     public static updateMyFeedback<ThrowOnError extends boolean = true>(options: Options<feedbacksUpdateMyFeedbackData, ThrowOnError>) {
         return (options.client ?? client).put<feedbacksUpdateMyFeedbackResponses, feedbacksUpdateMyFeedbackErrors, ThrowOnError>({
@@ -1102,15 +984,12 @@ export class FeedbacksService {
             }
         });
     }
-    
+
     /**
      * Moderate Feedback
      *
-     * Duyệt hoặc từ chối feedback. **Chỉ Admin**.
-     *
-     * - `approved`: duyệt, comment hiện công khai.
-     * - `hidden`: từ chối/ẩn, comment không hiện công khai và không tính vào rating.
-     * - Giá trị khác (kể cả `pending`) -> **422**.
+     * Admin can set feedback status to pending, approved, or hidden.
+     * The legacy status "rejected" is accepted and mapped to "hidden".
      */
     public static moderateFeedback<ThrowOnError extends boolean = true>(options: Options<feedbacksModerateFeedbackData, ThrowOnError>) {
         return (options.client ?? client).patch<feedbacksModerateFeedbackResponses, feedbacksModerateFeedbackErrors, ThrowOnError>({
@@ -1154,14 +1033,14 @@ export class VisitsService {
             }
         });
     }
-    
+
     /**
      * Read My Visits
      *
-     * Lịch sử tham quan **của tôi** (mới nhất trước, có phân trang).
-     * **Visitor / Admin** (cần đăng nhập). Chỉ trả dữ liệu của chính người gọi.
+     * My visit history (newest first, paginated).
+     * **Visitor / Admin** (authentication required). Returns only the caller's visits.
      *
-     * Hiện vật đang bị ẩn (hoặc thuộc Site bị ẩn) không hiện trong lịch sử.
+     * Hidden artifacts and artifacts belonging to a hidden site are omitted from the history.
      */
     public static readMyVisits<ThrowOnError extends boolean = true>(options?: Options<visitsReadMyVisitsData, ThrowOnError>) {
         return (options?.client ?? client).get<visitsReadMyVisitsResponses, visitsReadMyVisitsErrors, ThrowOnError>({
@@ -1187,7 +1066,7 @@ export class MediaService {
             ...options
         });
     }
-    
+
     /**
      * Create Media
      *
@@ -1205,7 +1084,7 @@ export class MediaService {
             }
         });
     }
-    
+
     /**
      * Delete Media
      *
@@ -1219,7 +1098,7 @@ export class MediaService {
             ...options
         });
     }
-    
+
     /**
      * Read Media
      */
@@ -1231,7 +1110,7 @@ export class MediaService {
             ...options
         });
     }
-    
+
     /**
      * Update Media
      *
@@ -1272,7 +1151,7 @@ export class DashboardService {
             ...options
         });
     }
-    
+
     /**
      * Read Visits By Day
      *
@@ -1290,7 +1169,7 @@ export class DashboardService {
             ...options
         });
     }
-    
+
     /**
      * Read Top Artifacts
      *
@@ -1311,7 +1190,7 @@ export class DashboardService {
             ...options
         });
     }
-    
+
     /**
      * Read Visits By Language
      *

@@ -122,3 +122,9 @@
     cursor: pointer;
   }
 }
+/* Improve native date picker icon visibility in dark UI */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.9;
+  cursor: pointer;
+}

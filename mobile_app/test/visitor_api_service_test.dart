@@ -80,13 +80,14 @@ Map<String, Object?> _feedbackMutation({
   String artifactId = _artifactId,
   int rating = 5,
   String? comment = 'Great artifact',
+  String status = 'pending',
 }) => {
   'id': '70000000-0000-0000-0000-000000000001',
   'user_id': '50000000-0000-0000-0000-000000000001',
   'artifact_id': artifactId,
   'rating': rating,
   'comment': comment,
-  'status': 'pending',
+  'status': status,
   'created_at': '2026-11-08T10:00:00Z',
   'updated_at': null,
 };
@@ -361,7 +362,7 @@ void main() {
   });
 
   test(
-    'submits Feedback using the legacy endpoint and response schema',
+    'submits Feedback using the unified endpoint and response schema',
     () async {
       final requests = <http.Request>[];
       final client = MockClient((request) async {
@@ -381,7 +382,7 @@ void main() {
       );
 
       expect(requests.single.method, 'POST');
-      expect(requests.single.url.path, '/api/v1/feedback/');
+      expect(requests.single.url.path, '/api/v1/feedbacks/');
       expect(requests.single.headers['Authorization'], 'Bearer visitor-token');
       expect(requests.single.headers['Content-Type'], 'application/json');
       expect(jsonDecode(requests.single.body), {
@@ -449,6 +450,32 @@ void main() {
     );
 
     expect(requestCount, 0);
+    client.close();
+  });
+
+  test('submits a rating without comment as approved', () async {
+    final client = MockClient((request) async {
+      return http.Response(
+        jsonEncode(_feedbackMutation(comment: null, status: 'approved')),
+        201,
+      );
+    });
+
+    final api = HttpVisitorApi(
+      baseUrl: Uri.parse('https://api.example.test'),
+      client: client,
+    );
+
+    final feedback = await api.submitFeedback(
+      token: _token,
+      artifactId: _artifactId,
+      rating: 5,
+      comment: '   ',
+    );
+
+    expect(feedback.comment, isNull);
+    expect(feedback.status, 'approved');
+
     client.close();
   });
 

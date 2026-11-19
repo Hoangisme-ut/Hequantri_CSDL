@@ -1,15 +1,27 @@
 import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Literal, Optional, Self
+from typing import Annotated, Any, Literal, Optional, Self
+from urllib.parse import urlsplit
 
-from pydantic import EmailStr, field_validator, model_validator
+from pydantic import (
+    EmailStr,
+    HttpUrl,
+    StringConstraints,
+    TypeAdapter,
+    field_validator,
+    model_validator,
+)
 from sqlalchemy import CheckConstraint, Index, Unicode, UniqueConstraint, text
 from sqlmodel import Field, Relationship, SQLModel
 
 # SQLModel chỉ khai báo ondelete = CASCADE / SET NULL / RESTRICT; SQL Server cần
 # NO ACTION (không cascade) nên dùng giá trị kiểu Any để qua kiểm tra kiểu.
 NO_ACTION: Any = "NO ACTION"
+
+SQL_SERVER_INT_MIN = -2147483648
+SQL_SERVER_INT_MAX = 2147483647
+NonBlankString = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
 def _examples(*examples: dict[str, Any]) -> Any:
@@ -114,7 +126,6 @@ class User(UserBase, table=True):
     )
     role: Optional["Role"] = Relationship(back_populates="users")  # noqa: UP037, UP045
     language: Optional["Language"] = Relationship(back_populates="users")  # noqa: UP037, UP045
-    items: list[Item] = Relationship(back_populates="owner", cascade_delete=True)
     visit_logs: list[VisitLog] = Relationship(
         back_populates="user", cascade_delete=True
     )
@@ -137,45 +148,6 @@ class UsersPublic(SQLModel):
 
 class UserMePublic(UserPublic):
     role_name: str
-
-
-# Shared properties
-class ItemBase(SQLModel):
-    title: str = Field(min_length=1, max_length=255)
-    description: str | None = Field(default=None, max_length=255)
-
-
-# Properties to receive on item creation
-class ItemCreate(ItemBase):
-    pass
-
-
-# Properties to receive on item update
-class ItemUpdate(SQLModel):
-    title: str | None = Field(default=None, min_length=1, max_length=255)
-    description: str | None = Field(default=None, max_length=255)
-
-
-# Database model, database table inferred from class name
-class Item(ItemBase, table=True):
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    created_at: datetime | None = Field(default_factory=get_datetime_utc)
-    owner_id: uuid.UUID = Field(
-        foreign_key="user.id", nullable=False, ondelete="CASCADE"
-    )
-    owner: User | None = Relationship(back_populates="items")
-
-
-# Properties to return via API, id is always required
-class ItemPublic(ItemBase):
-    id: uuid.UUID
-    owner_id: uuid.UUID
-    created_at: datetime | None = None
-
-
-class ItemsPublic(SQLModel):
-    data: list[ItemPublic]
-    count: int
 
 
 # =============================================================================
@@ -425,12 +397,12 @@ class SiteTranslationPublic(SiteTranslationInput):
 
 # --------------------------------- Artifact ----------------------------------
 class ArtifactBase(SQLModel):
-    code: str = Field(index=True, max_length=50)  # mã hiện vật (unique theo site)
+    code: NonBlankString = Field(index=True, max_length=50)
     era: str | None = Field(
         default=None, max_length=100, sa_type=Unicode(100)
     )  # niên đại
-    latitude: float | None = None
-    longitude: float | None = None
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
     cover_image_url: str | None = Field(default=None, max_length=500)
     is_active: bool = True
 
@@ -450,10 +422,10 @@ class ArtifactCreate(ArtifactBase):
 
 class ArtifactUpdate(SQLModel):
     site_id: uuid.UUID | None = None
-    code: str | None = Field(default=None, max_length=50)
+    code: NonBlankString | None = Field(default=None, max_length=50)
     era: str | None = Field(default=None, max_length=100)
-    latitude: float | None = None
-    longitude: float | None = None
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
     cover_image_url: str | None = Field(default=None, max_length=500)
     is_active: bool | None = None
 
@@ -499,7 +471,7 @@ class ArtifactsPublic(SQLModel):
 
 # ----------------------------- ArtifactTranslation ---------------------------
 class ArtifactTranslationBase(SQLModel):
-    title: str = Field(min_length=1, max_length=255, sa_type=Unicode(255))
+    title: NonBlankString = Field(max_length=255, sa_type=Unicode(255))
     description: str | None = Field(
         default=None, max_length=2000, sa_type=Unicode(2000)
     )
@@ -519,7 +491,7 @@ class ArtifactTranslationCreate(ArtifactTranslationBase):
 
 
 class ArtifactTranslationUpdate(SQLModel):
-    title: str | None = Field(default=None, min_length=1, max_length=255)
+    title: NonBlankString | None = Field(default=None, max_length=255)
     description: str | None = Field(default=None, max_length=2000)
     history_content: str | None = None
 
@@ -551,10 +523,13 @@ class ArtifactTranslationPublic(ArtifactTranslationBase):
 # ----------------------------------- Media -----------------------------------
 def _validate_media_url(value: str) -> str:
     value = value.strip()
-    if not value.lower().startswith(("http://", "https://")) or " " in value:
+    if not value.lower().startswith(("http://", "https://")) or any(
+        char.isspace() for char in value
+    ):
         raise ValueError("url must be an absolute http(s) URL")
-    if not value.split("://", 1)[1]:
-        raise ValueError("url must be an absolute http(s) URL")
+    if not urlsplit(value).hostname:
+        raise ValueError("url must have a valid host")
+    TypeAdapter(HttpUrl).validate_python(value)
     return value
 
 
@@ -562,7 +537,7 @@ class MediaBase(SQLModel):
     media_type: str = Field(default=MediaType.IMAGE, max_length=20)  # MediaType
     url: str = Field(max_length=500)
     caption: str | None = Field(default=None, max_length=255, sa_type=Unicode(255))
-    sort_order: int = 0
+    sort_order: int = Field(default=0, ge=SQL_SERVER_INT_MIN, le=SQL_SERVER_INT_MAX)
 
     @field_validator("media_type")
     @classmethod
@@ -591,7 +566,9 @@ class MediaUpdate(SQLModel):
     media_type: str | None = Field(default=None, max_length=20)
     url: str | None = Field(default=None, max_length=500)
     caption: str | None = Field(default=None, max_length=255)
-    sort_order: int | None = None
+    sort_order: int | None = Field(
+        default=None, ge=SQL_SERVER_INT_MIN, le=SQL_SERVER_INT_MAX
+    )
     language_id: uuid.UUID | None = None
 
     @field_validator("media_type")
@@ -645,8 +622,12 @@ class BeaconBase(SQLModel):
     proximity_uuid: str = Field(max_length=36, index=True)  # iBeacon proximity UUID
     major: int = Field(ge=0, le=65535)
     minor: int = Field(ge=0, le=65535)
-    tx_power: int | None = -59  # công suất đo ở 1m (dBm)
-    rssi_threshold: int | None = -80  # ngưỡng RSSI để kích hoạt (dBm)
+    tx_power: int | None = Field(
+        default=-59, ge=SQL_SERVER_INT_MIN, le=SQL_SERVER_INT_MAX
+    )
+    rssi_threshold: int | None = Field(
+        default=-80, ge=SQL_SERVER_INT_MIN, le=SQL_SERVER_INT_MAX
+    )
     is_active: bool = True
 
     @field_validator("proximity_uuid")
@@ -677,8 +658,12 @@ class BeaconUpdate(SQLModel):
     proximity_uuid: str | None = Field(default=None, max_length=36)
     major: int | None = Field(default=None, ge=0, le=65535)
     minor: int | None = Field(default=None, ge=0, le=65535)
-    tx_power: int | None = None
-    rssi_threshold: int | None = None
+    tx_power: int | None = Field(
+        default=None, ge=SQL_SERVER_INT_MIN, le=SQL_SERVER_INT_MAX
+    )
+    rssi_threshold: int | None = Field(
+        default=None, ge=SQL_SERVER_INT_MIN, le=SQL_SERVER_INT_MAX
+    )
     is_active: bool | None = None
     site_id: uuid.UUID | None = None
     artifact_id: uuid.UUID | None = None
@@ -749,8 +734,8 @@ class VisitLogCreate(SQLModel):
     artifact_id: uuid.UUID
     beacon_id: uuid.UUID | None = None
     language_id: uuid.UUID | None = None
-    rssi: int | None = None
-    duration_seconds: int | None = Field(default=None, ge=0)
+    rssi: int | None = Field(default=None, ge=SQL_SERVER_INT_MIN, le=SQL_SERVER_INT_MAX)
+    duration_seconds: int | None = Field(default=None, ge=0, le=SQL_SERVER_INT_MAX)
 
     model_config = _examples(
         {
@@ -1032,7 +1017,7 @@ class FavoritesDetailPublic(SQLModel):
 
 
 class VisitDetailPublic(VisitLogPublic):
-    """Một lượt tham quan kèm tóm tắt hiện vật (tiêu đề theo ngôn ngữ)."""
+    """A visit with an artifact summary (localized title)."""
 
     artifact: ArtifactSummary
 

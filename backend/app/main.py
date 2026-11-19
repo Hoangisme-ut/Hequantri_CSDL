@@ -77,10 +77,6 @@ OPENAPI_TAGS = [
         "description": "Thống kê lượt xem theo khoảng thời gian có múi giờ (overview, visits, top-artifacts, sites). Chỉ Admin.",
     },
     {
-        "name": "feedback",
-        "description": "Hợp đồng cũ của Web Admin (trạng thái `rejected` được ánh xạ sang `hidden` trong DB). Ứng dụng mới dùng nhóm `feedbacks`.",
-    },
-    {
         "name": "media",
         "description": "Metadata media (ảnh/video/audio) của hiện vật. Chỉ Admin.",
     },

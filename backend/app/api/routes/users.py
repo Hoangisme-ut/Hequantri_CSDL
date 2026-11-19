@@ -3,7 +3,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlmodel import col, delete, func, select
+from sqlmodel import col, func, select
 
 from app import crud
 from app.api.deps import (
@@ -16,8 +16,8 @@ from app.api.deps import (
 )
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
+from app.core.transactions import commit_with_conflicts
 from app.models import (
-    Item,
     Message,
     UpdatePassword,
     User,
@@ -124,7 +124,13 @@ def update_user_me(
     user_data = user_in.model_dump(exclude_unset=True)
     current_user.sqlmodel_update(user_data)
     session.add(current_user)
-    session.commit()
+    # A concurrent request may take the email after the pre-check: answer 409, not 500.
+    commit_with_conflicts(
+        session,
+        "ix_user_email",
+        status_code=409,
+        detail="User with this email already exists",
+    )
     session.refresh(current_user)
     return current_user
 
@@ -214,6 +220,7 @@ def register_user(
     user = crud.create_user(
         session=session,
         user_create=user_create,
+        email_conflict_detail="The user with this email already exists in the system",
     )
 
     return user
@@ -325,8 +332,6 @@ def delete_user(
         raise HTTPException(
             status_code=403, detail="Super users are not allowed to delete themselves"
         )
-    statement = delete(Item).where(col(Item.owner_id) == user_id)
-    session.exec(statement)
     session.delete(user)
     session.commit()
     return Message(message="User deleted successfully")

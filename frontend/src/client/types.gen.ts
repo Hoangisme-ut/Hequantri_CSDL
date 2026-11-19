@@ -673,6 +673,26 @@ export type FavoritesDetailPublic = {
 };
 
 /**
+ * FeedbackAdminStatus
+ *
+ * Statuses supported when filtering the admin feedback list.
+ */
+export type FeedbackAdminStatus = 'pending' | 'approved' | 'hidden' | 'rejected';
+
+/**
+ * FeedbackAdminStatusUpdate
+ */
+export type FeedbackAdminStatusUpdate = {
+    status: FeedbackModerationStatus;
+    /**
+     * Expected Updated At
+     *
+     * Last observed updated_at, including null for an unedited feedback. A mismatch returns 409; omit this field to moderate without a version check.
+     */
+    expected_updated_at?: string | null;
+};
+
+/**
  * FeedbackCreate
  */
 export type FeedbackCreate = {
@@ -689,6 +709,13 @@ export type FeedbackCreate = {
      */
     comment?: string | null;
 };
+
+/**
+ * FeedbackModerationStatus
+ *
+ * Statuses an admin can assign during moderation.
+ */
+export type FeedbackModerationStatus = 'pending' | 'approved' | 'hidden' | 'rejected';
 
 /**
  * FeedbackPublic
@@ -807,25 +834,6 @@ export type FeedbackReviewsPublic = {
 };
 
 /**
- * FeedbackStatus
- *
- * Trạng thái Feedback theo ERD: chỉ nhận pending / approved / hidden.
- */
-export type FeedbackStatus = 'pending' | 'approved' | 'hidden';
-
-/**
- * FeedbackStatusUpdate
- *
- * Admin duyệt (approved) hoặc từ chối/ẩn (hidden). `pending` do hệ thống tự đặt.
- */
-export type FeedbackStatusUpdate = {
-    /**
-     * Status
-     */
-    status: 'approved' | 'hidden';
-};
-
-/**
  * FeedbackUpdate
  *
  * Visitor sửa đánh giá của chính mình. Chỉ các trường được gửi mới bị đổi;
@@ -878,74 +886,6 @@ export type InventoryCount = {
      * Active
      */
     active: number;
-};
-
-/**
- * ItemCreate
- */
-export type ItemCreate = {
-    /**
-     * Title
-     */
-    title: string;
-    /**
-     * Description
-     */
-    description?: string | null;
-};
-
-/**
- * ItemPublic
- */
-export type ItemPublic = {
-    /**
-     * Title
-     */
-    title: string;
-    /**
-     * Description
-     */
-    description?: string | null;
-    /**
-     * Id
-     */
-    id: string;
-    /**
-     * Owner Id
-     */
-    owner_id: string;
-    /**
-     * Created At
-     */
-    created_at?: string | null;
-};
-
-/**
- * ItemUpdate
- */
-export type ItemUpdate = {
-    /**
-     * Title
-     */
-    title?: string | null;
-    /**
-     * Description
-     */
-    description?: string | null;
-};
-
-/**
- * ItemsPublic
- */
-export type ItemsPublic = {
-    /**
-     * Data
-     */
-    data: Array<ItemPublic>;
-    /**
-     * Count
-     */
-    count: number;
 };
 
 /**
@@ -1052,18 +992,6 @@ export type LanguagesPublic = {
      * Count
      */
     count: number;
-};
-
-/**
- * LegacyFeedbackStatus
- */
-export type LegacyFeedbackStatus = 'pending' | 'approved' | 'rejected';
-
-/**
- * LegacyFeedbackStatusUpdate
- */
-export type LegacyFeedbackStatusUpdate = {
-    status: LegacyFeedbackStatus;
 };
 
 /**
@@ -1787,7 +1715,7 @@ export type VisitDayCount = {
 /**
  * VisitDetailPublic
  *
- * Một lượt tham quan kèm tóm tắt hiện vật (tiêu đề theo ngôn ngữ).
+ * A visit with an artifact summary (localized title).
  */
 export type VisitDetailPublic = {
     /**
@@ -2130,6 +2058,78 @@ export type analyticsSitesResponses = {
 };
 
 export type analyticsSitesResponse = analyticsSitesResponses[keyof analyticsSitesResponses];
+
+export type analyticsExportExcelData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * From
+         */
+        from?: string | null;
+        /**
+         * To
+         */
+        to?: string | null;
+        /**
+         * Site Id
+         */
+        site_id?: string | null;
+    };
+    url: '/api/v1/analytics/export/excel';
+};
+
+export type analyticsExportExcelErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type analyticsExportExcelError = analyticsExportExcelErrors[keyof analyticsExportExcelErrors];
+
+export type analyticsExportExcelResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type analyticsExportPdfData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * From
+         */
+        from?: string | null;
+        /**
+         * To
+         */
+        to?: string | null;
+        /**
+         * Site Id
+         */
+        site_id?: string | null;
+    };
+    url: '/api/v1/analytics/export/pdf';
+};
+
+export type analyticsExportPdfErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type analyticsExportPdfError = analyticsExportPdfErrors[keyof analyticsExportPdfErrors];
+
+export type analyticsExportPdfResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
 
 export type loginLoginAccessTokenData = {
     body: Body_login_login_access_token;
@@ -2560,155 +2560,6 @@ export type utilsHealthCheckResponses = {
 };
 
 export type utilsHealthCheckResponse = utilsHealthCheckResponses[keyof utilsHealthCheckResponses];
-
-export type itemsReadItemsData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Skip
-         */
-        skip?: number;
-        /**
-         * Limit
-         */
-        limit?: number;
-    };
-    url: '/api/v1/items/';
-};
-
-export type itemsReadItemsErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type itemsReadItemsError = itemsReadItemsErrors[keyof itemsReadItemsErrors];
-
-export type itemsReadItemsResponses = {
-    /**
-     * Successful Response
-     */
-    200: ItemsPublic;
-};
-
-export type itemsReadItemsResponse = itemsReadItemsResponses[keyof itemsReadItemsResponses];
-
-export type itemsCreateItemData = {
-    body: ItemCreate;
-    path?: never;
-    query?: never;
-    url: '/api/v1/items/';
-};
-
-export type itemsCreateItemErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type itemsCreateItemError = itemsCreateItemErrors[keyof itemsCreateItemErrors];
-
-export type itemsCreateItemResponses = {
-    /**
-     * Successful Response
-     */
-    200: ItemPublic;
-};
-
-export type itemsCreateItemResponse = itemsCreateItemResponses[keyof itemsCreateItemResponses];
-
-export type itemsDeleteItemData = {
-    body?: never;
-    path: {
-        /**
-         * Id
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/items/{id}';
-};
-
-export type itemsDeleteItemErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type itemsDeleteItemError = itemsDeleteItemErrors[keyof itemsDeleteItemErrors];
-
-export type itemsDeleteItemResponses = {
-    /**
-     * Successful Response
-     */
-    200: Message;
-};
-
-export type itemsDeleteItemResponse = itemsDeleteItemResponses[keyof itemsDeleteItemResponses];
-
-export type itemsReadItemData = {
-    body?: never;
-    path: {
-        /**
-         * Id
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/items/{id}';
-};
-
-export type itemsReadItemErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type itemsReadItemError = itemsReadItemErrors[keyof itemsReadItemErrors];
-
-export type itemsReadItemResponses = {
-    /**
-     * Successful Response
-     */
-    200: ItemPublic;
-};
-
-export type itemsReadItemResponse = itemsReadItemResponses[keyof itemsReadItemResponses];
-
-export type itemsUpdateItemData = {
-    body: ItemUpdate;
-    path: {
-        /**
-         * Id
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/api/v1/items/{id}';
-};
-
-export type itemsUpdateItemErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type itemsUpdateItemError = itemsUpdateItemErrors[keyof itemsUpdateItemErrors];
-
-export type itemsUpdateItemResponses = {
-    /**
-     * Successful Response
-     */
-    200: ItemPublic;
-};
-
-export type itemsUpdateItemResponse = itemsUpdateItemResponses[keyof itemsUpdateItemResponses];
 
 export type languagesReadLanguagesData = {
     body?: never;
@@ -3196,6 +3047,10 @@ export type sitesUpsertSiteTranslationErrors = {
      * Không tìm thấy hoặc đang bị ẩn
      */
     404: unknown;
+    /**
+     * A concurrent request created this Site translation
+     */
+    409: unknown;
     /**
      * Dữ liệu gửi lên sai định dạng
      */
@@ -3995,233 +3850,6 @@ export type favoritesRemoveFavoriteResponses = {
 
 export type favoritesRemoveFavoriteResponse = favoritesRemoveFavoriteResponses[keyof favoritesRemoveFavoriteResponses];
 
-export type feedbackReadFeedbacksData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Status
-         *
-         * Filter by status: pending, approved, or rejected
-         */
-        status?: LegacyFeedbackStatus | null;
-        /**
-         * Artifact Id
-         */
-        artifact_id?: string | null;
-        /**
-         * User Id
-         */
-        user_id?: string | null;
-        /**
-         * Q
-         *
-         * Search by visitor name, email, artifact code, or feedback comment
-         */
-        q?: string | null;
-        /**
-         * Skip
-         */
-        skip?: number;
-        /**
-         * Limit
-         */
-        limit?: number;
-    };
-    url: '/api/v1/feedback/';
-};
-
-export type feedbackReadFeedbacksErrors = {
-    /**
-     * Thiếu hoặc sai token đăng nhập
-     */
-    401: unknown;
-    /**
-     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
-     */
-    403: unknown;
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type feedbackReadFeedbacksError = feedbackReadFeedbacksErrors[keyof feedbackReadFeedbacksErrors];
-
-export type feedbackReadFeedbacksResponses = {
-    /**
-     * Successful Response
-     */
-    200: FeedbackReviewsPublic;
-};
-
-export type feedbackReadFeedbacksResponse = feedbackReadFeedbacksResponses[keyof feedbackReadFeedbacksResponses];
-
-export type feedbackSubmitFeedbackData = {
-    body: FeedbackCreate;
-    path?: never;
-    query?: never;
-    url: '/api/v1/feedback/';
-};
-
-export type feedbackSubmitFeedbackErrors = {
-    /**
-     * Thiếu hoặc sai token đăng nhập
-     */
-    401: unknown;
-    /**
-     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
-     */
-    403: unknown;
-    /**
-     * Không tìm thấy hoặc đang bị ẩn
-     */
-    404: unknown;
-    /**
-     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
-     */
-    409: unknown;
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type feedbackSubmitFeedbackError = feedbackSubmitFeedbackErrors[keyof feedbackSubmitFeedbackErrors];
-
-export type feedbackSubmitFeedbackResponses = {
-    /**
-     * Successful Response
-     */
-    201: FeedbackPublic;
-};
-
-export type feedbackSubmitFeedbackResponse = feedbackSubmitFeedbackResponses[keyof feedbackSubmitFeedbackResponses];
-
-export type feedbackMyFeedbackData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Skip
-         */
-        skip?: number;
-        /**
-         * Limit
-         */
-        limit?: number;
-    };
-    url: '/api/v1/feedback/me';
-};
-
-export type feedbackMyFeedbackErrors = {
-    /**
-     * Thiếu hoặc sai token đăng nhập
-     */
-    401: unknown;
-    /**
-     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
-     */
-    403: unknown;
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type feedbackMyFeedbackError = feedbackMyFeedbackErrors[keyof feedbackMyFeedbackErrors];
-
-export type feedbackMyFeedbackResponses = {
-    /**
-     * Successful Response
-     */
-    200: FeedbacksPublic;
-};
-
-export type feedbackMyFeedbackResponse = feedbackMyFeedbackResponses[keyof feedbackMyFeedbackResponses];
-
-export type feedbackReadFeedbackData = {
-    body?: never;
-    path: {
-        /**
-         * Feedback Id
-         */
-        feedback_id: string;
-    };
-    query?: never;
-    url: '/api/v1/feedback/{feedback_id}';
-};
-
-export type feedbackReadFeedbackErrors = {
-    /**
-     * Thiếu hoặc sai token đăng nhập
-     */
-    401: unknown;
-    /**
-     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
-     */
-    403: unknown;
-    /**
-     * Không tìm thấy hoặc đang bị ẩn
-     */
-    404: unknown;
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type feedbackReadFeedbackError = feedbackReadFeedbackErrors[keyof feedbackReadFeedbackErrors];
-
-export type feedbackReadFeedbackResponses = {
-    /**
-     * Successful Response
-     */
-    200: FeedbackPublic;
-};
-
-export type feedbackReadFeedbackResponse = feedbackReadFeedbackResponses[keyof feedbackReadFeedbackResponses];
-
-export type feedbackModerateFeedbackData = {
-    body: LegacyFeedbackStatusUpdate;
-    path: {
-        /**
-         * Feedback Id
-         */
-        feedback_id: string;
-    };
-    query?: never;
-    url: '/api/v1/feedback/{feedback_id}/status';
-};
-
-export type feedbackModerateFeedbackErrors = {
-    /**
-     * Thiếu hoặc sai token đăng nhập
-     */
-    401: unknown;
-    /**
-     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
-     */
-    403: unknown;
-    /**
-     * Không tìm thấy hoặc đang bị ẩn
-     */
-    404: unknown;
-    /**
-     * Dữ liệu gửi lên sai định dạng
-     */
-    422: unknown;
-};
-
-export type feedbackModerateFeedbackResponses = {
-    /**
-     * Successful Response
-     */
-    200: FeedbackPublic;
-};
-
-export type feedbackModerateFeedbackResponse = feedbackModerateFeedbackResponses[keyof feedbackModerateFeedbackResponses];
-
 export type feedbacksReadArtifactReviewsData = {
     body?: never;
     path: {
@@ -4275,6 +3903,12 @@ export type feedbacksReadMyFeedbacksData = {
          * Limit
          */
         limit?: number;
+        /**
+         * Include Inactive
+         *
+         * Set true to include feedback whose artifact or site is inactive.
+         */
+        include_inactive?: boolean;
     };
     url: '/api/v1/feedbacks/me';
 };
@@ -4312,17 +3946,21 @@ export type feedbacksReadFeedbacksData = {
         /**
          * Status
          *
-         * pending | approved | hidden
+         * Filter by status: pending, approved, hidden, or rejected (rejected is mapped to hidden).
          */
-        status?: FeedbackStatus | null;
+        status?: FeedbackAdminStatus | null;
         /**
          * Artifact Id
          */
         artifact_id?: string | null;
         /**
+         * User Id
+         */
+        user_id?: string | null;
+        /**
          * Q
          *
-         * Tìm theo tên/email người gửi, mã hiện vật, tên Site hoặc nội dung comment
+         * Search by visitor, artifact, site, or feedback comment.
          */
         q?: string | null;
         /**
@@ -4400,6 +4038,48 @@ export type feedbacksCreateFeedbackResponses = {
 
 export type feedbacksCreateFeedbackResponse = feedbacksCreateFeedbackResponses[keyof feedbacksCreateFeedbackResponses];
 
+export type feedbacksReadFeedbackData = {
+    body?: never;
+    path: {
+        /**
+         * Feedback Id
+         */
+        feedback_id: string;
+    };
+    query?: never;
+    url: '/api/v1/feedbacks/{feedback_id}';
+};
+
+export type feedbacksReadFeedbackErrors = {
+    /**
+     * Thiếu hoặc sai token đăng nhập
+     */
+    401: unknown;
+    /**
+     * Không đủ quyền (nội dung di sản cần role admin; quản lý người dùng cần superuser)
+     */
+    403: unknown;
+    /**
+     * Không tìm thấy hoặc đang bị ẩn
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type feedbacksReadFeedbackError = feedbacksReadFeedbackErrors[keyof feedbacksReadFeedbackErrors];
+
+export type feedbacksReadFeedbackResponses = {
+    /**
+     * Successful Response
+     */
+    200: FeedbackPublic;
+};
+
+export type feedbacksReadFeedbackResponse = feedbacksReadFeedbackResponses[keyof feedbacksReadFeedbackResponses];
+
 export type feedbacksUpdateMyFeedbackData = {
     body: FeedbackUpdate;
     path: {
@@ -4426,6 +4106,10 @@ export type feedbacksUpdateMyFeedbackErrors = {
      */
     404: unknown;
     /**
+     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
+     */
+    409: unknown;
+    /**
      * Dữ liệu gửi lên sai định dạng
      */
     422: unknown;
@@ -4441,7 +4125,7 @@ export type feedbacksUpdateMyFeedbackResponses = {
 export type feedbacksUpdateMyFeedbackResponse = feedbacksUpdateMyFeedbackResponses[keyof feedbacksUpdateMyFeedbackResponses];
 
 export type feedbacksModerateFeedbackData = {
-    body: FeedbackStatusUpdate;
+    body: FeedbackAdminStatusUpdate;
     path: {
         /**
          * Feedback Id
@@ -4465,6 +4149,10 @@ export type feedbacksModerateFeedbackErrors = {
      * Không tìm thấy hoặc đang bị ẩn
      */
     404: unknown;
+    /**
+     * Xung đột dữ liệu (trùng mã, Site đang ẩn, hiện vật đang gắn beacon...)
+     */
+    409: unknown;
     /**
      * Dữ liệu gửi lên sai định dạng
      */

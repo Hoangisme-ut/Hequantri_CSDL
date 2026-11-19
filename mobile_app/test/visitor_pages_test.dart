@@ -361,6 +361,42 @@ void main() {
     },
   );
 
+  testWidgets('Feedback submit without comment shows approved state', (
+    tester,
+  ) async {
+    final api = _FakeVisitorApi()..feedbackStatus = 'approved';
+
+    final session = AuthSession()..authenticate(_token);
+
+    await tester.pumpWidget(
+      _appWithSession(
+        session,
+        Scaffold(
+          body: ArtifactFeedbackForm(artifactId: _artifactId, api: api),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('feedback-rating-5')));
+    await tester.tap(find.byKey(const ValueKey('feedback-submit')));
+    await tester.pumpAndSettle();
+
+    expect(api.feedbackCalls, 1);
+    expect(api.feedbackComment, isNull);
+
+    expect(
+      find.text(AppStrings(Locale('vi')).feedbackSubmittedApproved),
+      findsOneWidget,
+    );
+
+    expect(
+      find.text(AppStrings(Locale('vi')).feedbackSubmittedPending),
+      findsNothing,
+    );
+  });
+
   testWidgets('Feedback duplicate is shown as an error, not success', (
     tester,
   ) async {
@@ -661,6 +697,7 @@ class _FakeVisitorApi implements VisitorApi {
   int feedbackCalls = 0;
   String? feedbackArtifactId;
   int? feedbackRating;
+  String feedbackStatus = 'pending';
   String? feedbackComment;
   AuthToken? feedbackToken;
   VisitorApiException? favoriteFailure;
@@ -798,7 +835,7 @@ class _FakeVisitorApi implements VisitorApi {
       artifactId: artifactId,
       rating: rating,
       comment: feedbackComment,
-      status: 'pending',
+      status: feedbackStatus,
     );
   }
 }

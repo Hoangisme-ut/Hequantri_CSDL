@@ -1,14 +1,14 @@
 import {
+  type FeedbackAdminStatusUpdate,
   type FeedbackPublic,
   type FeedbackReviewsPublic,
-  FeedbackService,
-  type feedbackReadFeedbacksData,
-  type LegacyFeedbackStatusUpdate,
+  FeedbacksService,
+  type feedbacksReadFeedbacksData,
 } from "@/client"
 import { unwrapApi } from "./api-errors"
 
 // Bộ lọc danh sách phản hồi
-export type FeedbackFilters = NonNullable<feedbackReadFeedbacksData["query"]>
+export type FeedbackFilters = NonNullable<feedbacksReadFeedbacksData["query"]>
 
 // Query keys dành cho React Query
 export const feedbackKeys = {
@@ -18,25 +18,25 @@ export const feedbackKeys = {
     [...feedbackKeys.lists(), filters] as const,
 }
 
-// Các hàm gọi Feedback API
+// Các hàm gọi Feedback API mới
 export const feedbackService = {
-  // Lấy danh sách phản hồi
+  // Lấy danh sách phản hồi dành cho Admin
   async list(filters: FeedbackFilters = {}): Promise<FeedbackReviewsPublic> {
     return unwrapApi(
-      FeedbackService.readFeedbacks({
+      FeedbacksService.readFeedbacks({
         query: filters,
       }),
       "Feedback",
     )
   },
 
-  // Duyệt hoặc từ chối phản hồi
+  // Duyệt hoặc ẩn phản hồi
   async updateStatus(
     id: string,
-    input: LegacyFeedbackStatusUpdate,
+    input: FeedbackAdminStatusUpdate,
   ): Promise<FeedbackPublic> {
     return unwrapApi(
-      FeedbackService.moderateFeedback({
+      FeedbacksService.moderateFeedback({
         path: { feedback_id: id },
         body: input,
       }),

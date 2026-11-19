@@ -302,7 +302,9 @@ class AppStrings {
   String get feedbackSubmittedPending => isEnglish
       ? 'Your feedback was submitted and is waiting for admin review.'
       : 'Đã gửi đánh giá. Nội dung đang chờ quản trị viên duyệt.';
-
+  String get feedbackSubmittedApproved => isEnglish
+    ? 'Your rating was submitted successfully.'
+    : 'Đã gửi đánh giá thành công.';
   String get feedbackSignInRequired => isEnglish
       ? 'Sign in to submit feedback.'
       : 'Vui lòng đăng nhập để gửi đánh giá.';

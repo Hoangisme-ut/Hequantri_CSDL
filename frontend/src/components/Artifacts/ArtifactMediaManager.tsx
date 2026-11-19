@@ -1,20 +1,10 @@
-
-import { useState } from "react"
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Plus, X } from "lucide-react"
+import { useState } from "react"
 
-import type {
-  MediaCreate,
-  MediaPublic,
-  MediaUpdate,
-} from "@/client"
-
-import { translationsService } from "@/services/translations"
+import type { MediaCreate, MediaPublic, MediaUpdate } from "@/client"
 import { mediaKeys, mediaService } from "@/services/media"
+import { translationsService } from "@/services/translations"
 
 import MediaForm from "./MediaForm"
 import { MediaList } from "./MediaList"
@@ -28,8 +18,7 @@ export default function ArtifactMediaManager({
 }: ArtifactMediaManagerProps) {
   const queryClient = useQueryClient()
 
-  const [editingMedia, setEditingMedia] =
-    useState<MediaPublic | null>(null)
+  const [editingMedia, setEditingMedia] = useState<MediaPublic | null>(null)
 
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [feedback, setFeedback] = useState<{
@@ -59,8 +48,7 @@ export default function ArtifactMediaManager({
 
   // Create Media
   const createMutation = useMutation({
-    mutationFn: (input: MediaCreate) =>
-      mediaService.create(artifactId, input),
+    mutationFn: (input: MediaCreate) => mediaService.create(artifactId, input),
 
     onSuccess: async () => {
       await refreshMedia()
@@ -76,22 +64,15 @@ export default function ArtifactMediaManager({
       setFeedback({
         type: "error",
         message:
-          error instanceof Error
-            ? error.message
-            : "Failed to add media.",
+          error instanceof Error ? error.message : "Failed to add media.",
       })
     },
   })
 
   // Update Media
   const updateMutation = useMutation({
-    mutationFn: ({
-      mediaId,
-      input,
-    }: {
-      mediaId: string
-      input: MediaUpdate
-    }) => mediaService.update(artifactId, mediaId, input),
+    mutationFn: ({ mediaId, input }: { mediaId: string; input: MediaUpdate }) =>
+      mediaService.update(artifactId, mediaId, input),
 
     onSuccess: async () => {
       await refreshMedia()
@@ -107,17 +88,14 @@ export default function ArtifactMediaManager({
       setFeedback({
         type: "error",
         message:
-          error instanceof Error
-            ? error.message
-            : "Failed to update media.",
+          error instanceof Error ? error.message : "Failed to update media.",
       })
     },
   })
 
   // Delete Media
   const deleteMutation = useMutation({
-    mutationFn: (mediaId: string) =>
-      mediaService.remove(artifactId, mediaId),
+    mutationFn: (mediaId: string) => mediaService.remove(artifactId, mediaId),
 
     onSuccess: async () => {
       await refreshMedia()
@@ -131,15 +109,12 @@ export default function ArtifactMediaManager({
       setFeedback({
         type: "error",
         message:
-          error instanceof Error
-            ? error.message
-            : "Failed to delete media.",
+          error instanceof Error ? error.message : "Failed to delete media.",
       })
     },
   })
 
-  const isSubmitting =
-    createMutation.isPending || updateMutation.isPending
+  const isSubmitting = createMutation.isPending || updateMutation.isPending
 
   const handleAdd = () => {
     setEditingMedia(null)
@@ -266,9 +241,7 @@ export default function ArtifactMediaManager({
             </p>
           ) : languageError ? (
             <div className="space-y-2">
-              <p className="text-sm text-destructive">
-                {languageError}
-              </p>
+              <p className="text-sm text-destructive">{languageError}</p>
 
               <button
                 type="button"
@@ -309,9 +282,7 @@ export default function ArtifactMediaManager({
           isLoading={mediaQuery.isLoading}
           error={mediaError}
           deletingMediaId={
-            deleteMutation.isPending
-              ? deleteMutation.variables
-              : null
+            deleteMutation.isPending ? deleteMutation.variables : null
           }
           onRetry={() => mediaQuery.refetch()}
           onEdit={handleEdit}

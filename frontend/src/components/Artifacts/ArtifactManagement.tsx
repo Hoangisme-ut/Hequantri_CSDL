@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import ArtifactMediaManager from "./ArtifactMediaManager"
 import {
   Archive,
   Eye,
@@ -11,7 +10,6 @@ import {
 } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-
 import type {
   ArtifactCreate,
   ArtifactSummary,
@@ -46,6 +44,7 @@ import {
   translationKeys,
   translationsService,
 } from "@/services/translations"
+import ArtifactMediaManager from "./ArtifactMediaManager"
 
 type ArtifactDraft = {
   code: string

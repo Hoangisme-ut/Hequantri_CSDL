@@ -12,9 +12,13 @@ import '../heritage/beacon_simulation_page.dart';
 import '../sites/site_detail_page.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, this.siteApi});
-
+  const HomePage({
+    super.key,
+    this.siteApi,
+    this.visitorApi,
+  });
   final SiteApi? siteApi;
+  final VisitorApi? visitorApi;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -805,7 +809,10 @@ class _HomePageState extends State<HomePage> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => ArtifactDetailPage(artifact: artifact),
+                builder: (_) => ArtifactDetailPage(
+                  artifact: artifact,
+                  visitorApi: widget.visitorApi,
+                ),
               ),
             );
           },

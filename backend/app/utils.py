@@ -9,7 +9,7 @@ import emails
 import jwt
 from jinja2 import Template
 from jwt.exceptions import InvalidTokenError
-from pydantic import EmailStr, TypeAdapter, ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from app.core import security
 from app.core.config import settings
@@ -119,7 +119,7 @@ def generate_new_account_email(
     return EmailData(html_content=html_content, subject=subject)
 
 
-def generate_password_reset_token(email: str) -> str:
+def generate_password_reset_token(user_id: uuid.UUID) -> str:
     delta = timedelta(hours=settings.EMAIL_RESET_TOKEN_EXPIRE_HOURS)
     now = datetime.now(UTC)
     expires = now + delta
@@ -128,7 +128,7 @@ def generate_password_reset_token(email: str) -> str:
         {
             "exp": exp,
             "nbf": now,
-            "sub": email,
+            "sub": str(user_id),
             "purpose": "password_reset",
             "jti": str(uuid.uuid4()),
         },
@@ -138,7 +138,7 @@ def generate_password_reset_token(email: str) -> str:
     return encoded_jwt
 
 
-def verify_password_reset_token(token: str) -> str | None:
+def verify_password_reset_token(token: str) -> uuid.UUID | None:
     try:
         decoded_token = jwt.decode(
             token,
@@ -148,6 +148,6 @@ def verify_password_reset_token(token: str) -> str | None:
         )
         if decoded_token.get("purpose") not in (None, "password_reset"):
             return None
-        return TypeAdapter(EmailStr).validate_python(decoded_token["sub"])
+        return TypeAdapter(uuid.UUID).validate_python(decoded_token["sub"])
     except InvalidTokenError, ValidationError:
         return None

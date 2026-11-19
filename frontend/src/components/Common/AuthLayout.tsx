@@ -9,7 +9,8 @@ export function AuthLayout({ children }: AuthLayoutProps) {
         aria-label="Smart Heritage introduction"
         className="relative hidden min-h-svh overflow-hidden bg-[#132c47] bg-left bg-no-repeat lg:block"
         style={{
-          backgroundImage: "url('/assets/images/smart-heritage-login-reference.png')",
+          backgroundImage:
+            "url('/assets/images/smart-heritage-login-reference.png')",
           backgroundSize: "auto 100%",
         }}
       />

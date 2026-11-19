@@ -1,4 +1,5 @@
 import logging
+import time
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
@@ -8,42 +9,45 @@ from app.core.config import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+MAX_ATTEMPTS = 10
+RETRY_DELAY_SECONDS = 3
+
 
 def init() -> None:
-    try:
-        url = make_url(str(settings.DATABASE_URL))
-        db_name = url.database
-
-        # 1. First attempt: connect directly to the target database
+    for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
-            target_engine = create_engine(url)
-            with target_engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
+            target = make_url(settings.DATABASE_URL)
+            if not target.database or target.database.casefold() == "master":
+                raise ValueError("A named application database is required")
+            engine = create_engine(settings.DATABASE_URL)
+            try:
+                with engine.connect() as connection:
+                    connection.execute(text("SELECT 1"))
+            finally:
+                engine.dispose()
+        except Exception:
+            # Driver exceptions can include credentials; never log or chain them.
+            if attempt < MAX_ATTEMPTS:
+                logger.warning(
+                    "Database is not ready (attempt %d/%d); retrying in %d seconds",
+                    attempt,
+                    MAX_ATTEMPTS,
+                    RETRY_DELAY_SECONDS,
+                )
+                time.sleep(RETRY_DELAY_SECONDS)
+        else:
             logger.info("Database is ready")
             return
-        except Exception:
-            # If target database is not ready or does not exist yet (e.g. fresh local SQL Server)
-            pass
 
-        # 2. Ensure database exists via master
-        if db_name:
-            master_url = url.set(database="master")
-            engine = create_engine(master_url, isolation_level="AUTOCOMMIT")
-            with engine.connect() as conn:
-                logger.info(f"Ensuring database '{db_name}' exists...")
-                try:
-                    conn.execute(
-                        text(f"IF DB_ID('{db_name}') IS NULL CREATE DATABASE [{db_name}]")
-                    )
-                except Exception as create_err:
-                    if "1801" in str(create_err) or "already exists" in str(create_err):
-                        logger.info(f"Database '{db_name}' already exists.")
-                    else:
-                        raise create_err
-            logger.info("Database is ready")
-    except Exception as e:
-        logger.error(f"Error checking/creating database: {e}")
-        raise e
+    message = (
+        f"Database readiness check failed after {MAX_ATTEMPTS} attempts. "
+        "The target database must already exist: locally, use the db-init "
+        "Compose service; on Azure SQL Database, create it in the Azure portal "
+        "before startup. Use a named application database rather than master, "
+        "and check its connection settings and permissions."
+    )
+    logger.error(message)
+    raise RuntimeError(message) from None
 
 
 def main() -> None:

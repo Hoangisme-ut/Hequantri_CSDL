@@ -2,6 +2,7 @@
 # Correct Vietnamese words in repository content and place names.
 Ba = "Ba"
 ba = "ba"
+Nam = "Nam"
 # Valid Vietnamese verb used in the QA reports.
 thay = "thay"
 # Existing re-actors/alls-green workflow and job identifiers.

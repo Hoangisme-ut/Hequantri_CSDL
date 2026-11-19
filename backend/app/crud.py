@@ -6,14 +6,13 @@ from typing import Any
 from sqlmodel import Session, col, select
 
 from app.core.security import get_password_hash, verify_password
+from app.core.transactions import commit_with_conflicts
 from app.models import (
     Artifact,
     ArtifactContentPublic,
     ArtifactSummary,
     ArtifactTranslation,
     FeedbackStatus,
-    Item,
-    ItemCreate,
     Language,
     Media,
     MediaPublic,
@@ -39,7 +38,12 @@ def get_role_by_name(*, session: Session, name: str) -> Role | None:
     return session.exec(select(Role).where(Role.name == name)).first()
 
 
-def create_user(*, session: Session, user_create: UserCreate) -> User:
+def create_user(
+    *,
+    session: Session,
+    user_create: UserCreate,
+    email_conflict_detail: str = "The user with this email already exists in the system.",
+) -> User:
     # [Smart Heritage] user mới tự có role: superuser -> admin, còn lại -> visitor
     role = get_role_by_name(
         session=session,
@@ -53,12 +57,20 @@ def create_user(*, session: Session, user_create: UserCreate) -> User:
         },
     )
     session.add(db_obj)
-    session.commit()
+    commit_with_conflicts(
+        session, "ix_user_email", status_code=400, detail=email_conflict_detail
+    )
     session.refresh(db_obj)
     return db_obj
 
 
-def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any:
+def update_user(
+    *,
+    session: Session,
+    db_user: User,
+    user_in: UserUpdate,
+    email_conflict_detail: str = "User with this email already exists",
+) -> Any:
     user_data = user_in.model_dump(exclude_unset=True)
     extra_data: dict[str, Any] = {}
     # [Smart Heritage] đổi is_superuser mà không chỉ định role_id -> đổi role theo
@@ -88,7 +100,11 @@ def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any:
         extra_data["hashed_password"] = get_password_hash(user_data["password"])
     db_user.sqlmodel_update(user_data, update=extra_data)
     session.add(db_user)
-    session.commit()
+    # Two requests can pass the email pre-check together; the unique index decides.
+    # The loser is rolled back and gets 409 instead of an unhandled HTTP 500.
+    commit_with_conflicts(
+        session, "ix_user_email", status_code=409, detail=email_conflict_detail
+    )
     session.refresh(db_user)
     return db_user
 
@@ -120,14 +136,6 @@ def authenticate(*, session: Session, email: str, password: str) -> User | None:
         session.commit()
         session.refresh(db_user)
     return db_user
-
-
-def create_item(*, session: Session, item_in: ItemCreate, owner_id: uuid.UUID) -> Item:
-    db_item = Item.model_validate(item_in, update={"owner_id": owner_id})
-    session.add(db_item)
-    session.commit()
-    session.refresh(db_item)
-    return db_item
 
 
 # =============================================================================
@@ -303,7 +311,7 @@ def build_artifact_summaries(
 
 
 # =============================================================================
-# [Smart Heritage] Lượt xem / lịch sử tham quan
+# [Smart Heritage] Visit logging and history
 # Quy tắc ghi lượt xem (thống nhất với app - P4, BR-05):
 #  - App chỉ gọi POST /visits/ khi TriggerManager hiện nội dung hiện vật
 #    (vào vùng beacon mới), KHÔNG gọi mỗi lần nhận tín hiệu BLE.
