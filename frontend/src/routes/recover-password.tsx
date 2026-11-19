@@ -4,8 +4,9 @@ import {
   createFileRoute,
   Link as RouterLink,
   redirect,
+  useNavigate,
 } from "@tanstack/react-router"
-import { CheckCircle2, Mail } from "lucide-react"
+import { CheckCircle2, LogIn, Mail } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -51,6 +52,7 @@ export const Route = createFileRoute("/recover-password")({
 
 function RecoverPassword() {
   const [submitted, setSubmitted] = useState(false)
+  const navigate = useNavigate()
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -79,38 +81,6 @@ function RecoverPassword() {
   const onSubmit = async (data: FormData) => {
     if (mutation.isPending) return
     mutation.mutate(data)
-  }
-
-  if (submitted) {
-    return (
-      <AuthLayout>
-        <div
-          className="flex flex-col items-center gap-4 text-center"
-          role="status"
-          aria-live="polite"
-          data-testid="recovery-sent"
-        >
-          <span className="flex size-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 ring-8 ring-emerald-50/60">
-            <CheckCircle2 aria-hidden="true" className="size-9" />
-          </span>
-          <div>
-            <p className="mb-1 text-xs font-bold uppercase tracking-widest text-emerald-700">
-              Email sent
-            </p>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Check your inbox
-            </h1>
-            <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-              If that email is registered, you will receive a password recovery
-              link shortly. Please check your inbox.
-            </p>
-          </div>
-          <Button asChild variant="outline" className="w-full">
-            <RouterLink to="/login">Back to Sign In</RouterLink>
-          </Button>
-        </div>
-      </AuthLayout>
-    )
   }
 
   return (
@@ -142,6 +112,7 @@ function RecoverPassword() {
                       data-testid="email-input"
                       placeholder="admin@example.com"
                       type="email"
+                      disabled={submitted}
                       {...field}
                     />
                   </FormControl>
@@ -150,21 +121,54 @@ function RecoverPassword() {
               )}
             />
 
-            <LoadingButton
-              type="submit"
-              className="w-full"
-              loading={mutation.isPending}
-            >
-              Continue
-            </LoadingButton>
+            {/* Success banner — hiện sau khi gửi thành công */}
+            {submitted && (
+              <div
+                role="status"
+                aria-live="polite"
+                data-testid="recovery-sent"
+                className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+              >
+                <CheckCircle2
+                  aria-hidden="true"
+                  className="mt-0.5 size-4 shrink-0 text-emerald-600"
+                />
+                <p>
+                  If that email is registered, you will receive a password
+                  recovery link shortly. Please check your inbox.
+                </p>
+              </div>
+            )}
+
+            {/* Nút đổi sang "Back to Sign In" sau khi gửi */}
+            {submitted ? (
+              <Button
+                type="button"
+                className="w-full"
+                onClick={() => navigate({ to: "/login" })}
+              >
+                <LogIn aria-hidden="true" className="size-4" />
+                Back to Sign In
+              </Button>
+            ) : (
+              <LoadingButton
+                type="submit"
+                className="w-full"
+                loading={mutation.isPending}
+              >
+                Continue
+              </LoadingButton>
+            )}
           </div>
 
-          <div className="text-center text-sm">
-            Remember your password?{" "}
-            <RouterLink to="/login" className="underline underline-offset-4">
-              Log in
-            </RouterLink>
-          </div>
+          {!submitted && (
+            <div className="text-center text-sm">
+              Remember your password?{" "}
+              <RouterLink to="/login" className="underline underline-offset-4">
+                Log in
+              </RouterLink>
+            </div>
+          )}
         </form>
       </Form>
     </AuthLayout>
