@@ -72,8 +72,14 @@ void main() {
     );
     expect(find.textContaining('ki?m tra h?p th?'), findsNothing);
     expect(
+      find.byKey(const Key('forgot-password-back-to-login')),
+      findsOneWidget,
+    );
+    expect(
       tester
-          .widget<FilledButton>(find.byKey(const Key('forgot-password-submit')))
+          .widget<FilledButton>(
+            find.byKey(const Key('forgot-password-back-to-login')),
+          )
           .onPressed,
       isNotNull,
     );
