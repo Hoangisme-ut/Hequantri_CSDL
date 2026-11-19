@@ -544,7 +544,7 @@ class _HomePageState extends State<HomePage> {
           )
         else
           SizedBox(
-            height: 254,
+            height: 280,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: sites.length,
@@ -898,34 +898,33 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     if (site.isFallback) ...[
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Text(
                         AppStrings.of(context).siteTranslationFallback,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: HeritagePalette.secondaryText,
+                          fontSize: 10.5,
                         ),
                       ),
                     ],
-                    const SizedBox(height: 5),
-                    SizedBox(
-                      height: 38,
-                      child: Text(
-                        description?.isNotEmpty == true
-                            ? description!
-                            : (isEn
-                                  ? 'No description provided.'
-                                  : 'Chưa có mô tả.'),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: HeritagePalette.secondaryText,
-                        ),
+                    const SizedBox(height: 4),
+                    Text(
+                      description?.isNotEmpty == true
+                          ? description!
+                          : (isEn
+                                ? 'No description provided.'
+                                : 'Chưa có mô tả.'),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: HeritagePalette.secondaryText,
+                        height: 1.25,
                       ),
                     ),
                     if (site.address?.trim().isNotEmpty == true) ...[
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 4),
                       Row(
                         children: [
                           const Icon(
