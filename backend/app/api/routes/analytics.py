@@ -11,6 +11,7 @@ from xml.sax.saxutils import escape
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.worksheet import Worksheet
 from reportlab.lib import colors
@@ -172,6 +173,30 @@ def sites(
         .limit(limit)
     )
     return session.connection().execute(stmt).mappings().all()
+
+
+# Excel evaluates a cell as a formula when its text starts with one of these.
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r", "\n")
+
+
+def _append_row(ws: Any, values: list[Any]) -> None:
+    """Append a row, keeping user-entered text as plain text.
+
+    Text starting with a formula character (for example a Site name such as
+    `=HYPERLINK(...)`) is stored as a string cell with the quote prefix, so
+    Excel shows it literally instead of running it. Control characters that the
+    XLSX format cannot store are removed instead of failing the whole export.
+    """
+    ws.append(
+        [
+            ILLEGAL_CHARACTERS_RE.sub("", value) if isinstance(value, str) else value
+            for value in values
+        ]
+    )
+    for cell in ws[ws.max_row]:
+        if isinstance(cell.value, str) and cell.value.startswith(_FORMULA_PREFIXES):
+            cell.data_type = "s"
+            cell.quotePrefix = True
 
 
 def _format_export_sheet(ws: Any) -> None:
@@ -386,19 +411,21 @@ def export_excel(
     ws = typing_cast(Worksheet, workbook.active)
     ws.title = "Tong quan"
 
-    ws.append(["Chi so", "Gia tri"])
-    ws.append(["Tong luot xem", overview_data["views"]])
-    ws.append(
+    _append_row(ws, ["Chi so", "Gia tri"])
+    _append_row(ws, ["Tong luot xem", overview_data["views"]])
+    _append_row(
+        ws,
         [
             "Nguoi dung duy nhat",
             overview_data["unique_users"],
-        ]
+        ],
     )
-    ws.append(
+    _append_row(
+        ws,
         [
             "Hien vat duoc xem",
             overview_data["artifacts_viewed"],
-        ]
+        ],
     )
 
     _format_export_sheet(ws)
@@ -406,21 +433,23 @@ def export_excel(
     # Sheet 2: Visits by day
     ws = workbook.create_sheet("Luot xem theo ngay")
 
-    ws.append(
+    _append_row(
+        ws,
         [
             "Ngay",
             "Luot xem",
             "Nguoi dung duy nhat",
-        ]
+        ],
     )
 
     for item in daily_data:
-        ws.append(
+        _append_row(
+            ws,
             [
                 item["date"],
                 item["views"],
                 item["unique_users"],
-            ]
+            ],
         )
 
     _format_export_sheet(ws)
@@ -428,23 +457,25 @@ def export_excel(
     # Sheet 3: Statistics by Site
     ws = workbook.create_sheet("Thong ke Site")
 
-    ws.append(
+    _append_row(
+        ws,
         [
             "Site ID",
             "Ten Site",
             "Luot xem",
             "Nguoi dung duy nhat",
-        ]
+        ],
     )
 
     for item in site_data:
-        ws.append(
+        _append_row(
+            ws,
             [
                 str(item["site_id"]),
                 item["name"],
                 item["views"],
                 item["unique_users"],
-            ]
+            ],
         )
 
     _format_export_sheet(ws)
@@ -452,23 +483,25 @@ def export_excel(
     # Sheet 4: Top 10 artifacts
     ws = workbook.create_sheet("Top 10 hien vat")
 
-    ws.append(
+    _append_row(
+        ws,
         [
             "Artifact ID",
             "Ma hien vat",
             "Luot xem",
             "Nguoi dung duy nhat",
-        ]
+        ],
     )
 
     for item in artifact_data:
-        ws.append(
+        _append_row(
+            ws,
             [
                 str(item["artifact_id"]),
                 item["code"],
                 item["views"],
                 item["unique_users"],
-            ]
+            ],
         )
 
     _format_export_sheet(ws)
@@ -476,21 +509,23 @@ def export_excel(
     # Sheet 5: Visits by language
     ws = workbook.create_sheet("Theo ngon ngu")
 
-    ws.append(
+    _append_row(
+        ws,
         [
             "Ma ngon ngu",
             "Ten ngon ngu",
             "Luot xem",
-        ]
+        ],
     )
 
     for item in language_data:
-        ws.append(
+        _append_row(
+            ws,
             [
                 item["code"] or "unknown",
                 item["name"] or "Khong xac dinh",
                 item["views"],
-            ]
+            ],
         )
 
     _format_export_sheet(ws)
