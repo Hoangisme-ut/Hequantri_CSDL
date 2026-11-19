@@ -364,7 +364,7 @@ function InvalidResetLink({ expired = true }: { expired?: boolean }) {
 
 function ResetSuccess() {
   return (
-    <div
+    <section
       className="flex flex-col items-center gap-4 text-center"
       aria-labelledby="reset-success-title"
     >
@@ -391,6 +391,6 @@ function ResetSuccess() {
           Back to Sign In
         </RouterLink>
       </Button>
-    </div>
+    </section>
   )
 }
