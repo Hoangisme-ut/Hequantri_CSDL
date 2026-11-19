@@ -29,23 +29,44 @@ class _HomePageState extends State<HomePage> {
   String _searchQuery = '';
   late final SiteApi _siteApi;
   HttpVisitorApi? _ownedSiteApi;
+  VisitorApi? _visitorApi;
+
   List<VisitorSite> _sites = const [];
   bool _sitesLoading = true;
   int? _sitesErrorStatusCode;
   bool _sitesGenericError = false;
   int _sitesRequestGeneration = 0;
+
+  List<VisitorArtifactSummary> _artifacts = const [];
+  bool _artifactsLoading = false;
+  int? _artifactsErrorStatusCode;
+  bool _artifactsGenericError = false;
+  int _artifactsRequestGeneration = 0;
+
   String? _languageCode;
 
   @override
   void initState() {
     super.initState();
-    final suppliedApi = widget.siteApi;
-    if (suppliedApi != null) {
-      _siteApi = suppliedApi;
+    final suppliedSiteApi = widget.siteApi;
+    final suppliedVisitorApi = widget.visitorApi;
+
+    if (suppliedSiteApi != null) {
+      _siteApi = suppliedSiteApi;
+    } else if (suppliedVisitorApi is SiteApi) {
+      _siteApi = suppliedVisitorApi as SiteApi;
     } else {
       final api = HttpVisitorApi(baseUrl: ApiConfig.baseUrl);
       _siteApi = api;
       _ownedSiteApi = api;
+    }
+
+    if (suppliedVisitorApi != null) {
+      _visitorApi = suppliedVisitorApi;
+    } else if (suppliedSiteApi is VisitorApi) {
+      _visitorApi = suppliedSiteApi as VisitorApi;
+    } else if (suppliedSiteApi == null) {
+      _visitorApi = _ownedSiteApi;
     }
   }
 
@@ -58,6 +79,9 @@ class _HomePageState extends State<HomePage> {
     if (_languageCode == code) return;
     _languageCode = code;
     unawaited(_loadSites());
+    if (_visitorApi != null) {
+      unawaited(_loadArtifacts());
+    }
   }
 
   Future<void> _loadSites() async {
@@ -93,6 +117,41 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _loadArtifacts() async {
+    final api = _visitorApi;
+    if (api == null) return;
+    final generation = ++_artifactsRequestGeneration;
+    setState(() {
+      _artifactsLoading = true;
+      _artifactsErrorStatusCode = null;
+      _artifactsGenericError = false;
+    });
+    try {
+      final page = await api.loadArtifacts(
+        languageCode: _languageCode ?? 'vi',
+        skip: 0,
+        limit: 100,
+      );
+      if (!mounted || generation != _artifactsRequestGeneration) return;
+      setState(() {
+        _artifacts = page.items;
+        _artifactsLoading = false;
+      });
+    } on VisitorApiException catch (error) {
+      if (!mounted || generation != _artifactsRequestGeneration) return;
+      setState(() {
+        _artifactsErrorStatusCode = error.statusCode;
+        _artifactsLoading = false;
+      });
+    } catch (_) {
+      if (!mounted || generation != _artifactsRequestGeneration) return;
+      setState(() {
+        _artifactsGenericError = true;
+        _artifactsLoading = false;
+      });
+    }
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -114,17 +173,18 @@ class _HomePageState extends State<HomePage> {
           (site.address?.toLowerCase().contains(q) ?? false);
     }).toList();
 
-    final filteredArtifacts = sampleArtifacts.where((art) {
+    final filteredArtifacts = _artifacts.where((art) {
       if (_searchQuery.isEmpty) return true;
       final q = _searchQuery.toLowerCase();
-      final title = art.getTitle(isEn ? 'en' : 'vi').toLowerCase();
-      final period = art.period.toLowerCase();
-      final location = art.location.toLowerCase();
-      final category = art.category.toLowerCase();
+      final title = (art.title ?? art.code).toLowerCase();
+      final era = (art.era ?? '').toLowerCase();
+      final code = art.code.toLowerCase();
+      final matchingSite = _sites.where((s) => s.id == art.siteId).firstOrNull;
+      final siteName = matchingSite?.name.toLowerCase() ?? '';
       return title.contains(q) ||
-          period.contains(q) ||
-          location.contains(q) ||
-          category.contains(q);
+          era.contains(q) ||
+          code.contains(q) ||
+          siteName.contains(q);
     }).toList();
 
     final hasNoResults =
@@ -132,6 +192,9 @@ class _HomePageState extends State<HomePage> {
         !_sitesLoading &&
         _sitesErrorStatusCode == null &&
         !_sitesGenericError &&
+        !_artifactsLoading &&
+        _artifactsErrorStatusCode == null &&
+        !_artifactsGenericError &&
         filteredSites.isEmpty &&
         filteredArtifacts.isEmpty;
 
@@ -203,119 +266,109 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(width: 4),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.medium),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Search bar
-            Container(
-              decoration: BoxDecoration(
-                color: colorScheme.surface,
-                borderRadius: BorderRadius.circular(AppRadii.medium),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x06000000),
-                    blurRadius: 10,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (val) => setState(() => _searchQuery = val.trim()),
-                decoration: InputDecoration(
-                  hintText: isEn
-                      ? 'Search heritage, artifacts...'
-                      : 'Tìm kiếm di sản, hiện vật...',
-                  hintStyle: const TextStyle(
-                    color: HeritagePalette.secondaryText,
-                    fontSize: 14,
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.search_rounded,
-                    color: HeritagePalette.secondaryText,
-                  ),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(
-                            Icons.clear,
-                            size: 18,
-                            color: HeritagePalette.secondaryText,
-                          ),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: colorScheme.surface,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppRadii.medium),
-                    borderSide: const BorderSide(color: HeritagePalette.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppRadii.medium),
-                    borderSide: const BorderSide(color: HeritagePalette.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppRadii.medium),
-                    borderSide: const BorderSide(
-                      color: HeritagePalette.actionBlue,
-                      width: 1.8,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.large),
-
-            // Empty State when search returns no match
-            if (hasNoResults)
-              _buildEmptySearchResults(theme, isEn)
-            else ...[
-              // Hero Banner
-              _buildHeroBanner(isEn, theme),
-              const SizedBox(height: AppSpacing.large),
-
-              _buildSitesSection(context, filteredSites, isEn, theme),
-              const SizedBox(height: AppSpacing.large),
-
-              // Highlighted Artifacts
-              if (filteredArtifacts.isNotEmpty) ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        isEn ? 'Highlighted Artifacts' : 'Hiện vật tiêu biểu',
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: HeritagePalette.primaryNavy,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '${filteredArtifacts.length} ${isEn ? 'items' : 'hiện vật'}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: HeritagePalette.secondaryText,
-                        fontWeight: FontWeight.w500,
-                      ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await Future.wait([
+            _loadSites(),
+            if (_visitorApi != null) _loadArtifacts(),
+          ]);
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(AppSpacing.medium),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Search bar
+              Container(
+                decoration: BoxDecoration(
+                  color: colorScheme.surface,
+                  borderRadius: BorderRadius.circular(AppRadii.medium),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x06000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 2),
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.small),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                  decoration: InputDecoration(
+                    hintText: isEn
+                        ? 'Search heritage, artifacts...'
+                        : 'Tìm kiếm di sản, hiện vật...',
+                    hintStyle: const TextStyle(
+                      color: HeritagePalette.secondaryText,
+                      fontSize: 14,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: HeritagePalette.secondaryText,
+                    ),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(
+                              Icons.clear,
+                              size: 18,
+                              color: HeritagePalette.secondaryText,
+                            ),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: colorScheme.surface,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.medium),
+                      borderSide: const BorderSide(
+                        color: HeritagePalette.border,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.medium),
+                      borderSide: const BorderSide(
+                        color: HeritagePalette.border,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.medium),
+                      borderSide: const BorderSide(
+                        color: HeritagePalette.actionBlue,
+                        width: 1.8,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.large),
 
-                // Artifact List
-                ...filteredArtifacts.map((artifact) {
-                  return _buildArtifactCard(context, artifact, isEn, theme);
-                }),
+              // Empty State when search returns no match
+              if (hasNoResults)
+                _buildEmptySearchResults(theme, isEn)
+              else ...[
+                // Hero Banner
+                _buildHeroBanner(isEn, theme),
+                const SizedBox(height: AppSpacing.large),
+
+                _buildSitesSection(context, filteredSites, isEn, theme),
+                const SizedBox(height: AppSpacing.large),
+
+                // Highlighted Artifacts Section
+                if (_visitorApi != null)
+                  _buildArtifactsSection(
+                    context,
+                    filteredArtifacts,
+                    isEn,
+                    theme,
+                  ),
               ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -339,7 +392,7 @@ class _HomePageState extends State<HomePage> {
           Container(
             width: 64,
             height: 64,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: HeritagePalette.background,
               shape: BoxShape.circle,
             ),
@@ -491,7 +544,7 @@ class _HomePageState extends State<HomePage> {
           )
         else
           SizedBox(
-            height: 254,
+            height: 280,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: sites.length,
@@ -499,6 +552,147 @@ class _HomePageState extends State<HomePage> {
                   _buildSiteCard(context, sites[index], isEn, theme),
             ),
           ),
+      ],
+    );
+  }
+
+  Widget _buildArtifactsSection(
+    BuildContext context,
+    List<VisitorArtifactSummary> artifacts,
+    bool isEn,
+    ThemeData theme,
+  ) {
+    final sectionTitle = Text(
+      isEn ? 'Highlighted Artifacts' : 'Hiện vật tiêu biểu',
+      style: theme.textTheme.titleMedium?.copyWith(
+        color: HeritagePalette.primaryNavy,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+
+    Widget stateCard({required Widget child}) => Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.medium),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.medium),
+        border: Border.all(color: HeritagePalette.border),
+      ),
+      child: child,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(child: sectionTitle),
+            if (!_artifactsLoading &&
+                _artifactsErrorStatusCode == null &&
+                !_artifactsGenericError &&
+                _artifacts.isNotEmpty)
+              Text(
+                '${artifacts.length} ${isEn ? 'items' : 'hiện vật'}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: HeritagePalette.secondaryText,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            IconButton(
+              tooltip: isEn ? 'Refresh Artifacts' : 'Tải lại hiện vật',
+              onPressed: _artifactsLoading ? null : _loadArtifacts,
+              icon: const Icon(Icons.refresh),
+              color: HeritagePalette.primaryNavy,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.small),
+        if (_artifactsLoading)
+          stateCard(
+            child: const Center(
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacing.medium),
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          )
+        else if (_artifactsErrorStatusCode != null || _artifactsGenericError)
+          stateCard(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.cloud_off_outlined,
+                  size: 30,
+                  color: theme.colorScheme.error,
+                ),
+                const SizedBox(height: AppSpacing.small),
+                Text(
+                  _artifactsGenericError
+                      ? (isEn
+                            ? 'Could not load artifacts. Please retry.'
+                            : 'Không tải được hiện vật. Vui lòng thử lại.')
+                      : AppStrings.of(context)
+                            .visitorApiError(_artifactsErrorStatusCode),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.small),
+                OutlinedButton.icon(
+                  onPressed: _loadArtifacts,
+                  icon: const Icon(Icons.refresh),
+                  label: Text(isEn ? 'Retry' : 'Thử lại'),
+                ),
+              ],
+            ),
+          )
+        else if (_artifacts.isEmpty)
+          stateCard(
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.museum_outlined,
+                  color: HeritagePalette.secondaryText,
+                ),
+                const SizedBox(width: AppSpacing.small),
+                Expanded(
+                  child: Text(
+                    isEn
+                        ? 'No artifacts are available yet.'
+                        : 'Hiện chưa có hiện vật nào.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: HeritagePalette.secondaryText,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (artifacts.isEmpty)
+          stateCard(
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.search_off_rounded,
+                  color: HeritagePalette.secondaryText,
+                ),
+                const SizedBox(width: AppSpacing.small),
+                Expanded(
+                  child: Text(
+                    isEn
+                        ? 'No artifacts match "$_searchQuery".'
+                        : 'Không có hiện vật nào khớp với "$_searchQuery".',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: HeritagePalette.secondaryText,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ...artifacts.map((artifact) {
+            return _buildArtifactCard(context, artifact, isEn, theme);
+          }),
       ],
     );
   }
@@ -704,34 +898,33 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     if (site.isFallback) ...[
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Text(
                         AppStrings.of(context).siteTranslationFallback,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: HeritagePalette.secondaryText,
+                          fontSize: 10.5,
                         ),
                       ),
                     ],
-                    const SizedBox(height: 5),
-                    SizedBox(
-                      height: 38,
-                      child: Text(
-                        description?.isNotEmpty == true
-                            ? description!
-                            : (isEn
-                                  ? 'No description provided.'
-                                  : 'Chưa có mô tả.'),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: HeritagePalette.secondaryText,
-                        ),
+                    const SizedBox(height: 4),
+                    Text(
+                      description?.isNotEmpty == true
+                          ? description!
+                          : (isEn
+                                ? 'No description provided.'
+                                : 'Chưa có mô tả.'),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: HeritagePalette.secondaryText,
+                        height: 1.25,
                       ),
                     ),
                     if (site.address?.trim().isNotEmpty == true) ...[
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 4),
                       Row(
                         children: [
                           const Icon(
@@ -754,7 +947,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ],
                     const SizedBox(height: 4),
-                    Row(
+                    const Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         Icon(
@@ -789,10 +982,44 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildArtifactCard(
     BuildContext context,
-    Artifact artifact,
+    VisitorArtifactSummary summary,
     bool isEn,
     ThemeData theme,
   ) {
+    final matchingSite = _sites
+        .where((s) => s.id == summary.siteId)
+        .firstOrNull;
+    final siteName =
+        matchingSite?.name ?? (isEn ? 'Heritage Site' : 'Khu di tích');
+    final title = summary.title?.trim().isNotEmpty == true
+        ? summary.title!
+        : summary.code;
+    final era = summary.era?.trim().isNotEmpty == true
+        ? summary.era!
+        : (isEn ? 'Historical period' : 'Thời kỳ lịch sử');
+    final coverUri = Uri.tryParse(summary.coverImageUrl ?? '');
+    final hasCover =
+        coverUri != null &&
+        (coverUri.scheme == 'https' || coverUri.scheme == 'http') &&
+        coverUri.host.isNotEmpty;
+
+    final artifact = Artifact(
+      id: summary.id,
+      titleVi: (summary.languageCode == 'vi' ? summary.title : null) ??
+          summary.title ??
+          summary.code,
+      titleEn: (summary.languageCode == 'en' ? summary.title : null) ??
+          summary.title ??
+          summary.code,
+      period: era,
+      category: isEn ? 'Artifacts' : 'Hiện vật',
+      location: siteName,
+      descriptionVi: '',
+      descriptionEn: '',
+      imageUrl: summary.coverImageUrl ?? '',
+      isFavorite: false,
+    );
+
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.small),
       decoration: BoxDecoration(
@@ -811,7 +1038,7 @@ class _HomePageState extends State<HomePage> {
               MaterialPageRoute(
                 builder: (_) => ArtifactDetailPage(
                   artifact: artifact,
-                  visitorApi: widget.visitorApi,
+                  visitorApi: _visitorApi,
                 ),
               ),
             );
@@ -822,22 +1049,16 @@ class _HomePageState extends State<HomePage> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(AppRadii.small),
-                  child: Image.network(
-                    artifact.imageUrl,
-                    width: 66,
-                    height: 66,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      width: 66,
-                      height: 66,
-                      color: HeritagePalette.background,
-                      child: const Icon(
-                        Icons.museum_outlined,
-                        color: HeritagePalette.secondaryText,
-                        size: 28,
-                      ),
-                    ),
-                  ),
+                  child: hasCover
+                      ? Image.network(
+                          summary.coverImageUrl!,
+                          width: 66,
+                          height: 66,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              _artifactImagePlaceholder(),
+                        )
+                      : _artifactImagePlaceholder(),
                 ),
                 const SizedBox(width: AppSpacing.small),
                 Expanded(
@@ -854,8 +1075,7 @@ class _HomePageState extends State<HomePage> {
                           borderRadius: BorderRadius.circular(AppRadii.pill),
                         ),
                         child: Text(
-                          AppStrings.of(context)
-                              .artifactCategory(artifact.category),
+                          AppStrings.of(context).artifactCategory('Artifacts'),
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -865,7 +1085,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        artifact.getTitle(isEn ? 'en' : 'vi'),
+                        title,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: HeritagePalette.primaryNavy,
@@ -873,6 +1093,17 @@ class _HomePageState extends State<HomePage> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (summary.isFallback) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          AppStrings.of(context).siteTranslationFallback,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: HeritagePalette.secondaryText,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 3),
                       Row(
                         children: [
@@ -884,7 +1115,7 @@ class _HomePageState extends State<HomePage> {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              '${artifact.period} • ${artifact.location}',
+                              '$era • $siteName',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: HeritagePalette.secondaryText,
                                 fontSize: 12,
@@ -911,4 +1142,17 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
+  Widget _artifactImagePlaceholder() => Container(
+    width: 66,
+    height: 66,
+    color: HeritagePalette.background,
+    child: const Center(
+      child: Icon(
+        Icons.museum_outlined,
+        color: HeritagePalette.secondaryText,
+        size: 28,
+      ),
+    ),
+  );
 }
