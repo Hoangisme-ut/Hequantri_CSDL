@@ -34,7 +34,7 @@ test("Reset form remains available with an existing browser session", async ({
   await page.goto("/reset-password?token=diagnostic-token")
 
   await expect(
-    page.getByRole("heading", { name: "Đặt lại mật khẩu" }),
+    page.getByRole("heading", { name: "Reset password" }),
   ).toBeVisible()
 })
 
@@ -75,11 +75,9 @@ test("User can reset password successfully using the link", async ({
 
   await page.getByTestId("new-password-input").fill(newPassword)
   await page.getByTestId("confirm-password-input").fill(newPassword)
-  await page.getByRole("button", { name: "Cập nhật mật khẩu" }).click()
+  await page.getByRole("button", { name: "Update password" }).click()
   await expect(
-    page.getByText(
-      "Bạn có thể quay lại ứng dụng Smart Heritage Mobile và đăng nhập bằng mật khẩu mới.",
-    ),
+    page.getByText("Your password has been updated successfully."),
   ).toBeVisible()
 
   // Check if the user is able to login with the new password
@@ -102,10 +100,10 @@ test("Expired or invalid reset link", async ({ page }) => {
 
   await page.getByTestId("new-password-input").fill(password)
   await page.getByTestId("confirm-password-input").fill(password)
-  await page.getByRole("button", { name: "Cập nhật mật khẩu" }).click()
+  await page.getByRole("button", { name: "Update password" }).click()
 
   await expect(
-    page.getByRole("heading", { name: "Liên kết đã hết hạn" }),
+    page.getByRole("heading", { name: "Link expired" }),
   ).toBeVisible()
 })
 
@@ -135,7 +133,9 @@ test("Weak new password validation", async ({ page, request }) => {
   await page.goto(resetUrl!)
   await page.getByTestId("new-password-input").fill(weakPassword)
   await page.getByTestId("confirm-password-input").fill(weakPassword)
-  await page.getByRole("button", { name: "Cập nhật mật khẩu" }).click()
+  await page.getByRole("button", { name: "Update password" }).click()
 
-  await expect(page.getByText("Mật khẩu cần có ít nhất 8 ký tự.")).toBeVisible()
+  await expect(
+    page.getByText("Password must be at least 8 characters."),
+  ).toBeVisible()
 })

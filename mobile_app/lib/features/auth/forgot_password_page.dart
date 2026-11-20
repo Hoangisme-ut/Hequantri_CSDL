@@ -213,17 +213,42 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                 },
                               ),
                               const SizedBox(height: AppSpacing.large),
-                              AuthSubmitButton(
-                                buttonKey: const Key('forgot-password-submit'),
-                                label: strings.forgotPasswordSubmit,
-                                onPressed: _submit,
-                                isLoading: _isSubmitting,
-                              ),
                               if (_requestSubmitted) ...[
-                                const SizedBox(height: AppSpacing.medium),
                                 _StatusMessage(
                                   message: strings.forgotPasswordSuccess,
                                   isSuccess: true,
+                                ),
+                                const SizedBox(height: AppSpacing.large),
+                                SizedBox(
+                                  height: 52,
+                                  child: FilledButton.icon(
+                                    key: const Key('forgot-password-back-to-login'),
+                                    onPressed: () => Navigator.of(context).pop(),
+                                    icon: const Icon(
+                                      Icons.arrow_back_rounded,
+                                      size: 20,
+                                    ),
+                                    label: Text(strings.forgotPasswordBackToLogin),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: HeritagePalette.primaryNavy,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      textStyle:
+                                          Theme.of(context).textTheme.labelLarge?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.1,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ] else ...[
+                                AuthSubmitButton(
+                                  buttonKey: const Key('forgot-password-submit'),
+                                  label: strings.forgotPasswordSubmit,
+                                  onPressed: _submit,
+                                  isLoading: _isSubmitting,
                                 ),
                               ],
                               if (_errorMessage != null) ...[
