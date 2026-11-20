@@ -34,4 +34,3 @@ scans beacons or plays media correctly on an actual iOS device.
   released media playback.
 - Additional iOS build and physical device testing is required
   before claiming iOS support has been verified.
-  
