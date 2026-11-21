@@ -172,7 +172,7 @@ void main() {
     }
   });
 
-  testWidgets('login retains scan screen and both navigation destinations', (
+  testWidgets('opens the real iBeacon scanner without simulation navigation', (
     WidgetTester tester,
   ) async {
     await openAppShell(tester);
@@ -181,26 +181,10 @@ void main() {
     expect(find.text('Chưa bắt đầu quét'), findsOneWidget);
     expect(find.text('Bắt đầu quét'), findsOneWidget);
 
-    final navigation = find.byType(NavigationBar);
-
-    expect(navigation, findsOneWidget);
-    expect(tester.widget<NavigationBar>(navigation).destinations, hasLength(2));
-
-    expect(
-      find.descendant(
-        of: navigation,
-        matching: find.byIcon(Icons.bluetooth_searching),
-      ),
-      findsOneWidget,
-    );
-
-    expect(
-      find.descendant(
-        of: navigation,
-        matching: find.byIcon(Icons.science_outlined),
-      ),
-      findsOneWidget,
-    );
+    expect(find.byType(BeaconTestPage), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.text('SIMULATION MODE'), findsNothing);
+    expect(find.text('Mô phỏng'), findsNothing);
   });
 
   testWidgets('scan screen scrolls without overflowing on a short display', (
@@ -227,108 +211,6 @@ void main() {
     expect(scrollable.position.maxScrollExtent, greaterThan(0));
   });
 
-  testWidgets('switches to simulation after scanning stops successfully', (
-    WidgetTester tester,
-  ) async {
-    var stopRequested = false;
-
-    await tester.pumpWidget(
-      MyApp(
-        appShell: AppShell(
-          stopScanning: () async {
-            stopRequested = true;
-            return true;
-          },
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byIcon(Icons.science_outlined));
-    await tester.pumpAndSettle();
-
-    expect(stopRequested, isTrue);
-    expect(find.text('SIMULATION MODE'), findsOneWidget);
-  });
-
-  testWidgets('stays on scan tab when stopping scanning is not confirmed', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(
-      MyApp(appShell: AppShell(stopScanning: () async => false)),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(
-      find.descendant(
-        of: find.byType(NavigationBar),
-        matching: find.byIcon(Icons.science_outlined),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('SIMULATION MODE'), findsNothing);
-    expect(find.text('Thuyết minh Beacon'), findsOneWidget);
-    expect(find.text('Đã dừng quét'), findsNothing);
-
-    expect(
-      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
-      0,
-    );
-  });
-
-  testWidgets('navigates to simulation and preserves its behavior', (
-    WidgetTester tester,
-  ) async {
-    await openAppShell(tester);
-
-    await tester.tap(find.byIcon(Icons.science_outlined));
-    await tester.pumpAndSettle();
-
-    expect(find.text('SIMULATION MODE'), findsOneWidget);
-    expect(
-      find.textContaining(
-        'These buttons do not transmit or scan Bluetooth signals.',
-      ),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.text('Simulate Beacon A'));
-    await tester.pump();
-
-    expect(find.text('Notifications triggered: 1'), findsOneWidget);
-    expect(find.text('Duplicate detections suppressed: 0'), findsOneWidget);
-    expect(find.text('Beacon A'), findsWidgets);
-
-    await tester.tap(find.text('Simulate Beacon A'));
-    await tester.pump();
-
-    expect(find.text('Notifications triggered: 1'), findsOneWidget);
-    expect(find.text('Duplicate detections suppressed: 1'), findsOneWidget);
-    expect(
-      find.textContaining('Duplicate notification suppressed.'),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.byIcon(Icons.bluetooth_searching));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Chưa bắt đầu quét'), findsOneWidget);
-
-    await tester.tap(find.byIcon(Icons.science_outlined));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Notifications triggered: 1'), findsOneWidget);
-    expect(find.text('Duplicate detections suppressed: 1'), findsOneWidget);
-
-    await tester.tap(find.text('Reset'));
-    await tester.pump();
-
-    expect(find.text('Notifications triggered: 0'), findsOneWidget);
-    expect(find.text('Duplicate detections suppressed: 0'), findsOneWidget);
-    expect(find.text('No simulated beacon detected yet.'), findsOneWidget);
-  });
-
   testWidgets('uses a centralized Material 3 light and dark theme', (
     WidgetTester tester,
   ) async {
@@ -336,26 +218,25 @@ void main() {
 
     final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
 
-    expect(app.theme?.useMaterial3, isTrue);
-    expect(app.theme?.colorScheme.secondary, HeritagePalette.gold);
-    expect(app.theme?.colorScheme.tertiary, HeritagePalette.deepNavy);
-    expect(app.darkTheme?.useMaterial3, isTrue);
-    expect(app.darkTheme?.colorScheme.brightness, Brightness.dark);
-    expect(app.darkTheme?.colorScheme.secondary, HeritagePalette.gold);
-    expect(app.darkTheme?.colorScheme.tertiary, HeritagePalette.gold);
+    // Verify the light theme configuration.
+    expect(app.theme, isNotNull);
+    expect(app.theme!.useMaterial3, isTrue);
+    expect(app.theme!.colorScheme.secondary, HeritagePalette.gold);
+    expect(app.theme!.colorScheme.tertiary, HeritagePalette.deepNavy);
+
+    // Verify the dark theme configuration.
+    expect(app.darkTheme, isNotNull);
+    expect(app.darkTheme!.useMaterial3, isTrue);
+    expect(app.darkTheme!.colorScheme.brightness, Brightness.dark);
+    expect(app.darkTheme!.colorScheme.secondary, HeritagePalette.gold);
+    expect(app.darkTheme!.colorScheme.tertiary, HeritagePalette.gold);
+
+    // The application follows the device theme.
     expect(app.themeMode, ThemeMode.system);
 
-    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
-    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
-
-    await openAppShell(tester);
-    await tester.tap(find.byIcon(Icons.science_outlined));
-    await tester.pumpAndSettle();
-
-    final simulationLabel = tester.widget<Text>(find.text('SIMULATION MODE'));
-    final activeTheme = Theme.of(tester.element(find.text('SIMULATION MODE')));
-
-    expect(activeTheme.brightness, Brightness.dark);
-    expect(simulationLabel.style?.color, activeTheme.colorScheme.tertiary);
+    // Only the real iBeacon scanner is available.
+    expect(find.byType(BeaconTestPage), findsOneWidget);
+    expect(find.text('SIMULATION MODE'), findsNothing);
+    expect(find.byType(NavigationBar), findsNothing);
   });
 }
