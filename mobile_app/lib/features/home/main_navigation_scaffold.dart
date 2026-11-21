@@ -16,11 +16,13 @@ class MainNavigationScaffold extends StatefulWidget {
     required this.onLocaleChanged,
     this.onLogout,
     this.visitorApi,
+    this.userApi,
   });
 
   final ValueChanged<Locale> onLocaleChanged;
   final VoidCallback? onLogout;
   final VisitorApi? visitorApi;
+  final UserApi? userApi;
 
   @override
   State<MainNavigationScaffold> createState() => _MainNavigationScaffoldState();
@@ -66,6 +68,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
         onLocaleChanged: widget.onLocaleChanged,
         onLogout: widget.onLogout,
         visitorApi: _visitorApi,
+        userApi: widget.userApi ?? (_visitorApi is UserApi ? _visitorApi as UserApi : null),
       ),
     ];
 
