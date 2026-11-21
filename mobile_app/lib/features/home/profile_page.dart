@@ -8,6 +8,7 @@ import '../auth/auth_service.dart';
 import '../auth/auth_session.dart';
 import '../auth/login_page.dart';
 import '../data/visitor_api_service.dart';
+import '../feedback/my_feedbacks_page.dart';
 import '../heritage/beacon_simulation_page.dart';
 import 'history_page.dart';
 
@@ -765,6 +766,27 @@ class ProfilePageState extends State<ProfilePage> {
                       context,
                       MaterialPageRoute(
                         builder: (_) => const BeaconSimulationPage(),
+                      ),
+                    );
+                  },
+                  theme: theme,
+                ),
+                const Divider(
+                  height: 1,
+                  indent: 52,
+                  color: HeritagePalette.border,
+                ),
+                _buildSettingTile(
+                  icon: Icons.rate_review_rounded,
+                  title: isEn ? 'My Reviews & Feedback' : 'Đánh giá của tôi',
+                  subtitle: isEn
+                      ? 'View and edit artifact reviews'
+                      : 'Xem và chỉnh sửa đánh giá hiện vật',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MyFeedbacksPage(api: widget.visitorApi),
                       ),
                     );
                   },

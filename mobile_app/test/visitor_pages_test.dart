@@ -838,6 +838,29 @@ class _FakeVisitorApi implements VisitorApi {
       status: feedbackStatus,
     );
   }
+
+  @override
+  Future<VisitorPage<VisitorFeedback>> loadUserFeedbacks({
+    required AuthToken token,
+    int skip = 0,
+    int limit = 50,
+    bool includeInactive = false,
+  }) async => const VisitorPage(items: [], count: 0);
+
+  @override
+  Future<VisitorFeedback> updateFeedback({
+    required AuthToken token,
+    required String feedbackId,
+    int? rating,
+    String? comment,
+  }) async => VisitorFeedback(
+    id: feedbackId,
+    userId: '50000000-0000-0000-0000-000000000001',
+    artifactId: _artifactId,
+    rating: rating ?? 5,
+    comment: comment,
+    status: 'approved',
+  );
 }
 
 class _DeferredVisitorApi extends _FakeVisitorApi {

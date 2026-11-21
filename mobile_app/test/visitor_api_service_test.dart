@@ -843,4 +843,199 @@ void main() {
       client.close();
     });
   });
+
+  group('HttpVisitorApi.loadUserFeedbacks and updateFeedback', () {
+    test('successfully loads and parses user feedbacks with statuses', () async {
+      final feedbacksJson = jsonEncode({
+        'count': 3,
+        'data': [
+          {
+            'id': '70000000-0000-0000-0000-000000000001',
+            'user_id': '50000000-0000-0000-0000-000000000001',
+            'artifact_id': '20000000-0000-0000-0000-000000000001',
+            'rating': 5,
+            'comment': 'Tuyệt vời',
+            'status': 'approved',
+            'created_at': '2026-11-20T10:00:00Z',
+            'updated_at': null,
+          },
+          {
+            'id': '70000000-0000-0000-0000-000000000002',
+            'user_id': '50000000-0000-0000-0000-000000000001',
+            'artifact_id': '20000000-0000-0000-0000-000000000002',
+            'rating': 4,
+            'comment': 'Đang chờ duyệt nhận xét',
+            'status': 'pending',
+            'created_at': '2026-11-21T08:00:00Z',
+            'updated_at': null,
+          },
+          {
+            'id': '70000000-0000-0000-0000-000000000003',
+            'user_id': '50000000-0000-0000-0000-000000000001',
+            'artifact_id': '20000000-0000-0000-0000-000000000003',
+            'rating': 1,
+            'comment': 'Nội dung vi phạm quy tắc',
+            'status': 'hidden',
+            'created_at': '2026-11-19T08:00:00Z',
+            'updated_at': '2026-11-20T09:00:00Z',
+          },
+        ],
+      });
+
+      http.Request? capturedRequest;
+      final client = MockClient((request) async {
+        capturedRequest = request;
+        return http.Response(feedbacksJson, 200, headers: {'content-type': 'application/json'});
+      });
+
+      final api = HttpVisitorApi(
+        baseUrl: Uri.parse('https://api.example.test'),
+        client: client,
+      );
+
+      final result = await api.loadUserFeedbacks(
+        token: _token,
+        skip: 10,
+        limit: 20,
+        includeInactive: true,
+      );
+
+      expect(capturedRequest?.url.path, '/api/v1/feedbacks/me');
+      expect(capturedRequest?.url.queryParameters['skip'], '10');
+      expect(capturedRequest?.url.queryParameters['limit'], '20');
+      expect(capturedRequest?.url.queryParameters['include_inactive'], 'true');
+      expect(capturedRequest?.headers['authorization'], 'Bearer ${_token.accessToken}');
+
+      expect(result.count, 3);
+      expect(result.items, hasLength(3));
+      expect(result.items[0].rating, 5);
+      expect(result.items[0].status, 'approved');
+      expect(result.items[1].status, 'pending');
+      expect(result.items[2].status, 'hidden');
+      expect(result.items[2].updatedAt, isNotNull);
+
+      client.close();
+    });
+
+    test('successfully updates feedback rating and comment', () async {
+      final updatedJson = jsonEncode({
+        'id': '70000000-0000-0000-0000-000000000001',
+        'user_id': '50000000-0000-0000-0000-000000000001',
+        'artifact_id': '20000000-0000-0000-0000-000000000001',
+        'rating': 4,
+        'comment': 'Đã sửa nhận xét',
+        'status': 'pending',
+        'created_at': '2026-11-20T10:00:00Z',
+        'updated_at': '2026-11-21T12:00:00Z',
+      });
+
+      http.Request? capturedRequest;
+      final client = MockClient((request) async {
+        capturedRequest = request;
+        return http.Response(updatedJson, 200, headers: {'content-type': 'application/json'});
+      });
+
+      final api = HttpVisitorApi(
+        baseUrl: Uri.parse('https://api.example.test'),
+        client: client,
+      );
+
+      final updated = await api.updateFeedback(
+        token: _token,
+        feedbackId: '70000000-0000-0000-0000-000000000001',
+        rating: 4,
+        comment: 'Đã sửa nhận xét',
+      );
+
+      expect(capturedRequest?.method, 'PUT');
+      expect(capturedRequest?.url.path, '/api/v1/feedbacks/70000000-0000-0000-0000-000000000001');
+      final body = jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
+      expect(body['rating'], 4);
+      expect(body['comment'], 'Đã sửa nhận xét');
+
+      expect(updated.id, '70000000-0000-0000-0000-000000000001');
+      expect(updated.rating, 4);
+      expect(updated.comment, 'Đã sửa nhận xét');
+      expect(updated.status, 'pending');
+
+      client.close();
+    });
+
+    test('updateFeedback rejects invalid parameters before network request', () async {
+      final client = MockClient((request) async => http.Response('{}', 200));
+      final api = HttpVisitorApi(
+        baseUrl: Uri.parse('https://api.example.test'),
+        client: client,
+      );
+
+      // Invalid UUID
+      expect(
+        () => api.updateFeedback(
+          token: _token,
+          feedbackId: 'not-a-uuid',
+          rating: 5,
+        ),
+        throwsA(isA<VisitorApiException>()),
+      );
+
+      // Neither rating nor comment provided
+      expect(
+        () => api.updateFeedback(
+          token: _token,
+          feedbackId: '70000000-0000-0000-0000-000000000001',
+        ),
+        throwsA(isA<VisitorApiException>()),
+      );
+
+      // Invalid rating (< 1)
+      expect(
+        () => api.updateFeedback(
+          token: _token,
+          feedbackId: '70000000-0000-0000-0000-000000000001',
+          rating: 0,
+        ),
+        throwsA(isA<VisitorApiException>()),
+      );
+
+      // Comment exceeding 2000 runes
+      expect(
+        () => api.updateFeedback(
+          token: _token,
+          feedbackId: '70000000-0000-0000-0000-000000000001',
+          comment: 'a' * 2001,
+        ),
+        throwsA(isA<VisitorApiException>()),
+      );
+
+      client.close();
+    });
+
+    test('updateFeedback throws VisitorApiException on 404 not found or not owner', () async {
+      final client = MockClient((request) async {
+        return http.Response('{"detail":"Feedback not found"}', 404);
+      });
+
+      final api = HttpVisitorApi(
+        baseUrl: Uri.parse('https://api.example.test'),
+        client: client,
+      );
+
+      await expectLater(
+        api.updateFeedback(
+          token: _token,
+          feedbackId: '70000000-0000-0000-0000-000000000001',
+          rating: 3,
+        ),
+        throwsA(
+          isA<VisitorApiException>().having(
+            (error) => error.statusCode,
+            'statusCode',
+            404,
+          ),
+        ),
+      );
+
+      client.close();
+    });
+  });
 }
