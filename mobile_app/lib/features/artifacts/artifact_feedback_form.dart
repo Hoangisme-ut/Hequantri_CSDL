@@ -28,6 +28,7 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
   bool _submitted = false;
   bool _alreadySubmitted = false;
   bool _isEditing = false;
+  bool _loadingExisting = false;
   String? _submittedStatus;
   VisitorFeedback? _submittedFeedback;
   int _rating = 0;
@@ -38,19 +39,14 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
   void didUpdateWidget(covariant ArtifactFeedbackForm oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.artifactId != widget.artifactId) {
-      // Invalidate an in-flight request before resetting visible state. The
-      // HTTP request may finish normally, but its result must not affect the
-      // form now showing a different artifact.
+      // Invalidate an in-flight request before resetting visible state.
       _requestGeneration++;
-      _rating = 0;
-      _commentController.clear();
-      _submitting = false;
-      _submitted = false;
-      _alreadySubmitted = false;
-      _isEditing = false;
-      _submittedStatus = null;
-      _submittedFeedback = null;
-      _error = null;
+      _resetState();
+      // Load existing feedback for the new artifact if logged in.
+      final token = AuthSessionScope.maybeOf(context)?.readToken();
+      if (token != null) {
+        _loadExistingFeedback(token);
+      }
     }
   }
 
@@ -58,20 +54,86 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final token = AuthSessionScope.maybeOf(context)?.readToken();
-    if (_hasObservedToken && !_sameToken(_observedToken, token)) {
+    final tokenChanged =
+        _hasObservedToken && !_sameToken(_observedToken, token);
+
+    if (tokenChanged) {
       _requestGeneration++;
-      _rating = 0;
-      _commentController.clear();
-      _submitting = false;
-      _submitted = false;
-      _alreadySubmitted = false;
-      _isEditing = false;
-      _submittedStatus = null;
-      _submittedFeedback = null;
-      _error = null;
+      _resetState();
     }
+
+    final wasNull = _observedToken == null;
     _observedToken = token;
     _hasObservedToken = true;
+
+    // Auto-load existing feedback when user logs in or page first builds
+    // with a token — but only if we haven't already loaded or submitted.
+    if (token != null && (wasNull || tokenChanged) && !_submitted) {
+      _loadExistingFeedback(token);
+    }
+  }
+
+  void _resetState() {
+    _rating = 0;
+    _commentController.clear();
+    _submitting = false;
+    _submitted = false;
+    _alreadySubmitted = false;
+    _isEditing = false;
+    _loadingExisting = false;
+    _submittedStatus = null;
+    _submittedFeedback = null;
+    _error = null;
+  }
+
+  /// Fetches the user's existing feedback for this artifact (if any).
+  /// On success, pre-populates the submitted state so the UI shows
+  /// the existing review and allows in-place editing.
+  Future<void> _loadExistingFeedback(AuthToken token) async {
+    final api = widget.api;
+    if (api == null) return;
+    if (!_uuidPattern.hasMatch(widget.artifactId)) return;
+
+    final generation = ++_requestGeneration;
+    final session = AuthSessionScope.maybeOf(context);
+
+    setState(() {
+      _loadingExisting = true;
+      _error = null;
+    });
+
+    try {
+      final page = await api.loadUserFeedbacks(
+        token: token,
+        skip: 0,
+        limit: 100,
+        includeInactive: true,
+      );
+
+      if (!_isCurrentRequest(generation, token, session)) return;
+
+      final existing = page.items.where(
+        (f) => f.artifactId == widget.artifactId,
+      );
+
+      if (existing.isNotEmpty) {
+        final fb = existing.first;
+        setState(() {
+          _submitted = true;
+          _alreadySubmitted = true;
+          _submittedStatus = fb.status;
+          _submittedFeedback = fb;
+          _loadingExisting = false;
+        });
+      } else {
+        setState(() => _loadingExisting = false);
+      }
+    } catch (_) {
+      // Non-critical: silently ignore. User can still submit a new review.
+      if (mounted && generation == _requestGeneration) {
+        setState(() => _loadingExisting = false);
+      }
+    }
   }
 
   bool _sameToken(AuthToken? first, AuthToken? second) {
@@ -135,6 +197,7 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
       }
       setState(() {
         _submitted = true;
+        _alreadySubmitted = true;
         _submittedStatus = feedback.status;
         _submittedFeedback = feedback;
       });
@@ -245,13 +308,33 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
             ),
           ),
           const SizedBox(height: AppSpacing.xSmall),
-          if (_submitted && !_isEditing) ...[
+
+          // Loading spinner while fetching existing feedback
+          if (_loadingExisting)
+            const Padding(
+              key: ValueKey('feedback-loading-existing'),
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.small),
+              child: Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            )
+          else if (_submitted && !_isEditing) ...[
             _StatusMessage(
               key: const ValueKey('feedback-submitted'),
               text: _submittedStatus == 'approved'
                   ? strings.feedbackSubmittedApproved
-                  : strings.feedbackSubmittedPending,
-              color: colors.primary,
+                  : _submittedStatus == 'hidden'
+                      ? (strings.isEnglish
+                          ? 'Your review has been hidden by a moderator.'
+                          : 'Đánh giá của bạn đã bị ẩn bởi kiểm duyệt viên.')
+                      : strings.feedbackSubmittedPending,
+              color: _submittedStatus == 'hidden'
+                  ? colors.error
+                  : colors.primary,
             ),
             if (_submittedFeedback != null) ...[
               const SizedBox(height: AppSpacing.xSmall),
@@ -271,36 +354,70 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
                       );
                     }),
                   ),
-                  TextButton.icon(
-                    key: const ValueKey('feedback-edit-button'),
-                    onPressed: () {
-                      setState(() {
-                        _isEditing = true;
-                        _rating = _submittedFeedback!.rating;
-                        _commentController.text = _submittedFeedback!.comment ?? '';
-                        _error = null;
-                      });
-                    },
-                    icon: const Icon(Icons.edit_outlined, size: 14),
-                    label: Text(strings.feedbackEditTitle),
-                  ),
+                  // Only allow editing if status is pending or approved
+                  if (_submittedStatus != 'hidden')
+                    TextButton.icon(
+                      key: const ValueKey('feedback-edit-button'),
+                      onPressed: () {
+                        setState(() {
+                          _isEditing = true;
+                          _rating = _submittedFeedback!.rating;
+                          _commentController.text =
+                              _submittedFeedback!.comment ?? '';
+                          _error = null;
+                        });
+                      },
+                      icon: const Icon(Icons.edit_outlined, size: 14),
+                      label: Text(strings.feedbackEditTitle),
+                    ),
                 ],
               ),
+              if (_submittedFeedback!.comment != null &&
+                  _submittedFeedback!.comment!.trim().isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.xSmall),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(AppRadii.small),
+                    border: Border.all(color: const Color(0xFFF3F4F6)),
+                  ),
+                  child: Text(
+                    _submittedFeedback!.comment!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: HeritagePalette.bodyText,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ] else if (_isEditing && token != null) ...[
-            Text(strings.feedbackEditTitle, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              strings.feedbackEditTitle,
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: AppSpacing.small),
-            Text(strings.feedbackRatingLabel, style: theme.textTheme.labelLarge),
+            Text(strings.feedbackRatingLabel,
+                style: theme.textTheme.labelLarge),
             Row(
               children: List.generate(5, (index) {
                 final value = index + 1;
                 return IconButton(
                   key: ValueKey('edit-feedback-rating-$value'),
                   tooltip: '$value/5',
-                  onPressed: _submitting ? null : () => setState(() => _rating = value),
+                  onPressed: _submitting
+                      ? null
+                      : () => setState(() => _rating = value),
                   icon: Icon(
-                    value <= _rating ? Icons.star_rounded : Icons.star_outline_rounded,
-                    color: value <= _rating ? const Color(0xFFF4B400) : HeritagePalette.secondaryText,
+                    value <= _rating
+                        ? Icons.star_rounded
+                        : Icons.star_outline_rounded,
+                    color: value <= _rating
+                        ? const Color(0xFFF4B400)
+                        : HeritagePalette.secondaryText,
                     size: 30,
                   ),
                 );
@@ -330,7 +447,9 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: _submitting ? null : () => setState(() => _isEditing = false),
+                    onPressed: _submitting
+                        ? null
+                        : () => setState(() => _isEditing = false),
                     child: Text(strings.isEnglish ? 'Cancel' : 'Hủy'),
                   ),
                 ),
@@ -338,9 +457,14 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
                 Expanded(
                   child: FilledButton.icon(
                     key: const ValueKey('feedback-update-submit'),
-                    onPressed: _submitting ? null : () => _update(token, strings),
+                    onPressed:
+                        _submitting ? null : () => _update(token, strings),
                     icon: _submitting
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
                         : const Icon(Icons.check_rounded),
                     label: Text(strings.feedbackSaveChanges),
                   ),
@@ -369,9 +493,9 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
                   onPressed: _submitting
                       ? null
                       : () => setState(() {
-                          _rating = value;
-                          _error = null;
-                        }),
+                            _rating = value;
+                            _error = null;
+                          }),
                   icon: Icon(
                     value <= _rating
                         ? Icons.star_rounded
@@ -408,7 +532,8 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
               width: double.infinity,
               child: FilledButton.icon(
                 key: const ValueKey('feedback-submit'),
-                onPressed: _submitting ? null : () => _submit(token, strings),
+                onPressed:
+                    _submitting ? null : () => _submit(token, strings),
                 icon: _submitting
                     ? const SizedBox(
                         width: 18,
