@@ -27,7 +27,9 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
   bool _submitting = false;
   bool _submitted = false;
   bool _alreadySubmitted = false;
+  bool _isEditing = false;
   String? _submittedStatus;
+  VisitorFeedback? _submittedFeedback;
   int _rating = 0;
   int _requestGeneration = 0;
   String? _error;
@@ -45,7 +47,9 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
       _submitting = false;
       _submitted = false;
       _alreadySubmitted = false;
+      _isEditing = false;
       _submittedStatus = null;
+      _submittedFeedback = null;
       _error = null;
     }
   }
@@ -61,7 +65,9 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
       _submitting = false;
       _submitted = false;
       _alreadySubmitted = false;
+      _isEditing = false;
       _submittedStatus = null;
+      _submittedFeedback = null;
       _error = null;
     }
     _observedToken = token;
@@ -130,11 +136,61 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
       setState(() {
         _submitted = true;
         _submittedStatus = feedback.status;
+        _submittedFeedback = feedback;
       });
     } on VisitorApiException catch (error) {
       if (!_isCurrentRequest(generation, token, session)) return;
       setState(() {
         _alreadySubmitted = error.statusCode == 409;
+        _error = _errorFor(error, strings);
+      });
+    } catch (_) {
+      if (!_isCurrentRequest(generation, token, session)) return;
+      setState(() => _error = strings.feedbackUnexpectedError);
+    } finally {
+      if (mounted && generation == _requestGeneration) {
+        setState(() => _submitting = false);
+      }
+    }
+  }
+
+  Future<void> _update(AuthToken token, AppStrings strings) async {
+    if (_submitting) return;
+    if (_rating < 1 || _rating > 5) {
+      setState(() => _error = strings.feedbackRatingRequired);
+      return;
+    }
+    final api = widget.api;
+    final feedbackId = _submittedFeedback?.id;
+    if (api == null || feedbackId == null) {
+      setState(() => _error = strings.feedbackApiUnavailable);
+      return;
+    }
+
+    final generation = ++_requestGeneration;
+    final session = AuthSessionScope.maybeOf(context);
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+
+    try {
+      final updated = await api.updateFeedback(
+        token: token,
+        feedbackId: feedbackId,
+        rating: _rating,
+        comment: _commentController.text,
+      );
+      if (!_isCurrentRequest(generation, token, session)) return;
+      setState(() {
+        _submitted = true;
+        _submittedStatus = updated.status;
+        _submittedFeedback = updated;
+        _isEditing = false;
+      });
+    } on VisitorApiException catch (error) {
+      if (!_isCurrentRequest(generation, token, session)) return;
+      setState(() {
         _error = _errorFor(error, strings);
       });
     } catch (_) {
@@ -189,15 +245,109 @@ class _ArtifactFeedbackFormState extends State<ArtifactFeedbackForm> {
             ),
           ),
           const SizedBox(height: AppSpacing.xSmall),
-          if (_submitted)
+          if (_submitted && !_isEditing) ...[
             _StatusMessage(
               key: const ValueKey('feedback-submitted'),
               text: _submittedStatus == 'approved'
                   ? strings.feedbackSubmittedApproved
                   : strings.feedbackSubmittedPending,
               color: colors.primary,
-            )
-          else if (token == null)
+            ),
+            if (_submittedFeedback != null) ...[
+              const SizedBox(height: AppSpacing.xSmall),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: List.generate(5, (index) {
+                      return Icon(
+                        index < _submittedFeedback!.rating
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
+                        size: 20,
+                        color: index < _submittedFeedback!.rating
+                            ? const Color(0xFFF59E0B)
+                            : const Color(0xFFD1D5DB),
+                      );
+                    }),
+                  ),
+                  TextButton.icon(
+                    key: const ValueKey('feedback-edit-button'),
+                    onPressed: () {
+                      setState(() {
+                        _isEditing = true;
+                        _rating = _submittedFeedback!.rating;
+                        _commentController.text = _submittedFeedback!.comment ?? '';
+                        _error = null;
+                      });
+                    },
+                    icon: const Icon(Icons.edit_outlined, size: 14),
+                    label: Text(strings.feedbackEditTitle),
+                  ),
+                ],
+              ),
+            ],
+          ] else if (_isEditing && token != null) ...[
+            Text(strings.feedbackEditTitle, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: AppSpacing.small),
+            Text(strings.feedbackRatingLabel, style: theme.textTheme.labelLarge),
+            Row(
+              children: List.generate(5, (index) {
+                final value = index + 1;
+                return IconButton(
+                  key: ValueKey('edit-feedback-rating-$value'),
+                  tooltip: '$value/5',
+                  onPressed: _submitting ? null : () => setState(() => _rating = value),
+                  icon: Icon(
+                    value <= _rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                    color: value <= _rating ? const Color(0xFFF4B400) : HeritagePalette.secondaryText,
+                    size: 30,
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: AppSpacing.xSmall),
+            TextField(
+              key: const ValueKey('edit-feedback-comment'),
+              controller: _commentController,
+              maxLength: 2000,
+              maxLines: 4,
+              minLines: 2,
+              enabled: !_submitting,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                labelText: strings.feedbackCommentLabel,
+                hintText: strings.feedbackCommentHint,
+                alignLabelWithHint: true,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            if (_error != null) ...[
+              _StatusMessage(text: _error!, color: colors.error),
+              const SizedBox(height: AppSpacing.xSmall),
+            ],
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _submitting ? null : () => setState(() => _isEditing = false),
+                    child: Text(strings.isEnglish ? 'Cancel' : 'Hủy'),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.small),
+                Expanded(
+                  child: FilledButton.icon(
+                    key: const ValueKey('feedback-update-submit'),
+                    onPressed: _submitting ? null : () => _update(token, strings),
+                    icon: _submitting
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.check_rounded),
+                    label: Text(strings.feedbackSaveChanges),
+                  ),
+                ),
+              ],
+            ),
+          ] else if (token == null)
             _StatusMessage(
               key: const ValueKey('feedback-sign-in-required'),
               text: strings.feedbackSignInRequired,
