@@ -493,8 +493,10 @@ class _FeedbackCard extends StatelessWidget {
                 icon: const Icon(Icons.edit_outlined, size: 14),
                 label: Text(strings.feedbackEditTitle),
                 style: OutlinedButton.styleFrom(
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   foregroundColor: HeritagePalette.primaryNavy,
-                  side: BorderSide(color: HeritagePalette.border),
+                  side: const BorderSide(color: HeritagePalette.border),
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   shape: RoundedRectangleBorder(
