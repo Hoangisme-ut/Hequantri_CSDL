@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_application_1/beacon_simulation_page.dart' as task4;
 import 'package:flutter_application_1/features/auth/auth_service.dart';
 import 'package:flutter_application_1/features/home/home_page.dart';
 import 'package:flutter_application_1/features/home/profile_page.dart';
@@ -45,7 +44,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('authenticated Home and Profile beacon entries open Task 4', (
+  testWidgets('Home and Profile open real iBeacon scanner', (
     WidgetTester tester,
   ) async {
     final client = _FakeAuthHttpClient();
@@ -61,6 +60,7 @@ void main() {
         find.byKey(const Key('login-password')),
         'password123',
       );
+
       final submit = find.byKey(const Key('login-submit'));
       await tester.ensureVisible(submit);
       await tester.pumpAndSettle();
@@ -74,17 +74,10 @@ void main() {
       expect(find.byType(BeaconTestPage), findsOneWidget);
       expect(find.text('Bắt đầu quét'), findsOneWidget);
 
-      await tester.tap(find.byIcon(Icons.science_outlined));
-      await tester.pumpAndSettle();
-
-      expect(find.text('SIMULATION MODE'), findsOneWidget);
-
-      final simulation = tester.widget<task4.BeaconSimulationPage>(
-        find.byType(task4.BeaconSimulationPage),
-      );
-
-      expect(simulation.readToken, isNotNull);
-      expect(simulation.readToken!()?.accessToken, 'test-token');
+      // Simulation mode must not appear in the interface.
+      expect(find.text('SIMULATION MODE'), findsNothing);
+      expect(find.text('Mô phỏng'), findsNothing);
+      expect(find.byIcon(Icons.science_outlined), findsNothing);
 
       await goBackFromBeaconTools(tester);
 
@@ -97,6 +90,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(AppShell), findsOneWidget);
+      expect(find.byType(BeaconTestPage), findsOneWidget);
 
       await goBackFromBeaconTools(tester);
 
@@ -112,6 +106,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(AppShell), findsOneWidget);
+      expect(find.byType(BeaconTestPage), findsOneWidget);
 
       await goBackFromBeaconTools(tester);
 
@@ -122,7 +117,7 @@ void main() {
     }
   });
 
-  testWidgets('Task 4 opened from Home receives the login token', (
+  testWidgets('Real iBeacon scanner receives login token', (
     WidgetTester tester,
   ) async {
     final client = _FakeAuthHttpClient();
@@ -148,16 +143,13 @@ void main() {
       await tester.tap(find.byTooltip('Thuyết minh iBeacon'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.science_outlined));
-      await tester.pumpAndSettle();
-
-      final simulation = tester.widget<task4.BeaconSimulationPage>(
-        find.byType(task4.BeaconSimulationPage),
+      final scanner = tester.widget<BeaconTestPage>(
+        find.byType(BeaconTestPage),
       );
 
-      expect(simulation.readToken, isNotNull);
-      expect(simulation.readToken!()?.accessToken, 'test-token');
-      expect(simulation.languageCode, 'vi');
+      expect(scanner.readToken, isNotNull);
+      expect(scanner.readToken!()?.accessToken, 'test-token');
+      expect(scanner.languageCode, 'vi');
       expect(client.calls, 1);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
