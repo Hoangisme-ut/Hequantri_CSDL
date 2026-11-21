@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_map/flutter_map.dart';
+
 import 'package:flutter_application_1/features/data/visitor_api_service.dart';
 import 'package:flutter_application_1/features/home/map_page.dart';
 import 'package:flutter_application_1/l10n/app_strings.dart';
@@ -23,16 +25,27 @@ void main() {
     await tester.pumpWidget(_app(api));
     await tester.pumpAndSettle();
 
+    // Verify the real map is displayed.
+    expect(find.byType(FlutterMap), findsOneWidget);
+
+    // Verify marker coordinates come from Backend data.
     expect(
-      find.textContaining('Bản đồ nền và vị trí trực tiếp'),
+      find.byKey(
+        const ValueKey('map-marker-10000000-0000-0000-0000-000000000001'),
+      ),
       findsOneWidget,
     );
+
+    // Verify site information.
     expect(find.text(_site.name), findsOneWidget);
     expect(find.textContaining('10.7875, 106.7021'), findsOneWidget);
+
     expect(find.text('Văn Miếu - Quốc Tử Giám'), findsNothing);
 
+    // Open the site detail page.
     await tester.tap(find.text(_site.name));
     await tester.pumpAndSettle();
+
     expect(find.text('Nội dung do API cung cấp.'), findsOneWidget);
   });
 
@@ -43,10 +56,12 @@ void main() {
 
     await tester.pumpWidget(_app(api));
     await tester.pumpAndSettle();
+
     expect(find.text('Thử lại'), findsOneWidget);
 
     await tester.tap(find.text('Thử lại'));
     await tester.pumpAndSettle();
+
     expect(api.calls, 2);
     expect(find.text('Chưa có địa điểm di sản nào.'), findsOneWidget);
   });
@@ -54,6 +69,7 @@ void main() {
   testWidgets('Map reloads Site names when locale changes', (tester) async {
     final api = _FakeSiteApi();
     final locale = ValueNotifier(const Locale('vi'));
+
     addTearDown(locale.dispose);
 
     await tester.pumpWidget(
@@ -68,15 +84,18 @@ void main() {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          home: MapPage(siteApi: api),
+          home: MapPage(siteApi: api, enableMapTiles: false),
         ),
       ),
     );
+
     await tester.pumpAndSettle();
+
     expect(api.requestedLanguages, ['vi']);
 
     locale.value = const Locale('en');
     await tester.pumpAndSettle();
+
     expect(api.requestedLanguages, ['vi', 'en']);
   });
 }
@@ -90,13 +109,14 @@ Widget _app(SiteApi api) => MaterialApp(
     GlobalWidgetsLocalizations.delegate,
     GlobalCupertinoLocalizations.delegate,
   ],
-  home: MapPage(siteApi: api),
+  home: MapPage(siteApi: api, enableMapTiles: false),
 );
 
 class _FakeSiteApi implements SiteApi {
   int calls = 0;
   bool failNext = false;
   List<VisitorSite> sites = const [];
+
   final requestedLanguages = <String>[];
 
   @override
@@ -107,10 +127,12 @@ class _FakeSiteApi implements SiteApi {
   }) async {
     calls++;
     requestedLanguages.add(languageCode);
+
     if (failNext) {
       failNext = false;
       throw const VisitorApiException('unavailable', statusCode: 503);
     }
+
     return VisitorPage(items: sites, count: sites.length);
   }
 
