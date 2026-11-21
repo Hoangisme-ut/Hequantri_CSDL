@@ -345,6 +345,35 @@ class AppStrings {
       ? 'Could not submit feedback. Please retry.'
       : 'Không gửi được đánh giá. Vui lòng thử lại.';
 
+  String get myFeedbacksTitle =>
+      isEnglish ? 'My Reviews' : 'Đánh giá của tôi';
+  String get feedbackEditTitle =>
+      isEnglish ? 'Edit Review' : 'Chỉnh sửa đánh giá';
+  String get feedbackStatusPending =>
+      isEnglish ? 'Pending Review' : 'Đang chờ duyệt';
+  String get feedbackStatusApproved =>
+      isEnglish ? 'Approved' : 'Đã duyệt';
+  String get feedbackStatusHidden =>
+      isEnglish ? 'Hidden' : 'Đã ẩn';
+  String get feedbackEmptyTitle =>
+      isEnglish ? 'No reviews yet' : 'Chưa có đánh giá nào';
+  String get feedbackEmptySubtitle => isEnglish
+      ? 'Reviews you submit for artifacts will appear here.'
+      : 'Các đánh giá hiện vật bạn gửi sẽ hiển thị tại đây.';
+  String get feedbackUpdateSuccess =>
+      isEnglish ? 'Review updated successfully.' : 'Cập nhật đánh giá thành công.';
+  String get feedbackUpdateError =>
+      isEnglish ? 'Could not update review. Please retry.' : 'Không thể cập nhật đánh giá. Vui lòng thử lại.';
+  String get feedbackEditNotice => isEnglish
+      ? 'Note: Updating the comment will send this review back for admin review.'
+      : 'Lưu ý: Thay đổi nhận xét sẽ chuyển đánh giá về trạng thái chờ duyệt.';
+  String get feedbackSaveChanges =>
+      isEnglish ? 'Save Changes' : 'Lưu thay đổi';
+  String get feedbackNoComment =>
+      isEnglish ? 'No comment provided.' : 'Không có nhận xét.';
+  String get feedbackExploreArtifacts =>
+      isEnglish ? 'Explore Artifacts' : 'Khám phá hiện vật';
+
   String get beaconContentLoadError => isEnglish
       ? 'Could not load beacon content. Please retry.'
       : 'Không tải được nội dung beacon. Vui lòng thử lại.';
