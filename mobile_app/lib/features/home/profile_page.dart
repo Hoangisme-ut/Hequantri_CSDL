@@ -244,68 +244,118 @@ class ProfilePageState extends State<ProfilePage> {
   void _confirmLogout(BuildContext context, bool isEn) {
     showDialog<void>(
       context: context,
+      barrierDismissible: true,
       builder: (ctx) {
         final theme = Theme.of(ctx);
-        return AlertDialog(
+        return Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.large),
           ),
-          title: Text(
-            isEn ? 'Log Out' : 'Đăng xuất',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: HeritagePalette.primaryNavy,
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Icon vòng tròn cảnh báo ──
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFEF2F2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.logout_rounded,
+                    color: Color(0xFFEF4444),
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // ── Tiêu đề ──
+                Text(
+                  isEn ? 'Log Out' : 'Đăng xuất',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: HeritagePalette.primaryNavy,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // ── Nội dung ──
+                Text(
+                  isEn
+                      ? 'Are you sure you want to log out of the application?'
+                      : 'Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng?',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: HeritagePalette.secondaryText,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // ── Hai nút nằm cạnh nhau ──
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(
+                            color: HeritagePalette.border,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadii.pill),
+                          ),
+                        ),
+                        child: Text(
+                          isEn ? 'Cancel' : 'Hủy',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: HeritagePalette.secondaryText,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFFEF4444),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadii.pill),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          setState(() {
+                            _profile = null;
+                            _lastToken = null;
+                            _isLoading = false;
+                            _errorMessage = null;
+                          });
+                          if (widget.onLogout != null) {
+                            widget.onLogout!();
+                          } else {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                  builder: (_) => const LoginPage()),
+                              (route) => false,
+                            );
+                          }
+                        },
+                        child: Text(
+                          isEn ? 'Log Out' : 'Đăng xuất',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          content: Text(
-            isEn
-                ? 'Are you sure you want to log out of the application?'
-                : 'Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng?',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: HeritagePalette.bodyText,
-            ),
-          ),
-          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(
-                isEn ? 'Cancel' : 'Hủy',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: HeritagePalette.secondaryText,
-                ),
-              ),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFEF4444),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadii.pill),
-                ),
-              ),
-              onPressed: () {
-                Navigator.pop(ctx);
-                setState(() {
-                  _profile = null;
-                  _lastToken = null;
-                  _isLoading = false;
-                  _errorMessage = null;
-                });
-                if (widget.onLogout != null) {
-                  widget.onLogout!();
-                } else {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const LoginPage()),
-                    (route) => false,
-                  );
-                }
-              },
-              child: Text(
-                isEn ? 'Log Out' : 'Đăng xuất',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
         );
       },
     );
@@ -1173,8 +1223,8 @@ class ProfilePageState extends State<ProfilePage> {
 
     return SizedBox(
       width: double.infinity,
-      height: 50,
-      child: OutlinedButton.icon(
+      height: 52,
+      child: ElevatedButton.icon(
         key: const Key('profile-logout-button'),
         onPressed: () => _confirmLogout(context, isEn),
         icon: const Icon(
@@ -1184,13 +1234,18 @@ class ProfilePageState extends State<ProfilePage> {
         ),
         label: Text(
           isEn ? 'Log Out' : 'Đăng xuất',
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: const Color(0xFFEF4444),
+          style: const TextStyle(
+            color: Color(0xFFEF4444),
             fontWeight: FontWeight.bold,
+            fontSize: 15,
           ),
         ),
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Color(0xFFFCA5A5)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFFEF2F2),
+          foregroundColor: const Color(0xFFEF4444),
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          side: const BorderSide(color: Color(0xFFFECACA), width: 1.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.pill),
           ),
