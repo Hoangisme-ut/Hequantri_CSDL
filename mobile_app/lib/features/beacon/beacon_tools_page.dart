@@ -2,8 +2,6 @@ import 'dart:async';
 
 import 'package:dchs_flutter_beacon/dchs_flutter_beacon.dart';
 import 'package:flutter/material.dart';
-
-import '../../beacon_simulation_page.dart';
 import '../../l10n/app_strings.dart';
 import '../../shared/config/api_config.dart';
 import '../../theme/app_theme.dart';
@@ -18,7 +16,8 @@ import 'beacon_content_controller.dart';
 import 'beacon_content_service.dart';
 import 'beacon_scanner.dart';
 
-class AppShell extends StatefulWidget {
+
+class AppShell extends StatelessWidget {
   const AppShell({
     super.key,
     this.catalog,
@@ -39,85 +38,18 @@ class AppShell extends StatefulWidget {
   final bool isDemoSession;
 
   @override
-  State<AppShell> createState() => _AppShellState();
-}
-
-class _AppShellState extends State<AppShell> {
-  final _scanPageKey = GlobalKey<BeaconTestPageState>();
-
-  int _selectedIndex = 0;
-  bool _switching = false;
-
-  Future<void> _onDestinationSelected(int index) async {
-    if (index == _selectedIndex || _switching) return;
-
-    _switching = true;
-
-    try {
-      if (_selectedIndex == 0) {
-        final scanPage = _scanPageKey.currentState;
-
-        if (scanPage?.isBusy ?? false) return;
-
-        final canSwitch = widget.stopScanning != null
-            ? await widget.stopScanning!()
-            : await (scanPage?.stopScanningIfNeeded() ?? Future.value(true));
-
-        if (!mounted || !canSwitch) return;
-      }
-
-      if (mounted) {
-        setState(() => _selectedIndex = index);
-      }
-    } finally {
-      _switching = false;
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     final session = AuthSessionScope.maybeOf(context);
-    final readToken = widget.readToken ?? session?.readToken;
     final languageCode = Localizations.localeOf(context).languageCode;
-    final isEnglish = AppStrings.of(context).isEnglish;
 
-    return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: [
-          BeaconTestPage(
-            key: _scanPageKey,
-            isActive: _selectedIndex == 0,
-            readToken: readToken,
-            languageCode: languageCode,
-            visitorApi: widget.visitorApi,
-            siteApi: widget.siteApi,
-          ),
-          BeaconSimulationPage(
-            isActive: _selectedIndex == 1,
-            readToken: readToken,
-            languageCode: languageCode,
-          ),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: _onDestinationSelected,
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.bluetooth_searching),
-            label: isEnglish ? 'Beacon guide' : 'Quét Beacon',
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.science_outlined),
-            label: isEnglish ? 'Simulation' : 'Mô phỏng',
-          ),
-        ],
-      ),
+    return BeaconTestPage(
+      readToken: readToken ?? session?.readToken,
+      languageCode: languageCode,
+      visitorApi: visitorApi,
+      siteApi: siteApi,
     );
   }
 }
-
 class BeaconTestPage extends StatefulWidget {
   const BeaconTestPage({
     super.key,
