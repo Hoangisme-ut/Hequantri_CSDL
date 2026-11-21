@@ -323,6 +323,48 @@ class VisitorPage<T> {
   final int count;
 }
 
+class UserProfile {
+  const UserProfile({
+    required this.id,
+    required this.email,
+    this.fullName,
+    this.roleName,
+    this.isActive = true,
+    this.isSuperuser = false,
+    this.createdAt,
+    this.roleId,
+    this.languageId,
+  });
+
+  final String id;
+  final String email;
+  final String? fullName;
+  final String? roleName;
+  final bool isActive;
+  final bool isSuperuser;
+  final DateTime? createdAt;
+  final String? roleId;
+  final String? languageId;
+
+  factory UserProfile.fromJson(Map<String, dynamic> json) {
+    return UserProfile(
+      id: _responseUuid(json, 'id'),
+      email: json['email'] as String,
+      fullName: json['full_name'] as String?,
+      roleName: json['role_name'] as String?,
+      isActive: json['is_active'] as bool? ?? true,
+      isSuperuser: json['is_superuser'] as bool? ?? false,
+      createdAt: _dateOrNull(json['created_at']),
+      roleId: _optionalResponseUuid(json, 'role_id'),
+      languageId: _optionalResponseUuid(json, 'language_id'),
+    );
+  }
+}
+
+abstract interface class UserApi {
+  Future<UserProfile> loadCurrentUser({required AuthToken token});
+}
+
 abstract interface class SiteApi {
   Future<VisitorPage<VisitorSite>> loadSites({
     required String languageCode,
@@ -388,7 +430,7 @@ abstract interface class VisitorApi {
   });
 }
 
-class HttpVisitorApi implements VisitorApi, SiteApi {
+class HttpVisitorApi implements VisitorApi, SiteApi, UserApi {
   HttpVisitorApi({required Uri baseUrl, http.Client? client})
     : _baseUrl = _validateBaseUrl(baseUrl),
       _client = client ?? http.Client(),
@@ -716,6 +758,18 @@ class HttpVisitorApi implements VisitorApi, SiteApi {
       );
     }
     return feedback;
+  }
+
+  @override
+  Future<UserProfile> loadCurrentUser({required AuthToken token}) async {
+    final response = await _send(
+      () => _client.get(
+        _uri('/users/me'),
+        headers: _headers(token),
+      ),
+    );
+
+    return UserProfile.fromJson(_decodeObject(response));
   }
 
   void close() {
