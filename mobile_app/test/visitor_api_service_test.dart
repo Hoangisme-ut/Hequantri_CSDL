@@ -739,4 +739,108 @@ void main() {
     );
     failedMutationClient.close();
   });
+
+  group('loadCurrentUser', () {
+    const validUserJson = '''
+    {
+      "id": "11111111-1111-1111-1111-111111111111",
+      "email": "quochung123@example.com",
+      "is_active": true,
+      "is_superuser": false,
+      "full_name": "Quoc Hung",
+      "role_name": "Visitor",
+      "created_at": "2026-11-20T00:00:00Z",
+      "role_id": "22222222-2222-2222-2222-222222222222",
+      "language_id": "33333333-3333-3333-3333-333333333333"
+    }
+    ''';
+
+    test('successfully loads and parses current user profile', () async {
+      final client = MockClient((request) async {
+        expect(request.method, 'GET');
+        expect(request.url.path, '/api/v1/users/me');
+        expect(request.headers['authorization'], 'Bearer visitor-token');
+        expect(request.headers['accept'], 'application/json');
+
+        return http.Response(validUserJson, 200, headers: {'content-type': 'application/json'});
+      });
+
+      final api = HttpVisitorApi(
+        baseUrl: Uri.parse('https://api.example.test'),
+        client: client,
+      );
+
+      final profile = await api.loadCurrentUser(token: _token);
+
+      expect(profile.id, '11111111-1111-1111-1111-111111111111');
+      expect(profile.email, 'quochung123@example.com');
+      expect(profile.fullName, 'Quoc Hung');
+      expect(profile.roleName, 'Visitor');
+      expect(profile.isActive, isTrue);
+      expect(profile.isSuperuser, isFalse);
+      expect(profile.roleId, '22222222-2222-2222-2222-222222222222');
+      expect(profile.languageId, '33333333-3333-3333-3333-333333333333');
+
+      client.close();
+    });
+
+    test('parses profile with optional null fields', () async {
+      const minimalUserJson = '''
+      {
+        "id": "11111111-1111-1111-1111-111111111111",
+        "email": "user@example.com",
+        "is_active": true,
+        "is_superuser": false,
+        "full_name": null,
+        "role_name": "Admin",
+        "role_id": null,
+        "language_id": null
+      }
+      ''';
+
+      final client = MockClient((request) async {
+        return http.Response(minimalUserJson, 200, headers: {'content-type': 'application/json'});
+      });
+
+      final api = HttpVisitorApi(
+        baseUrl: Uri.parse('https://api.example.test'),
+        client: client,
+      );
+
+      final profile = await api.loadCurrentUser(token: _token);
+
+      expect(profile.id, '11111111-1111-1111-1111-111111111111');
+      expect(profile.email, 'user@example.com');
+      expect(profile.fullName, isNull);
+      expect(profile.roleName, 'Admin');
+      expect(profile.roleId, isNull);
+      expect(profile.languageId, isNull);
+
+      client.close();
+    });
+
+    test('throws VisitorApiException on 401 unauthorized', () async {
+      final client = MockClient((request) async {
+        return http.Response('{"detail":"Not authenticated"}', 401);
+      });
+
+      final api = HttpVisitorApi(
+        baseUrl: Uri.parse('https://api.example.test'),
+        client: client,
+      );
+
+      await expectLater(
+        api.loadCurrentUser(token: _token),
+        throwsA(
+          isA<VisitorApiException>().having(
+            (error) => error.statusCode,
+            'statusCode',
+            401,
+          ),
+        ),
+      );
+
+      client.close();
+    });
+  });
 }

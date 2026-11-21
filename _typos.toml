@@ -3,6 +3,10 @@
 Ba = "Ba"
 ba = "ba"
 Nam = "Nam"
+Vai = "Vai"
+vai = "vai"
+tham = "tham"
+Tham = "Tham"
 # Valid Vietnamese verb used in the QA reports.
 thay = "thay"
 # Existing re-actors/alls-green workflow and job identifiers.
