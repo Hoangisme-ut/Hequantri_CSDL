@@ -376,4 +376,27 @@ class _FakeVisitorApi implements VisitorApi {
     comment: comment,
     status: 'pending',
   );
+
+  @override
+  Future<VisitorPage<VisitorFeedback>> loadUserFeedbacks({
+    required AuthToken token,
+    int skip = 0,
+    int limit = 50,
+    bool includeInactive = false,
+  }) async => const VisitorPage(items: [], count: 0);
+
+  @override
+  Future<VisitorFeedback> updateFeedback({
+    required AuthToken token,
+    required String feedbackId,
+    int? rating,
+    String? comment,
+  }) async => VisitorFeedback(
+    id: feedbackId,
+    userId: userId,
+    artifactId: artifactId,
+    rating: rating ?? 5,
+    comment: comment,
+    status: 'approved',
+  );
 }

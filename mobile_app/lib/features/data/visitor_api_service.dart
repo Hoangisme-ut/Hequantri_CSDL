@@ -428,6 +428,20 @@ abstract interface class VisitorApi {
     required int rating,
     String? comment,
   });
+
+  Future<VisitorPage<VisitorFeedback>> loadUserFeedbacks({
+    required AuthToken token,
+    int skip = 0,
+    int limit = 50,
+    bool includeInactive = false,
+  });
+
+  Future<VisitorFeedback> updateFeedback({
+    required AuthToken token,
+    required String feedbackId,
+    int? rating,
+    String? comment,
+  });
 }
 
 class HttpVisitorApi implements VisitorApi, SiteApi, UserApi {
@@ -755,6 +769,95 @@ class HttpVisitorApi implements VisitorApi, SiteApi, UserApi {
     !{'pending', 'approved'}.contains(feedback.status)) {
       throw const FormatException(
         'Feedback response does not match the submitted artifact or a valid status.',
+      );
+    }
+    return feedback;
+  }
+
+  @override
+  Future<VisitorPage<VisitorFeedback>> loadUserFeedbacks({
+    required AuthToken token,
+    int skip = 0,
+    int limit = 50,
+    bool includeInactive = false,
+  }) async {
+    final response = await _send(
+      () => _client.get(
+        _uri('/feedbacks/me', {
+          'skip': '$skip',
+          'limit': '$limit',
+          'include_inactive': '$includeInactive',
+        }),
+        headers: _headers(token),
+      ),
+    );
+
+    final body = _decodeObject(response);
+
+    return VisitorPage(
+      items: (body['data'] as List<dynamic>)
+          .map((item) => VisitorFeedback.fromJson(item as Map<String, dynamic>))
+          .toList(growable: false),
+      count: body['count'] as int,
+    );
+  }
+
+  @override
+  Future<VisitorFeedback> updateFeedback({
+    required AuthToken token,
+    required String feedbackId,
+    int? rating,
+    String? comment,
+  }) async {
+    _requireRequestUuid(feedbackId, 'feedback_id');
+    if (rating == null && comment == null) {
+      throw const VisitorApiException(
+        'At least rating or comment must be provided to update feedback.',
+        statusCode: 422,
+      );
+    }
+    if (rating != null && (rating < 1 || rating > 5)) {
+      throw const VisitorApiException(
+        'rating must be between 1 and 5.',
+        statusCode: 422,
+      );
+    }
+    final normalizedComment = comment?.trim();
+    if ((normalizedComment?.runes.length ?? 0) > 2000) {
+      throw const VisitorApiException(
+        'comment must not exceed 2000 characters.',
+        statusCode: 422,
+      );
+    }
+
+    final payload = <String, Object?>{};
+    if (rating != null) {
+      payload['rating'] = rating;
+    }
+    if (comment != null) {
+      payload['comment'] = normalizedComment;
+    }
+
+    final response = await _send(
+      () => _client.put(
+        _uri('/feedbacks/$feedbackId'),
+        headers: _headers(token, json: true),
+        body: jsonEncode(payload),
+      ),
+    );
+
+    if (response.statusCode != 200) {
+      throw VisitorApiException(
+        'Unexpected Feedback update response status: ${response.statusCode}.',
+        statusCode: response.statusCode,
+      );
+    }
+
+    final feedback = VisitorFeedback.fromJson(_decodeObject(response));
+    if (feedback.id != feedbackId ||
+        !{'pending', 'approved', 'hidden'}.contains(feedback.status)) {
+      throw const FormatException(
+        'Feedback update response does not match the feedback ID or a valid status.',
       );
     }
     return feedback;
