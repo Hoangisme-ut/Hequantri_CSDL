@@ -85,9 +85,7 @@ test.describe("Analytics & Reports", () => {
 
     await page.getByLabel("From date").fill("")
 
-    await expect(
-      page.getByText("Please select both start and end dates."),
-    ).toBeVisible()
+    await expect(page.getByRole("alert")).toHaveText("Choose both dates.")
 
     await expect(page.getByRole("button", { name: "Export PDF" })).toBeDisabled()
     await expect(page.getByRole("button", { name: "Export Excel" })).toBeDisabled()
