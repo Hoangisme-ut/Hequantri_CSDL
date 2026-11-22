@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test"
 import { firstSuperuser, firstSuperuserPassword } from "./config.ts"
-import { createUser } from "./utils/privateApi.ts"
+import { createAdminUser } from "./utils/privateApi.ts"
 import { randomEmail, randomPassword } from "./utils/random"
 import { logInUser, logOutUser } from "./utils/user"
 
@@ -36,7 +36,7 @@ test.describe("Edit user profile", () => {
   test.beforeAll(async () => {
     email = randomEmail()
     password = randomPassword()
-    await createUser({ email, password })
+    await createAdminUser({ email, password })
   })
 
   test.beforeEach(async ({ page }) => {
@@ -76,7 +76,7 @@ test.describe("Edit user email", () => {
     const password = randomPassword()
     const updatedEmail = randomEmail()
 
-    await createUser({ email, password })
+    await createAdminUser({ email, password })
     await logInUser(page, email, password)
     await page.goto("/account")
 
@@ -97,7 +97,7 @@ test.describe("Cancel edit actions", () => {
   test("Cancel edit action restores original name", async ({ page }) => {
     const email = randomEmail()
     const password = randomPassword()
-    const user = await createUser({ email, password })
+    const user = await createAdminUser({ email, password })
 
     await logInUser(page, email, password)
     await page.goto("/account")
@@ -113,7 +113,7 @@ test.describe("Cancel edit actions", () => {
   test("Cancel edit action restores original email", async ({ page }) => {
     const email = randomEmail()
     const password = randomPassword()
-    await createUser({ email, password })
+    await createAdminUser({ email, password })
 
     await logInUser(page, email, password)
     await page.goto("/account")
@@ -135,7 +135,7 @@ test.describe("Change password", () => {
     const password = randomPassword()
     const newPassword = randomPassword()
 
-    await createUser({ email, password })
+    await createAdminUser({ email, password })
     await logInUser(page, email, password)
 
     await page.goto("/account")
@@ -159,7 +159,7 @@ test.describe("Change password validation", () => {
   test.beforeAll(async () => {
     email = randomEmail()
     password = randomPassword()
-    await createUser({ email, password })
+    await createAdminUser({ email, password })
   })
 
   test.beforeEach(async ({ page }) => {

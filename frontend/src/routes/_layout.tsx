@@ -9,7 +9,7 @@ import { isLoggedIn } from "@/hooks/useAuth"
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
-  beforeLoad: async ({ location }) => {
+  beforeLoad: async () => {
     if (!isLoggedIn()) {
       throw redirect({ to: "/login" })
     }
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/_layout")({
         throwOnError: true,
       })
 
-      if (user.role_name !== "admin" && location.pathname !== "/account") {
+      if (user.role_name !== "admin") {
         throw redirect({ to: "/forbidden" })
       }
     } catch (error) {
