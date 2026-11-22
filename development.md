@@ -4,6 +4,10 @@
 
 For local development, run SQL Server and Mailpit with Docker Compose, and run the FastAPI and Vite development servers locally.
 
+First create and review `.env` as shown in the
+[Windows PowerShell Quick Start](README.md#quick-start-local). For the full stack
+in containers, use that Quick Start or the Compose section below.
+
 Start the supporting services and create the `app` database:
 
 ```bash
@@ -19,6 +23,10 @@ Then, from the `backend` directory, install the dependencies and prepare the dat
 uv sync
 uv run bash scripts/prestart.sh
 ```
+
+Preparation is a separate step: run it once on a new database and again after
+pulling new migrations, before starting FastAPI. The host command above requires
+Bash; the PowerShell Quick Start runs Bash inside the backend container instead.
 
 Start the FastAPI development server:
 
@@ -57,20 +65,36 @@ The build is written to `backend/app/frontend` and served by FastAPI at <http://
 
 ## Full Stack with Docker Compose
 
-To run the backend and built frontend in Docker Compose:
+From the repository root, after creating and reviewing `.env`, run these commands
+in order. Stop if a command fails:
 
-```bash
+```powershell
+docker compose up -d --wait db mailpit proxy
+if ($LASTEXITCODE -ne 0) { throw "Supporting services failed to start." }
+docker compose run --rm db-init
+if ($LASTEXITCODE -ne 0) { throw "Database creation failed." }
+docker compose build backend
+if ($LASTEXITCODE -ne 0) { throw "Backend build failed." }
 docker compose run --rm backend bash scripts/prestart.sh
-docker compose watch
+if ($LASTEXITCODE -ne 0) { throw "Database preparation failed; do not start the backend." }
+docker compose watch backend
 ```
 
-The `db-init` service creates the `app` database automatically before the backend starts.
+`db-init` only creates the empty database `app`; it does not create tables or users.
+The separate prestart command applies migrations and creates missing roles,
+languages and the first superuser. After pulling new migrations, repeat the build
+and prestart commands before starting the backend again.
 
-Backend startup does not create databases or connect to `master`. It checks the
-existing database in `DATABASE_URL` with `SELECT 1`, trying up to 10 times with
-3 seconds between attempts, then runs migrations and initial data setup. If the
-check still fails, startup stops before migrations. When running outside
-Compose, provision the database first; for Azure SQL Database, use the Azure portal.
+Backend startup only starts FastAPI; it does not run migrations or seed data.
+`prestart.sh` checks the existing database in `DATABASE_URL` with `SELECT 1`,
+trying up to 10 times with 3 seconds between attempts. If the check fails,
+preparation stops before migrations and initial data setup. It never connects to
+`master` or creates a database. When running outside Compose, provision the
+database first; for Azure SQL Database, use the Azure portal.
+
+If login fails with SQL errors about missing tables, follow the
+[preparation troubleshooting note](README.md#troubleshooting-preparation-was-skipped).
+Log in with the first superuser credentials from `.env` after preparation succeeds.
 
 Now you can open these URLs:
 
@@ -122,7 +146,7 @@ The backend reads local settings from the `.env` file. Docker Compose also uses 
 After changing variables, make sure you restart the stack:
 
 ```bash
-docker compose watch
+docker compose watch backend
 ```
 
 ## The `.env` File
