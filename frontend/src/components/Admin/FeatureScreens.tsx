@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import {
   Archive,
   Bell,
@@ -38,7 +43,11 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { analyticsService } from "@/services/analytics"
-import { feedbackKeys, feedbackService } from "@/services/feedback"
+import {
+  FeedbackConflictError,
+  feedbackKeys,
+  feedbackService,
+} from "@/services/feedback"
 
 function ScreenCard({
   title,
@@ -94,6 +103,28 @@ function getDefaultDateRange() {
   }
 }
 
+function getDateRangeError(from: string, to: string): string | null {
+  if (!from || !to) return "Choose both dates."
+
+  const dates = [from, to].map((value) => new Date(`${value}T00:00:00Z`))
+  if (
+    [from, to].some(
+      (value, index) =>
+        !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+        value.startsWith("0000-") ||
+        !Number.isFinite(dates[index].getTime()) ||
+        getDateString(dates[index]) !== value,
+    )
+  ) {
+    return "Enter valid dates in YYYY-MM-DD format."
+  }
+  if (from > to) return "The start date must not be later than the end date."
+  if ((dates[1].getTime() - dates[0].getTime()) / 86400000 + 1 > 366) {
+    return "Choose a range of at most 366 days."
+  }
+  return null
+}
+
 export function AnalyticsScreen() {
   const defaultRange = getDefaultDateRange()
 
@@ -103,68 +134,90 @@ export function AnalyticsScreen() {
   const [isExportingPdf, setIsExportingPdf] = useState(false)
   const [isExportingExcel, setIsExportingExcel] = useState(false)
 
-  // Analytics API sử dụng khoảng thời gian [from, to).
-  // Vì vậy, to phải là ngày tiếp theo của ngày kết thúc được chọn.
-  const analyticsFilters = {
-    from: `${fromDate}T00:00:00Z`,
-    to: `${getDateString(
-      new Date(new Date(`${toDate}T00:00:00Z`).getTime() + 86400000),
-    )}T00:00:00Z`,
-    site_id: selectedSiteId || undefined,
-  }
+  const dateRangeError = getDateRangeError(fromDate, toDate)
+  const isDateRangeInvalid = dateRangeError !== null
+
+  // Analytics uses [from, to), so advance the inclusive end date by one day.
+  const analyticsFilters = isDateRangeInvalid
+    ? null
+    : {
+        from: `${fromDate}T00:00:00Z`,
+        to: `${getDateString(
+          new Date(new Date(`${toDate}T00:00:00Z`).getTime() + 86400000),
+        )}T00:00:00Z`,
+        site_id: selectedSiteId || undefined,
+      }
 
   // Dashboard API sử dụng ngày bắt đầu và kết thúc inclusive.
-  const dashboardFilters = {
-    from_date: fromDate,
-    to_date: toDate,
-  }
+  const dashboardFilters = isDateRangeInvalid
+    ? null
+    : {
+        from_date: fromDate,
+        to_date: toDate,
+      }
 
   // Danh sách Site cho bộ lọc, không phụ thuộc Site đang chọn.
-  const siteOptionsFilters = {
-    from: analyticsFilters.from,
-    to: analyticsFilters.to,
-    limit: 100,
-  }
+  const siteOptionsFilters = analyticsFilters
+    ? {
+        from: analyticsFilters.from,
+        to: analyticsFilters.to,
+        limit: 100,
+      }
+    : null
 
   const siteOptionsQuery = useQuery({
     queryKey: ["analytics", "site-options", siteOptionsFilters],
-    queryFn: () => analyticsService.sites(siteOptionsFilters),
+    queryFn: siteOptionsFilters
+      ? () => analyticsService.sites(siteOptionsFilters)
+      : skipToken,
   })
 
   // Analytics API
   const overviewQuery = useQuery({
     queryKey: ["analytics", "overview", analyticsFilters],
-    queryFn: () => analyticsService.overview(analyticsFilters),
+    queryFn: analyticsFilters
+      ? () => analyticsService.overview(analyticsFilters)
+      : skipToken,
   })
 
   const visitsQuery = useQuery({
     queryKey: ["analytics", "visits", analyticsFilters],
-    queryFn: () => analyticsService.visits(analyticsFilters),
+    queryFn: analyticsFilters
+      ? () => analyticsService.visits(analyticsFilters)
+      : skipToken,
   })
 
   const sitesQuery = useQuery({
     queryKey: ["analytics", "sites", analyticsFilters],
-    queryFn: () => analyticsService.sites(analyticsFilters),
+    queryFn: analyticsFilters
+      ? () => analyticsService.sites(analyticsFilters)
+      : skipToken,
   })
 
   const topArtifactsQuery = useQuery({
     queryKey: ["analytics", "top-artifacts", analyticsFilters],
-    queryFn: () =>
-      analyticsService.topArtifacts({
-        ...analyticsFilters,
-        limit: 10,
-      }),
+    queryFn: analyticsFilters
+      ? () =>
+          analyticsService.topArtifacts({
+            ...analyticsFilters,
+            limit: 10,
+          })
+      : skipToken,
   })
 
   // Dashboard API
   const summaryQuery = useQuery({
     queryKey: ["analytics", "dashboard-summary", dashboardFilters],
-    queryFn: () => analyticsService.summary(dashboardFilters),
+    queryFn: dashboardFilters
+      ? () => analyticsService.summary(dashboardFilters)
+      : skipToken,
   })
 
   const languageQuery = useQuery({
     queryKey: ["analytics", "visits-by-language", dashboardFilters],
-    queryFn: () => analyticsService.visitsByLanguage(dashboardFilters),
+    queryFn: dashboardFilters
+      ? () => analyticsService.visitsByLanguage(dashboardFilters)
+      : skipToken,
   })
 
   const dailyVisits = visitsQuery.data ?? []
@@ -177,10 +230,8 @@ export function AnalyticsScreen() {
 
   const numberFormat = new Intl.NumberFormat("vi-VN")
 
-  const isDateRangeInvalid = !fromDate || !toDate || fromDate > toDate
-
   const handleExportPdf = async () => {
-    if (isDateRangeInvalid) return
+    if (!analyticsFilters) return
 
     setIsExportingPdf(true)
 
@@ -197,7 +248,7 @@ export function AnalyticsScreen() {
   }
 
   const handleExportExcel = async () => {
-    if (isDateRangeInvalid) return
+    if (!analyticsFilters) return
 
     setIsExportingExcel(true)
 
@@ -278,7 +329,6 @@ export function AnalyticsScreen() {
 
           <Button
             variant="outline"
-            disabled={isDateRangeInvalid}
             onClick={() => {
               setFromDate(defaultRange.from)
               setToDate(defaultRange.to)
@@ -323,8 +373,8 @@ export function AnalyticsScreen() {
           )}
 
           {isDateRangeInvalid && (
-            <p className="w-full text-xs text-destructive">
-              The start date must not be later than the end date.
+            <p role="alert" className="w-full text-xs text-destructive">
+              {dateRangeError}
             </p>
           )}
         </CardContent>
@@ -750,17 +800,39 @@ export function FeedbackScreen() {
     queryFn: () => feedbackService.list(filters),
   })
 
-  // Duyệt hoặc từ chối phản hồi
+  // Moderate only the version currently displayed to the administrator.
   const moderationMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: ModerationStatus }) =>
-      feedbackService.updateStatus(id, { status }),
+    mutationFn: ({
+      id,
+      status,
+      expected_updated_at,
+    }: {
+      id: string
+      status: ModerationStatus
+      expected_updated_at: string | null
+    }) => feedbackService.updateStatus(id, { status, expected_updated_at }),
+    retry: false,
 
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: feedbackKeys.all,
       })
     },
+    onError: async (error) => {
+      if (error instanceof FeedbackConflictError) {
+        await queryClient.invalidateQueries({ queryKey: feedbackKeys.all })
+      }
+    },
   })
+
+  const requiresReview =
+    moderationMutation.isError &&
+    moderationMutation.error instanceof FeedbackConflictError
+  const moderationBlocked =
+    moderationMutation.isPending ||
+    requiresReview ||
+    feedbackQuery.isFetching ||
+    feedbackQuery.isError
 
   const feedbacks = feedbackQuery.data?.data ?? []
   const totalCount = feedbackQuery.data?.count ?? 0
@@ -795,11 +867,12 @@ export function FeedbackScreen() {
   }
 
   function handleModeration(status: ModerationStatus) {
-    if (!selectedFeedback) return
+    if (!selectedFeedback || moderationBlocked) return
 
     moderationMutation.mutate({
       id: selectedFeedback.id,
       status,
+      expected_updated_at: selectedFeedback.updated_at ?? null,
     })
   }
 
@@ -1091,7 +1164,7 @@ export function FeedbackScreen() {
                 disabled={
                   selectedFeedback?.status === "approved" ||
                   !selectedFeedback ||
-                  moderationMutation.isPending
+                  moderationBlocked
                 }
                 onClick={() => handleModeration("approved")}
               >
@@ -1106,7 +1179,7 @@ export function FeedbackScreen() {
                 disabled={
                   selectedFeedback?.status === "hidden" ||
                   !selectedFeedback ||
-                  moderationMutation.isPending
+                  moderationBlocked
                 }
                 onClick={() => handleModeration("hidden")}
               >
@@ -1121,7 +1194,7 @@ export function FeedbackScreen() {
                 disabled={
                   selectedFeedback?.status === "pending" ||
                   !selectedFeedback ||
-                  moderationMutation.isPending
+                  moderationBlocked
                 }
                 onClick={() => handleModeration("pending")}
               >
@@ -1134,9 +1207,23 @@ export function FeedbackScreen() {
           </Card>
 
           {moderationMutation.isError && (
-            <p className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-destructive">
               {moderationMutation.error.message}
             </p>
+          )}
+
+          {requiresReview && (
+            <Button
+              variant="outline"
+              disabled={
+                !selectedFeedback ||
+                feedbackQuery.isFetching ||
+                feedbackQuery.isError
+              }
+              onClick={() => moderationMutation.reset()}
+            >
+              I have read the updated feedback
+            </Button>
           )}
 
           {moderationMutation.isSuccess && (
