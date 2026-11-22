@@ -1,3 +1,4 @@
+import { isAxiosError } from "axios"
 import {
   type FeedbackAdminStatusUpdate,
   type FeedbackPublic,
@@ -5,7 +6,15 @@ import {
   FeedbacksService,
   type feedbacksReadFeedbacksData,
 } from "@/client"
-import { unwrapApi } from "./api-errors"
+import { toApiError, unwrapApi } from "./api-errors"
+
+export class FeedbackConflictError extends Error {
+  constructor() {
+    super(
+      "Feedback changed. Review the latest content before moderating again.",
+    )
+  }
+}
 
 // Bộ lọc danh sách phản hồi
 export type FeedbackFilters = NonNullable<feedbacksReadFeedbacksData["query"]>
@@ -35,12 +44,17 @@ export const feedbackService = {
     id: string,
     input: FeedbackAdminStatusUpdate,
   ): Promise<FeedbackPublic> {
-    return unwrapApi(
-      FeedbacksService.moderateFeedback({
+    try {
+      const response = await FeedbacksService.moderateFeedback({
         path: { feedback_id: id },
         body: input,
-      }),
-      "Feedback",
-    )
+      })
+      return response.data
+    } catch (error) {
+      if (isAxiosError(error) && error.response?.status === 409) {
+        throw new FeedbackConflictError()
+      }
+      throw toApiError(error, "Feedback")
+    }
   },
 }
