@@ -1,4 +1,3 @@
-
 import { expect, test, type Page } from "@playwright/test"
 import {
   firstSuperuser,
@@ -17,11 +16,10 @@ async function getUsersApiResponse(page: Page) {
 
   expect(token).toBeTruthy()
 
-  // URL được đọc ở môi trường Node.js.
+  // Gọi backend bằng tên service trong Docker Compose.
   const apiBaseUrl =
-    process.env.PLAYWRIGHT_API_URL ?? "http://localhost:8000"
+    process.env.PLAYWRIGHT_API_URL ?? "http://backend:8000"
 
-  // Gửi request từ Playwright APIRequestContext.
   return page.context().request.get(
     `${apiBaseUrl}/api/v1/users/`,
     {
