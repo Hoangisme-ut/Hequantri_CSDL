@@ -139,6 +139,64 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
+  Future<void> _openDirections(VisitorSite site) async {
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
+
+    final name = site.name.trim();
+    final address = site.address?.trim() ?? '';
+
+    // Prefer a recognizable place name and address over coordinates.
+    final destination = address.isNotEmpty ? '$name, $address' : name;
+
+    if (destination.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isEn
+                ? 'This site has no destination information.'
+                : 'Địa điểm này chưa có thông tin chỉ đường.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final uri = Uri.https('www.google.com', '/maps/dir/', {
+      'api': '1',
+      'destination': destination,
+    });
+
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+      if (!mounted) return;
+
+      if (!opened) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isEn
+                  ? 'Could not open Google Maps.'
+                  : 'Không thể mở Google Maps.',
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      debugPrint('Failed to launch Google Maps: $error');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isEn ? 'Could not open Google Maps.' : 'Không thể mở Google Maps.',
+          ),
+        ),
+      );
+    }
+  }
+
   Uri? _coverUri(VisitorSite site) {
     final raw = site.coverImageUrl?.trim();
 
@@ -243,6 +301,7 @@ class _MapPageState extends State<MapPage> {
 
   Widget _buildSelectedSiteCard(VisitorSite site, bool isEn, ThemeData theme) {
     final imageUri = _coverUri(site);
+    final hasCoordinates = _coordinates(site) != null;
 
     return Card(
       key: const ValueKey('selected-site-card'),
@@ -349,16 +408,36 @@ class _MapPageState extends State<MapPage> {
 
                   const SizedBox(height: 8),
 
-                  TextButton.icon(
-                    key: const ValueKey('selected-site-details'),
-                    onPressed: () => _openSite(site),
-                    icon: const Icon(Icons.arrow_forward, size: 16),
-                    label: Text(isEn ? 'View details' : 'Xem chi tiết'),
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(0, 32),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
+                  // View details and Google Maps directions.
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 2,
+                    children: [
+                      TextButton.icon(
+                        key: const ValueKey('selected-site-details'),
+                        onPressed: () => _openSite(site),
+                        icon: const Icon(Icons.arrow_forward, size: 16),
+                        label: Text(isEn ? 'View details' : 'Xem chi tiết'),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 32),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                      TextButton.icon(
+                        key: const ValueKey('selected-site-directions'),
+                        onPressed: hasCoordinates
+                            ? () => _openDirections(site)
+                            : null,
+                        icon: const Icon(Icons.directions, size: 18),
+                        label: Text(isEn ? 'Directions' : 'Chỉ đường'),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 32),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -489,7 +568,7 @@ class _MapPageState extends State<MapPage> {
                   child: _buildMap(isEn),
                 ),
 
-                // Show preview when tapping a map marker.
+                // Preview card below the map.
                 if (_selectedSite != null)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
