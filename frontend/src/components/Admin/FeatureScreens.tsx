@@ -1261,13 +1261,6 @@ export function FeedbackScreen() {
               I have read the updated feedback
             </Button>
           )}
-
-          {moderationMutation.isSuccess && (
-            <p className="text-sm text-muted-foreground">
-              Feedback status updated successfully.
-            </p>
-          )}
-
           <p className="text-xs text-muted-foreground">
             Admin can change feedback status between Pending, Approved and
             Hidden. Only approved feedback is displayed publicly.
