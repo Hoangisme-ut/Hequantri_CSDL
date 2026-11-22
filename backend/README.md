@@ -42,7 +42,7 @@ logged-in Visitor/Admin.
 ## Role API decision
 
 There is **no separate Role API**. Role is a fixed two-value lookup (`admin`,
-`visitor`) seeded at startup (`app/core/db.py`), so CRUD over it would add attack surface
+`visitor`) seeded during separate database preparation (`app/core/db.py`), so CRUD over it would add attack surface
 without a use case. Roles are assigned through the User API
 (`POST /users/`, `PATCH /users/{id}` with `role_id`), and user management stays
 limited to `is_superuser`. See "User management and Heritage roles" below for
@@ -163,6 +163,9 @@ $ docker compose up -d --wait db mailpit
 $ docker compose run --rm db-init
 ```
 
+`db-init` only creates the empty database `app`. For initial `.env` setup and
+commands for Windows PowerShell, see the [Quick Start](../README.md#quick-start-local).
+
 Then, from `./backend/`, install the dependencies, prepare the database, and start the development server:
 
 ```console
@@ -171,14 +174,17 @@ $ uv run bash scripts/prestart.sh
 $ uv run fastapi dev
 ```
 
-`prestart.sh` checks the existing database in `DATABASE_URL`, runs
-`alembic upgrade head`, then initializes the first superuser, in that order.
+Preparation is a separate step: run it once on a new database and again after
+pulling new migrations, before starting FastAPI. Backend startup does not run
+migrations or seed data. `prestart.sh` checks the existing database in
+`DATABASE_URL`, runs `alembic upgrade head`, then creates missing roles, languages
+and the first superuser, in that order.
 The check only runs `SELECT 1`, with up to 10 attempts and a fixed 3-second delay
-between attempts. It stops immediately on success and aborts startup after the
+between attempts. It stops immediately on success and aborts preparation after the
 last failure. It never connects to `master` or creates a database. Locally,
 `db-init` provisions the database; on Azure SQL Database, create it in the Azure
-portal before startup. The startup account does not need database-creation
-permissions. Sample heritage data is seeded separately, not during startup.
+portal before preparation. The preparation account does not need database-creation
+permissions. Sample heritage data is seeded separately from preparation.
 
 The API is available at `http://localhost:8000`, with automatic interactive docs at `http://localhost:8000/docs`.
 
@@ -250,14 +256,23 @@ The setup is also already configured so you can run the tests through the VS Cod
 
 ## Full Stack with Docker Compose
 
-To run the backend and built frontend in Docker Compose:
+To run the backend and built frontend in Docker Compose, first create and review
+`.env` using the [Quick Start](../README.md#quick-start-local), then run the
+commands below in order. Stop if a command fails:
 
 ```console
+$ docker compose up -d --wait db mailpit proxy
+$ docker compose run --rm db-init
+$ docker compose build backend
 $ docker compose run --rm backend bash scripts/prestart.sh
-$ docker compose watch
+$ docker compose watch backend
 ```
 
-The application is available at `http://localhost:8000`.
+After pulling new migrations, repeat the build and prestart commands before
+starting the backend. The application is available at `http://localhost:8000`;
+log in with `FIRST_SUPERUSER` and `FIRST_SUPERUSER_PASSWORD` from `.env`.
+For login failures and missing tables, see
+[preparation troubleshooting](../README.md#troubleshooting-preparation-was-skipped).
 
 ### Docker Compose Override
 
