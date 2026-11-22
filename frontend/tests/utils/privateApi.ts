@@ -1,14 +1,7 @@
-import {
-  LoginService,
-  PrivateService,
-  UsersService,
-} from "../../src/client"
+import { LoginService, PrivateService, UsersService } from "../../src/client"
 import { createClient } from "../../src/client/client"
 import { client } from "../../src/client/client.gen"
-import {
-  firstSuperuser,
-  firstSuperuserPassword,
-} from "../config"
+import { firstSuperuser, firstSuperuserPassword } from "../config"
 
 client.setConfig({
   baseURL: `${process.env.VITE_API_URL}`,
@@ -143,10 +136,7 @@ export const createAdminUser = async ({
 
   const admin = adminResponse.data
 
-  if (
-    admin.role_name !== "admin" ||
-    admin.is_superuser !== false
-  ) {
+  if (admin.role_name !== "admin" || admin.is_superuser !== false) {
     throw new Error(
       `Xác minh Admin thất bại: role_name=${admin.role_name}, is_superuser=${admin.is_superuser}.`,
     )

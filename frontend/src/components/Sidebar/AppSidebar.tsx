@@ -185,11 +185,7 @@ export function AppSidebar({ preview = false }: { preview?: boolean }) {
   const items = preview
     ? previewItems
     : isAdmin
-      ? [
-          ...navItems,
-          ...adminItems,
-          ...(isSuperuser ? superuserItems : []),
-        ]
+      ? [...navItems, ...adminItems, ...(isSuperuser ? superuserItems : [])]
       : []
 
   return (

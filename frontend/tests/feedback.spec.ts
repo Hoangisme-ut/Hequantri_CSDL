@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test"
+import { expect, type Page, test } from "@playwright/test"
 
 const feedbackFixture = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -30,10 +30,7 @@ async function mockFeedbackApi(
     const request = route.request()
     const url = new URL(request.url())
 
-    if (
-      request.method() === "GET" &&
-      url.pathname === feedbackListUrl
-    ) {
+    if (request.method() === "GET" && url.pathname === feedbackListUrl) {
       listRequestCount++
 
       await route.fulfill({
@@ -210,9 +207,8 @@ test.describe("Feedback Review", () => {
 
     const moderationResponse = page.waitForResponse(
       (response) =>
-        response.url().includes(
-          `${feedbackFixture.id}/status`,
-        ) && response.request().method() === "PATCH",
+        response.url().includes(`${feedbackFixture.id}/status`) &&
+        response.request().method() === "PATCH",
     )
 
     await page.getByRole("button", { name: "Approve", exact: true }).click()
@@ -246,9 +242,8 @@ test.describe("Feedback Review", () => {
 
     const moderationResponse = page.waitForResponse(
       (response) =>
-        response.url().includes(
-          `${feedbackFixture.id}/status`,
-        ) && response.request().method() === "PATCH",
+        response.url().includes(`${feedbackFixture.id}/status`) &&
+        response.request().method() === "PATCH",
     )
 
     await page.getByRole("button", { name: "Hide", exact: true }).click()
@@ -260,15 +255,13 @@ test.describe("Feedback Review", () => {
       expected_updated_at: feedbackFixture.updated_at,
     })
 
-    await expect(
-      feedbackRow.getByText("Hidden", { exact: true }),
-    ).toBeVisible()
+    await expect(feedbackRow.getByText("Hidden", { exact: true })).toBeVisible()
 
     await expect(
       page.getByText("Feedback status updated successfully.").first(),
     ).toBeVisible()
   })
-  
+
   test("Shows conflict warning and reloads feedback after HTTP 409", async ({
     page,
   }) => {
@@ -284,9 +277,8 @@ test.describe("Feedback Review", () => {
 
     const moderationResponse = page.waitForResponse(
       (response) =>
-        response.url().includes(
-          `${feedbackFixture.id}/status`,
-        ) && response.request().method() === "PATCH",
+        response.url().includes(`${feedbackFixture.id}/status`) &&
+        response.request().method() === "PATCH",
     )
 
     await page.getByRole("button", { name: "Approve", exact: true }).click()

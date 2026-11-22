@@ -433,63 +433,58 @@ export function ArtifactManagement() {
         )}
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="text-sm text-muted-foreground">
-        Showing{" "}
-        {totalArtifacts === 0 ? 0 : page * pageSize + 1}
-        {" - "}
-        {Math.min((page + 1) * pageSize, totalArtifacts)}
-        {" of "}
-        {totalArtifacts} artifacts
+        <div className="text-sm text-muted-foreground">
+          Showing {totalArtifacts === 0 ? 0 : page * pageSize + 1}
+          {" - "}
+          {Math.min((page + 1) * pageSize, totalArtifacts)}
+          {" of "}
+          {totalArtifacts} artifacts
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground">Rows per page</span>
+
+          <select
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            value={pageSize}
+            onChange={(event) => {
+              setPageSize(Number(event.target.value))
+              setPage(0)
+            }}
+            aria-label="Artifacts per page"
+          >
+            {[10, 25, 50].map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+
+          <span className="min-w-[90px] text-center text-sm text-muted-foreground">
+            Page {totalPages === 0 ? 0 : page + 1} of {totalPages}
+          </span>
+
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Previous page"
+            disabled={page === 0 || artifactsQuery.isFetching}
+            onClick={() => setPage((current) => Math.max(0, current - 1))}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Next page"
+            disabled={page + 1 >= totalPages || artifactsQuery.isFetching}
+            onClick={() => setPage((current) => current + 1)}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-muted-foreground">
-          Rows per page
-        </span>
-
-        <select
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-          value={pageSize}
-          onChange={(event) => {
-            setPageSize(Number(event.target.value))
-            setPage(0)
-          }}
-          aria-label="Artifacts per page"
-        >
-          {[10, 25, 50].map((size) => (
-            <option key={size} value={size}>
-              {size}
-            </option>
-          ))}
-        </select>
-
-        <span className="min-w-[90px] text-center text-sm text-muted-foreground">
-          Page {totalPages === 0 ? 0 : page + 1} of {totalPages}
-        </span>
-
-        <Button
-          variant="outline"
-          size="icon"
-          aria-label="Previous page"
-          disabled={page === 0 || artifactsQuery.isFetching}
-          onClick={() => setPage((current) => Math.max(0, current - 1))}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-
-        <Button
-          variant="outline"
-          size="icon"
-          aria-label="Next page"
-          disabled={
-            page + 1 >= totalPages || artifactsQuery.isFetching
-          }
-          onClick={() => setPage((current) => current + 1)}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
 
       <Dialog
         open={artifactDialogOpen}

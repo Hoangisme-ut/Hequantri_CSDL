@@ -132,7 +132,7 @@ export function AnalyticsScreen() {
   const [toDate, setToDate] = useState(defaultRange.to)
   const [selectedSiteId, setSelectedSiteId] = useState("")
   const [isExportingPdf, setIsExportingPdf] = useState(false)
-  
+
   const [isExportingExcel, setIsExportingExcel] = useState(false)
 
   // Kiểm tra đầy đủ khoảng ngày trước khi gọi API.
@@ -194,11 +194,11 @@ export function AnalyticsScreen() {
   })
 
   const sitesQuery = useQuery({
-  queryKey: ["analytics", "sites", analyticsFilters],
-  queryFn: analyticsFilters
-    ? () => analyticsService.sites(analyticsFilters)
-    : skipToken,
-})
+    queryKey: ["analytics", "sites", analyticsFilters],
+    queryFn: analyticsFilters
+      ? () => analyticsService.sites(analyticsFilters)
+      : skipToken,
+  })
 
   const topArtifactsQuery = useQuery({
     queryKey: ["analytics", "top-artifacts", analyticsFilters],
@@ -841,9 +841,7 @@ export function FeedbackScreen() {
       if (
         error instanceof FeedbackConflictError ||
         (error instanceof Error &&
-          error.message.includes(
-            "Feedback changed; reload before moderating",
-          ))
+          error.message.includes("Feedback changed; reload before moderating"))
       ) {
         toast.warning(
           "Feedback has changed. The latest data has been reloaded. Please review it again.",
@@ -904,14 +902,14 @@ export function FeedbackScreen() {
   }
 
   function handleModeration(status: ModerationStatus) {
-  if (!selectedFeedback || moderationBlocked) return
+    if (!selectedFeedback || moderationBlocked) return
 
-  moderationMutation.mutate({
-    id: selectedFeedback.id,
-    status,
-    expectedUpdatedAt: selectedFeedback.updated_at ?? null,
-  })
-}
+    moderationMutation.mutate({
+      id: selectedFeedback.id,
+      status,
+      expectedUpdatedAt: selectedFeedback.updated_at ?? null,
+    })
+  }
   return (
     <div className="flex flex-col gap-4 md:gap-5">
       {/* Search and filters */}

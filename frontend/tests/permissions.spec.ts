@@ -1,8 +1,5 @@
-import { expect, test, type Page } from "@playwright/test"
-import {
-  firstSuperuser,
-  firstSuperuserPassword,
-} from "./config"
+import { expect, type Page, test } from "@playwright/test"
+import { firstSuperuser, firstSuperuserPassword } from "./config"
 import { createAdminUser, createUser } from "./utils/privateApi"
 import { randomEmail, randomPassword } from "./utils/random"
 import { logInUser } from "./utils/user"
@@ -10,24 +7,18 @@ import { logInUser } from "./utils/user"
 // Dùng chung để kiểm tra quyền truy cập Users API.
 async function getUsersApiResponse(page: Page) {
   // Lấy access token từ localStorage của trình duyệt.
-  const token = await page.evaluate(() =>
-    localStorage.getItem("access_token"),
-  )
+  const token = await page.evaluate(() => localStorage.getItem("access_token"))
 
   expect(token).toBeTruthy()
 
   // Gọi backend bằng tên service trong Docker Compose.
-  const apiBaseUrl =
-    process.env.PLAYWRIGHT_API_URL ?? "http://backend:8000"
+  const apiBaseUrl = process.env.PLAYWRIGHT_API_URL ?? "http://backend:8000"
 
-  return page.context().request.get(
-    `${apiBaseUrl}/api/v1/users/`,
-    {
-      headers: {
-        Authorization: `Bearer ${token!}`,
-      },
+  return page.context().request.get(`${apiBaseUrl}/api/v1/users/`, {
+    headers: {
+      Authorization: `Bearer ${token!}`,
     },
-  )
+  })
 }
 
 // 1. Unauthenticated - Người dùng chưa đăng nhập
@@ -163,9 +154,7 @@ test.describe("Permissions - Admin role", () => {
     for (const route of routes) {
       await page.goto(route)
 
-      await expect(page).toHaveURL(
-        new RegExp(`${route.replace("/", "\\/")}$`),
-      )
+      await expect(page).toHaveURL(new RegExp(`${route.replace("/", "\\/")}$`))
 
       await expect(
         page.getByRole("heading", { name: "Access Denied" }),
@@ -190,9 +179,9 @@ test.describe("Permissions - Admin role", () => {
 
     await page.goto("/")
 
-    await expect(
-      page.getByRole("link", { name: "Team & Roles" }),
-    ).toHaveCount(0)
+    await expect(page.getByRole("link", { name: "Team & Roles" })).toHaveCount(
+      0,
+    )
   })
 
   test("Admin cannot access users API", async ({ page }) => {
@@ -220,11 +209,7 @@ test.describe("Permissions - Superuser role", () => {
   })
 
   test("Superuser can access Team & Roles", async ({ page }) => {
-    await logInUser(
-      page,
-      firstSuperuser,
-      firstSuperuserPassword,
-    )
+    await logInUser(page, firstSuperuser, firstSuperuserPassword)
 
     await page.goto("/admin")
 
@@ -236,25 +221,15 @@ test.describe("Permissions - Superuser role", () => {
   })
 
   test("Superuser can see Team & Roles in sidebar", async ({ page }) => {
-    await logInUser(
-      page,
-      firstSuperuser,
-      firstSuperuserPassword,
-    )
+    await logInUser(page, firstSuperuser, firstSuperuserPassword)
 
     await page.goto("/")
 
-    await expect(
-      page.getByRole("link", { name: "Team & Roles" }),
-    ).toBeVisible()
+    await expect(page.getByRole("link", { name: "Team & Roles" })).toBeVisible()
   })
 
   test("Superuser can access users API", async ({ page }) => {
-    await logInUser(
-      page,
-      firstSuperuser,
-      firstSuperuserPassword,
-    )
+    await logInUser(page, firstSuperuser, firstSuperuserPassword)
 
     const response = await getUsersApiResponse(page)
 

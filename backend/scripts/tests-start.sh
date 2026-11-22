@@ -1,5 +1,5 @@
-#! /usr/bin/env bash
-set -e
-set -x
+#!/usr/bin/env bash
 
-bash scripts/test.sh "$@"
+set -euo pipefail
+
+exec bash scripts/test.sh "$@"

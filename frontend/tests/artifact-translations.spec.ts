@@ -5,7 +5,6 @@ const randomArtifactCode = () =>
 
 let artifactCode = ""
 
-
 async function createArtifact(page: Page, code: string) {
   await page.goto("/items")
 
@@ -60,18 +59,16 @@ async function createArtifact(page: Page, code: string) {
     name: "Search artifact code",
   })
 
-  const searchResponse = page.waitForResponse(
-    (response) => {
-      if (
-        response.request().method() !== "GET" ||
-        !response.url().includes("/api/v1/artifacts/")
-      ) {
-        return false
-      }
+  const searchResponse = page.waitForResponse((response) => {
+    if (
+      response.request().method() !== "GET" ||
+      !response.url().includes("/api/v1/artifacts/")
+    ) {
+      return false
+    }
 
-      return new URL(response.url()).searchParams.get("q") === code
-    },
-  )
+    return new URL(response.url()).searchParams.get("q") === code
+  })
 
   await search.fill(code)
 
@@ -231,9 +228,7 @@ test.describe("Artifact Translations", () => {
     const response = await updateResponse
     expect(response.ok()).toBeTruthy()
 
-    await expect(
-      page.getByText("Translation saved").first(),
-    ).toBeVisible()
+    await expect(page.getByText("Translation saved").first()).toBeVisible()
 
     await expect(dialog.getByLabel("Title")).toHaveValue(
       "Updated Playwright Translation",

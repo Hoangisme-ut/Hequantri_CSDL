@@ -28,10 +28,10 @@ export const Route = createFileRoute("/_layout/admin")({
       throw redirect({ to: "/forbidden" })
     }
   },
-    head: () => ({
-      meta: [{ title: "Team & Roles - Smart Heritage" }],
-    }),
-  })
+  head: () => ({
+    meta: [{ title: "Team & Roles - Smart Heritage" }],
+  }),
+})
 
 function Admin() {
   const [search, setSearch] = useState("")
@@ -66,9 +66,9 @@ function Admin() {
               Access fields supported by this API
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Superusers can manage user accounts and assign the
-              supported system roles. Admins can manage heritage content
-              but cannot manage other user accounts.
+              Superusers can manage user accounts and assign the supported
+              system roles. Admins can manage heritage content but cannot manage
+              other user accounts.
             </p>
           </div>
         </CardContent>
