@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test"
+
+import { expect, test, type Page } from "@playwright/test"
 import {
   firstSuperuser,
   firstSuperuserPassword,
@@ -6,6 +7,30 @@ import {
 import { createAdminUser, createUser } from "./utils/privateApi"
 import { randomEmail, randomPassword } from "./utils/random"
 import { logInUser } from "./utils/user"
+
+// Dùng chung để kiểm tra quyền truy cập Users API.
+async function getUsersApiResponse(page: Page) {
+  // Lấy access token từ localStorage của trình duyệt.
+  const token = await page.evaluate(() =>
+    localStorage.getItem("access_token"),
+  )
+
+  expect(token).toBeTruthy()
+
+  // URL được đọc ở môi trường Node.js.
+  const apiBaseUrl =
+    process.env.PLAYWRIGHT_API_URL ?? "http://localhost:8000"
+
+  // Gửi request từ Playwright APIRequestContext.
+  return page.context().request.get(
+    `${apiBaseUrl}/api/v1/users/`,
+    {
+      headers: {
+        Authorization: `Bearer ${token!}`,
+      },
+    },
+  )
+}
 
 // 1. Unauthenticated - Người dùng chưa đăng nhập
 
@@ -175,39 +200,14 @@ test.describe("Permissions - Admin role", () => {
   test("Admin cannot access users API", async ({ page }) => {
     await logInUser(page, email, password)
 
-    const result = await page.evaluate(async () => {
-      const token = localStorage.getItem("access_token")
+    const response = await getUsersApiResponse(page)
 
-      if (!token) {
-        throw new Error("Không tìm thấy access token của Admin.")
-      }
-
-      const apiBaseUrl = "http://localhost:8000"
-
-      const response = await fetch(
-        `${apiBaseUrl}/api/v1/users/`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      )
-
-      const contentType = response.headers.get("content-type")
-      const body = await response.text()
-
-      return {
-        status: response.status,
-        url: response.url,
-        contentType,
-        body: body.slice(0, 500),
-      }
+    console.log("ADMIN USERS API RESPONSE:", {
+      status: response.status(),
+      body: (await response.text()).slice(0, 500),
     })
 
-    console.log("ADMIN USERS API RESPONSE:", result)
-
-    expect(result.status).toBe(403)
+    expect(response.status()).toBe(403)
   })
 })
 
@@ -258,38 +258,13 @@ test.describe("Permissions - Superuser role", () => {
       firstSuperuserPassword,
     )
 
-    const result = await page.evaluate(async () => {
-      const token = localStorage.getItem("access_token")
+    const response = await getUsersApiResponse(page)
 
-      if (!token) {
-        throw new Error("Không tìm thấy access token của Superuser.")
-      }
-
-      const apiBaseUrl = "http://localhost:8000"
-
-      const response = await fetch(
-        `${apiBaseUrl}/api/v1/users/`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      )
-
-      const contentType = response.headers.get("content-type")
-      const body = await response.text()
-
-      return {
-        status: response.status,
-        url: response.url,
-        contentType,
-        body: body.slice(0, 500),
-      }
+    console.log("SUPERUSER USERS API RESPONSE:", {
+      status: response.status(),
+      body: (await response.text()).slice(0, 500),
     })
 
-    console.log("SUPERUSER USERS API RESPONSE:", result)
-
-    expect(result.status).toBe(200)
+    expect(response.status()).toBe(200)
   })
 })
