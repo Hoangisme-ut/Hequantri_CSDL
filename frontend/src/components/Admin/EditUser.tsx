@@ -5,7 +5,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { type UserPublic, UsersService } from "@/client"
+import { type UserPublic, UsersService, type UserUpdate } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -67,14 +67,16 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
     criteriaMode: "all",
     defaultValues: {
       email: user.email,
-      full_name: user.full_name ?? undefined,
+      full_name: user.full_name ?? "",
+      password: "",
+      confirm_password: "",
       is_superuser: user.is_superuser,
       is_active: user.is_active,
     },
   })
 
   const mutation = useMutation({
-    mutationFn: (data: FormData) =>
+    mutationFn: (data: UserUpdate) =>
       UsersService.updateUser({ path: { user_id: user.id }, body: data }),
     onSuccess: () => {
       showSuccessToast("User updated successfully")
@@ -88,11 +90,25 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
   })
 
   const onSubmit = (data: FormData) => {
-    // exclude confirm_password from submission data and remove password if empty
-    const { confirm_password: _, ...submitData } = data
-    if (!submitData.password) {
-      delete submitData.password
+    const { dirtyFields } = form.formState
+    const submitData: UserUpdate = {}
+    if (dirtyFields.email) {
+      submitData.email = data.email
     }
+    if (dirtyFields.full_name) {
+      submitData.full_name = data.full_name
+    }
+    if (dirtyFields.is_superuser) {
+      submitData.is_superuser = data.is_superuser
+    }
+    if (dirtyFields.is_active) {
+      submitData.is_active = data.is_active
+    }
+    if (dirtyFields.password && data.password) {
+      submitData.password = data.password
+    }
+    if (Object.keys(submitData).length === 0) return
+
     mutation.mutate(submitData)
   }
 
@@ -225,7 +241,11 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
                   Cancel
                 </Button>
               </DialogClose>
-              <LoadingButton type="submit" loading={mutation.isPending}>
+              <LoadingButton
+                type="submit"
+                loading={mutation.isPending}
+                disabled={!form.formState.isDirty}
+              >
                 Save
               </LoadingButton>
             </DialogFooter>
