@@ -16,7 +16,7 @@ class MapPage extends StatefulWidget {
 
   final SiteApi? siteApi;
 
-  // Disable network map tiles in widget tests only.
+  // Disable network tile requests in widget tests.
   @visibleForTesting
   final bool enableMapTiles;
 
@@ -29,6 +29,8 @@ class _MapPageState extends State<MapPage> {
   HttpVisitorApi? _ownedApi;
 
   List<VisitorSite> _sites = const [];
+  VisitorSite? _selectedSite;
+
   bool _loading = true;
   bool _failed = false;
   int _generation = 0;
@@ -78,8 +80,19 @@ class _MapPageState extends State<MapPage> {
 
       if (!mounted || generation != _generation) return;
 
+      VisitorSite? updatedSelection;
+      final selectedId = _selectedSite?.id;
+
+      for (final site in page.items) {
+        if (site.id == selectedId) {
+          updatedSelection = site;
+          break;
+        }
+      }
+
       setState(() {
         _sites = page.items;
+        _selectedSite = updatedSelection;
         _loading = false;
       });
     } catch (_) {
@@ -105,6 +118,18 @@ class _MapPageState extends State<MapPage> {
     return LatLng(latitude, longitude);
   }
 
+  void _selectSite(VisitorSite site) {
+    setState(() {
+      _selectedSite = site;
+    });
+  }
+
+  void _closeSelectedSite() {
+    setState(() {
+      _selectedSite = null;
+    });
+  }
+
   void _openSite(VisitorSite site) {
     Navigator.push(
       context,
@@ -112,6 +137,80 @@ class _MapPageState extends State<MapPage> {
         builder: (_) => SiteDetailPage(site: site, siteApi: _siteApi),
       ),
     );
+  }
+
+  Future<void> _openDirections(VisitorSite site) async {
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
+
+    final name = site.name.trim();
+    final address = site.address?.trim() ?? '';
+
+    // Prefer a recognizable place name and address over coordinates.
+    final destination = address.isNotEmpty ? '$name, $address' : name;
+
+    if (destination.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isEn
+                ? 'This site has no destination information.'
+                : 'Địa điểm này chưa có thông tin chỉ đường.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final uri = Uri.https('www.google.com', '/maps/dir/', {
+      'api': '1',
+      'destination': destination,
+    });
+
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+      if (!mounted) return;
+
+      if (!opened) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isEn
+                  ? 'Could not open Google Maps.'
+                  : 'Không thể mở Google Maps.',
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      debugPrint('Failed to launch Google Maps: $error');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isEn ? 'Could not open Google Maps.' : 'Không thể mở Google Maps.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Uri? _coverUri(VisitorSite site) {
+    final raw = site.coverImageUrl?.trim();
+
+    if (raw == null || raw.isEmpty) return null;
+
+    final uri = Uri.tryParse(raw);
+
+    if (uri == null ||
+        (uri.scheme != 'http' && uri.scheme != 'https') ||
+        uri.host.isEmpty) {
+      return null;
+    }
+
+    return uri;
   }
 
   Widget _buildMap(bool isEn) {
@@ -138,7 +237,7 @@ class _MapPageState extends State<MapPage> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadii.medium),
       child: SizedBox(
-        height: 290,
+        height: 270,
         child: FlutterMap(
           key: ValueKey(
             'heritage-map-${_languageCode ?? 'vi'}-${points.length}',
@@ -171,11 +270,13 @@ class _MapPageState extends State<MapPage> {
                     child: IconButton(
                       key: ValueKey('map-marker-${site.id}'),
                       tooltip: site.name,
-                      onPressed: () => _openSite(site),
-                      icon: const Icon(
+                      onPressed: () => _selectSite(site),
+                      icon: Icon(
                         Icons.location_on,
-                        size: 38,
-                        color: HeritagePalette.primaryNavy,
+                        size: _selectedSite?.id == site.id ? 44 : 38,
+                        color: _selectedSite?.id == site.id
+                            ? HeritagePalette.actionBlue
+                            : HeritagePalette.primaryNavy,
                       ),
                     ),
                   ),
@@ -194,6 +295,167 @@ class _MapPageState extends State<MapPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSelectedSiteCard(VisitorSite site, bool isEn, ThemeData theme) {
+    final imageUri = _coverUri(site);
+    final hasCoordinates = _coordinates(site) != null;
+
+    return Card(
+      key: const ValueKey('selected-site-card'),
+      margin: EdgeInsets.zero,
+      color: theme.colorScheme.surface,
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 105,
+                height: 115,
+                child: imageUri == null
+                    ? _mapImagePlaceholder()
+                    : Image.network(
+                        imageUri.toString(),
+                        key: ValueKey('map-cover-${site.id}'),
+                        width: 105,
+                        height: 115,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          debugPrint('Failed to load map site image: $error');
+                          return _mapImagePlaceholder();
+                        },
+                      ),
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          site.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: HeritagePalette.primaryNavy,
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 32,
+                        height: 32,
+                        child: IconButton(
+                          key: const ValueKey('close-site-card'),
+                          tooltip: isEn ? 'Close' : 'Đóng',
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          padding: EdgeInsets.zero,
+                          iconSize: 19,
+                          icon: const Icon(Icons.close),
+                          onPressed: _closeSelectedSite,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.place_outlined,
+                        size: 15,
+                        color: HeritagePalette.secondaryText,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          site.address?.trim().isNotEmpty == true
+                              ? site.address!
+                              : (isEn
+                                    ? 'Address unavailable'
+                                    : 'Chưa có địa chỉ'),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // View details and Google Maps directions.
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 2,
+                    children: [
+                      TextButton.icon(
+                        key: const ValueKey('selected-site-details'),
+                        onPressed: () => _openSite(site),
+                        icon: const Icon(Icons.arrow_forward, size: 16),
+                        label: Text(isEn ? 'View details' : 'Xem chi tiết'),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 32),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                      TextButton.icon(
+                        key: const ValueKey('selected-site-directions'),
+                        onPressed: hasCoordinates
+                            ? () => _openDirections(site)
+                            : null,
+                        icon: const Icon(Icons.directions, size: 18),
+                        label: Text(isEn ? 'Directions' : 'Chỉ đường'),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 32),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _mapImagePlaceholder() {
+    return Container(
+      color: HeritagePalette.primaryNavy.withValues(alpha: 0.08),
+      alignment: Alignment.center,
+      child: const Icon(
+        Icons.account_balance_outlined,
+        size: 36,
+        color: HeritagePalette.secondaryText,
       ),
     );
   }
@@ -305,6 +567,19 @@ class _MapPageState extends State<MapPage> {
                   padding: const EdgeInsets.all(AppSpacing.medium),
                   child: _buildMap(isEn),
                 ),
+
+                // Preview card below the map.
+                if (_selectedSite != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.medium,
+                      0,
+                      AppSpacing.medium,
+                      AppSpacing.small,
+                    ),
+                    child: _buildSelectedSiteCard(_selectedSite!, isEn, theme),
+                  ),
+
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.medium,
@@ -325,7 +600,9 @@ class _MapPageState extends State<MapPage> {
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 8),
+
                 Expanded(
                   child: ListView.separated(
                     padding: const EdgeInsets.fromLTRB(
