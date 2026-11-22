@@ -138,8 +138,6 @@ export function AnalyticsScreen() {
   // Kiểm tra đầy đủ khoảng ngày trước khi gọi API.
   const dateRangeError = getDateRangeError(fromDate, toDate)
   const isDateRangeInvalid = dateRangeError !== null
-  const isDateRangeValid = !isDateRangeInvalid
-
   // Analytics API sử dụng khoảng thời gian UTC [from, to).
   // Ngày kết thúc được chuyển thành 00:00 UTC của ngày kế tiếp.
   const exclusiveEndDate = isDateRangeValid
