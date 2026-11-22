@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Archive,
+  ChevronLeft,
+  ChevronRight,
   Eye,
   Languages,
   Pencil,
@@ -96,6 +98,8 @@ export function ArtifactManagement() {
   const [search, setSearch] = useState("")
   const [siteFilter, setSiteFilter] = useState("")
   const [languageCode, setLanguageCode] = useState("")
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
   const [artifactDialogOpen, setArtifactDialogOpen] = useState(false)
   const [editing, setEditing] = useState<ArtifactSummary | null>(null)
   const [viewOnly, setViewOnly] = useState(false)
@@ -126,11 +130,11 @@ export function ArtifactManagement() {
       ...(siteFilter ? { site_id: siteFilter } : {}),
       ...(languageCode ? { lang: languageCode } : {}),
       ...(search.trim() ? { q: search.trim() } : {}),
-      skip: 0,
-      limit: 200,
+      skip: page * pageSize,
+      limit: pageSize,
       include_inactive: true,
     }),
-    [languageCode, search, siteFilter],
+    [languageCode, page, pageSize, search, siteFilter],
   )
   const artifactsQuery = useQuery({
     queryKey: artifactKeys.list(filters),
@@ -231,6 +235,8 @@ export function ArtifactManagement() {
 
   const sites = sitesQuery.data?.data ?? []
   const artifacts = artifactsQuery.data?.data ?? []
+  const totalArtifacts = artifactsQuery.data?.count ?? 0
+  const totalPages = Math.ceil(totalArtifacts / pageSize)
 
   return (
     <div className="flex flex-col gap-4 md:gap-5">
@@ -257,7 +263,10 @@ export function ArtifactManagement() {
           <Input
             className="pl-9"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value)
+              setPage(0)
+            }}
             placeholder="Search artifact code"
             aria-label="Search artifact code"
           />
@@ -265,7 +274,10 @@ export function ArtifactManagement() {
         <select
           className="h-9 rounded-md border border-input bg-background px-3 text-sm"
           value={siteFilter}
-          onChange={(event) => setSiteFilter(event.target.value)}
+          onChange={(event) => {
+            setSiteFilter(event.target.value)
+            setPage(0)
+          }}
           aria-label="Filter by site"
         >
           <option value="">All sites</option>
@@ -280,7 +292,10 @@ export function ArtifactManagement() {
         <select
           className="h-9 rounded-md border border-input bg-background px-3 text-sm"
           value={languageCode}
-          onChange={(event) => setLanguageCode(event.target.value)}
+          onChange={(event) => {
+            setLanguageCode(event.target.value)
+            setPage(0)
+          }}
           aria-label="Artifact title language"
           disabled={!languagesQuery.data?.length}
         >
@@ -417,6 +432,64 @@ export function ArtifactManagement() {
           </Table>
         )}
       </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="text-sm text-muted-foreground">
+        Showing{" "}
+        {totalArtifacts === 0 ? 0 : page * pageSize + 1}
+        {" - "}
+        {Math.min((page + 1) * pageSize, totalArtifacts)}
+        {" of "}
+        {totalArtifacts} artifacts
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-muted-foreground">
+          Rows per page
+        </span>
+
+        <select
+          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          value={pageSize}
+          onChange={(event) => {
+            setPageSize(Number(event.target.value))
+            setPage(0)
+          }}
+          aria-label="Artifacts per page"
+        >
+          {[10, 25, 50].map((size) => (
+            <option key={size} value={size}>
+              {size}
+            </option>
+          ))}
+        </select>
+
+        <span className="min-w-[90px] text-center text-sm text-muted-foreground">
+          Page {totalPages === 0 ? 0 : page + 1} of {totalPages}
+        </span>
+
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="Previous page"
+          disabled={page === 0 || artifactsQuery.isFetching}
+          onClick={() => setPage((current) => Math.max(0, current - 1))}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="Next page"
+          disabled={
+            page + 1 >= totalPages || artifactsQuery.isFetching
+          }
+          onClick={() => setPage((current) => current + 1)}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
 
       <Dialog
         open={artifactDialogOpen}
