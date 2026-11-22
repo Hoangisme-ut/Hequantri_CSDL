@@ -59,9 +59,9 @@ async function createArtifact(page: Page, code: string) {
   expect(listResponse.ok()).toBeTruthy()
 
   // Đợi danh sách được render sau khi tải dữ liệu mới.
-  await expect(
-    page.getByText(code, { exact: true }),
-  ).toBeVisible({ timeout: 10000 })
+  await expect(page.getByText(code, { exact: true })).toBeVisible({
+    timeout: 10000,
+  })
 }
 
 async function openMediaManager(page: Page, code: string) {

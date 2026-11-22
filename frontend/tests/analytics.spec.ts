@@ -10,9 +10,7 @@ test.describe("Analytics & Reports", () => {
     await expect(page.getByLabel("To date")).toBeVisible()
     await expect(page.getByLabel("Site", { exact: true })).toBeVisible()
 
-    await expect(
-      page.getByRole("button", { name: "Export PDF" }),
-    ).toBeVisible()
+    await expect(page.getByRole("button", { name: "Export PDF" })).toBeVisible()
 
     await expect(
       page.getByRole("button", { name: "Export Excel" }),
@@ -30,9 +28,7 @@ test.describe("Analytics & Reports", () => {
       page.getByText("Performance by Site", { exact: true }),
     ).toBeVisible()
 
-    await expect(
-      page.getByText("Top Artifacts", { exact: true }),
-    ).toBeVisible()
+    await expect(page.getByText("Top Artifacts", { exact: true })).toBeVisible()
   })
 
   test("Date filters have valid default values", async ({ page }) => {
@@ -59,15 +55,12 @@ test.describe("Analytics & Reports", () => {
   test("Export PDF and Excel buttons are available", async ({ page }) => {
     await page.goto("/analytics")
 
-    await expect(
-      page.getByRole("button", { name: "Export PDF" }),
-    ).toBeEnabled()
+    await expect(page.getByRole("button", { name: "Export PDF" })).toBeEnabled()
 
     await expect(
       page.getByRole("button", { name: "Export Excel" }),
     ).toBeEnabled()
   })
-
 
   test("Clearing a date does not call Analytics APIs", async ({ page }) => {
     const analyticsRequests: string[] = []
@@ -87,15 +80,23 @@ test.describe("Analytics & Reports", () => {
 
     await expect(page.getByRole("alert")).toHaveText("Choose both dates.")
 
-    await expect(page.getByRole("button", { name: "Export PDF" })).toBeDisabled()
-    await expect(page.getByRole("button", { name: "Export Excel" })).toBeDisabled()
-    await expect(page.getByRole("button", { name: "Reset filters" })).toBeEnabled()
+    await expect(
+      page.getByRole("button", { name: "Export PDF" }),
+    ).toBeDisabled()
+    await expect(
+      page.getByRole("button", { name: "Export Excel" }),
+    ).toBeDisabled()
+    await expect(
+      page.getByRole("button", { name: "Reset filters" }),
+    ).toBeEnabled()
 
     await page.waitForTimeout(300)
     expect(analyticsRequests).toHaveLength(0)
   })
 
-  test("Invalid date range disables exports but allows reset", async ({ page }) => {
+  test("Invalid date range disables exports but allows reset", async ({
+    page,
+  }) => {
     await page.goto("/analytics")
 
     await page.getByLabel("From date").fill("2026-11-22")
@@ -105,11 +106,16 @@ test.describe("Analytics & Reports", () => {
       page.getByText("The start date must not be later than the end date."),
     ).toBeVisible()
 
-    await expect(page.getByRole("button", { name: "Export PDF" })).toBeDisabled()
-    await expect(page.getByRole("button", { name: "Export Excel" })).toBeDisabled()
-    await expect(page.getByRole("button", { name: "Reset filters" })).toBeEnabled()
+    await expect(
+      page.getByRole("button", { name: "Export PDF" }),
+    ).toBeDisabled()
+    await expect(
+      page.getByRole("button", { name: "Export Excel" }),
+    ).toBeDisabled()
+    await expect(
+      page.getByRole("button", { name: "Reset filters" }),
+    ).toBeEnabled()
   })
-
 
   test("Reset restores default dates and clears the selected Site", async ({
     page,
@@ -140,7 +146,9 @@ test.describe("Analytics & Reports", () => {
     const defaultFrom = await fromDate.inputValue()
     const defaultTo = await toDate.inputValue()
 
-    await expect(siteSelect.locator("option", { hasText: "Test Site" })).toHaveCount(1)
+    await expect(
+      siteSelect.locator("option", { hasText: "Test Site" }),
+    ).toHaveCount(1)
 
     await fromDate.fill("2026-11-01")
     await toDate.fill("2026-11-10")
@@ -153,7 +161,9 @@ test.describe("Analytics & Reports", () => {
     await expect(siteSelect).toHaveValue("")
   })
 
-  test("PDF and Excel exports receive the selected filters", async ({ page }) => {
+  test("PDF and Excel exports receive the selected filters", async ({
+    page,
+  }) => {
     const siteId = "11111111-1111-4111-8111-111111111111"
 
     await page.route("**/api/v1/analytics/sites**", async (route) => {
@@ -196,9 +206,11 @@ test.describe("Analytics & Reports", () => {
         request.url().includes(`/api/v1/analytics/export/${format}`),
       )
 
-      await page.getByRole("button", {
-        name: format === "pdf" ? "Export PDF" : "Export Excel",
-      }).click()
+      await page
+        .getByRole("button", {
+          name: format === "pdf" ? "Export PDF" : "Export Excel",
+        })
+        .click()
 
       const request = await requestPromise
       const params = new URL(request.url()).searchParams
