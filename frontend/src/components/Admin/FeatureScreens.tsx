@@ -138,6 +138,7 @@ export function AnalyticsScreen() {
   // Kiểm tra đầy đủ khoảng ngày trước khi gọi API.
   const dateRangeError = getDateRangeError(fromDate, toDate)
   const isDateRangeInvalid = dateRangeError !== null
+  const isDateRangeValid = !isDateRangeInvalid
   // Analytics API sử dụng khoảng thời gian UTC [from, to).
   // Ngày kết thúc được chuyển thành 00:00 UTC của ngày kế tiếp.
   const exclusiveEndDate = isDateRangeValid
@@ -234,8 +235,6 @@ export function AnalyticsScreen() {
   const maxDailyViews = Math.max(1, ...dailyVisits.map((item) => item.views))
 
   const numberFormat = new Intl.NumberFormat("vi-VN")
-
-  const isDateRangeInvalid = !isDateRangeValid
 
   const handleExportPdf = async () => {
     if (!analyticsFilters) return
@@ -861,7 +860,11 @@ export function FeedbackScreen() {
   })
   const requiresReview =
     moderationMutation.isError &&
-    moderationMutation.error instanceof FeedbackConflictError
+    (moderationMutation.error instanceof FeedbackConflictError ||
+      (moderationMutation.error instanceof Error &&
+        moderationMutation.error.message.includes(
+          "Feedback changed; reload before moderating",
+        )))
   const moderationBlocked =
     moderationMutation.isPending ||
     requiresReview ||
