@@ -101,22 +101,33 @@ export function AnalyticsScreen() {
   const [toDate, setToDate] = useState(defaultRange.to)
   const [selectedSiteId, setSelectedSiteId] = useState("")
   const [isExportingPdf, setIsExportingPdf] = useState(false)
+  
   const [isExportingExcel, setIsExportingExcel] = useState(false)
 
-  // Analytics API sử dụng khoảng thời gian [from, to).
-  // Vì vậy, to phải là ngày tiếp theo của ngày kết thúc được chọn.
+  // Chỉ tạo bộ lọc khi cả hai ngày đều hợp lệ.
+  const isDateRangeValid =
+    Boolean(fromDate && toDate) && fromDate <= toDate
+
+  // Analytics API sử dụng khoảng thời gian UTC [from, to).
+  // Ngày kết thúc được chuyển thành 00:00 UTC của ngày kế tiếp.
+  const exclusiveEndDate = isDateRangeValid
+    ? new Date(`${toDate}T00:00:00Z`)
+    : null
+
+  exclusiveEndDate?.setUTCDate(exclusiveEndDate.getUTCDate() + 1)
+
   const analyticsFilters = {
-    from: `${fromDate}T00:00:00Z`,
-    to: `${getDateString(
-      new Date(new Date(`${toDate}T00:00:00Z`).getTime() + 86400000),
-    )}T00:00:00Z`,
+    from: isDateRangeValid ? `${fromDate}T00:00:00Z` : undefined,
+    to: exclusiveEndDate
+      ? `${getDateString(exclusiveEndDate)}T00:00:00Z`
+      : undefined,
     site_id: selectedSiteId || undefined,
   }
 
   // Dashboard API sử dụng ngày bắt đầu và kết thúc inclusive.
   const dashboardFilters = {
-    from_date: fromDate,
-    to_date: toDate,
+    from_date: fromDate || undefined,
+    to_date: toDate || undefined,
   }
 
   // Danh sách Site cho bộ lọc, không phụ thuộc Site đang chọn.
@@ -129,22 +140,26 @@ export function AnalyticsScreen() {
   const siteOptionsQuery = useQuery({
     queryKey: ["analytics", "site-options", siteOptionsFilters],
     queryFn: () => analyticsService.sites(siteOptionsFilters),
+    enabled: isDateRangeValid,
   })
 
   // Analytics API
   const overviewQuery = useQuery({
     queryKey: ["analytics", "overview", analyticsFilters],
     queryFn: () => analyticsService.overview(analyticsFilters),
+    enabled: isDateRangeValid,
   })
 
   const visitsQuery = useQuery({
     queryKey: ["analytics", "visits", analyticsFilters],
     queryFn: () => analyticsService.visits(analyticsFilters),
+    enabled: isDateRangeValid,
   })
 
   const sitesQuery = useQuery({
     queryKey: ["analytics", "sites", analyticsFilters],
     queryFn: () => analyticsService.sites(analyticsFilters),
+    enabled: isDateRangeValid,
   })
 
   const topArtifactsQuery = useQuery({
@@ -154,17 +169,20 @@ export function AnalyticsScreen() {
         ...analyticsFilters,
         limit: 10,
       }),
+    enabled: isDateRangeValid,
   })
 
   // Dashboard API
   const summaryQuery = useQuery({
     queryKey: ["analytics", "dashboard-summary", dashboardFilters],
     queryFn: () => analyticsService.summary(dashboardFilters),
+    enabled: isDateRangeValid,
   })
 
   const languageQuery = useQuery({
     queryKey: ["analytics", "visits-by-language", dashboardFilters],
     queryFn: () => analyticsService.visitsByLanguage(dashboardFilters),
+    enabled: isDateRangeValid,
   })
 
   const dailyVisits = visitsQuery.data ?? []
@@ -177,7 +195,7 @@ export function AnalyticsScreen() {
 
   const numberFormat = new Intl.NumberFormat("vi-VN")
 
-  const isDateRangeInvalid = !fromDate || !toDate || fromDate > toDate
+  const isDateRangeInvalid = !isDateRangeValid
 
   const handleExportPdf = async () => {
     if (isDateRangeInvalid) return
@@ -278,7 +296,6 @@ export function AnalyticsScreen() {
 
           <Button
             variant="outline"
-            disabled={isDateRangeInvalid}
             onClick={() => {
               setFromDate(defaultRange.from)
               setToDate(defaultRange.to)
@@ -324,7 +341,9 @@ export function AnalyticsScreen() {
 
           {isDateRangeInvalid && (
             <p className="w-full text-xs text-destructive">
-              The start date must not be later than the end date.
+              {!fromDate || !toDate
+                ? "Please select both start and end dates."
+                : "The start date must not be later than the end date."}
             </p>
           )}
         </CardContent>
@@ -752,15 +771,50 @@ export function FeedbackScreen() {
 
   // Duyệt hoặc từ chối phản hồi
   const moderationMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: ModerationStatus }) =>
-      feedbackService.updateStatus(id, { status }),
+  mutationFn: ({
+    id,
+    status,
+    expectedUpdatedAt,
+  }: {
+    id: string
+    status: ModerationStatus
+    expectedUpdatedAt: string | null
+  }) =>
+    feedbackService.updateStatus(id, {
+      status,
+      expected_updated_at: expectedUpdatedAt,
+    }),
 
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: feedbackKeys.all,
-      })
-    },
-  })
+  onSuccess: async () => {
+    await queryClient.invalidateQueries({
+      queryKey: feedbackKeys.all,
+    })
+
+    toast.success("Feedback status updated successfully.")
+  },
+
+  onError: async (error) => {
+    await queryClient.invalidateQueries({
+      queryKey: feedbackKeys.all,
+    })
+
+    if (
+      error instanceof Error &&
+      error.message.includes("Feedback changed; reload before moderating")
+    ) {
+      toast.warning(
+        "Feedback has changed. The latest data has been reloaded. Please review it again.",
+      )
+      return
+    }
+
+    toast.error(
+      error instanceof Error
+        ? error.message
+        : "Unable to update feedback status.",
+    )
+  },
+})
 
   const feedbacks = feedbackQuery.data?.data ?? []
   const totalCount = feedbackQuery.data?.count ?? 0
@@ -800,6 +854,7 @@ export function FeedbackScreen() {
     moderationMutation.mutate({
       id: selectedFeedback.id,
       status,
+      expectedUpdatedAt: selectedFeedback.updated_at ?? null,
     })
   }
 
