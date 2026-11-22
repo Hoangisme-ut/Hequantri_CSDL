@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -16,7 +17,6 @@ class MapPage extends StatefulWidget {
 
   final SiteApi? siteApi;
 
-  // Disable network tile requests in widget tests.
   @visibleForTesting
   final bool enableMapTiles;
 
@@ -28,11 +28,16 @@ class _MapPageState extends State<MapPage> {
   late final SiteApi _siteApi;
   HttpVisitorApi? _ownedApi;
 
+  final MapController _mapController = MapController();
+
   List<VisitorSite> _sites = const [];
   VisitorSite? _selectedSite;
+  LatLng? _currentLocation;
 
   bool _loading = true;
   bool _failed = false;
+  bool _locating = false;
+
   int _generation = 0;
   String? _languageCode;
 
@@ -44,6 +49,7 @@ class _MapPageState extends State<MapPage> {
       _siteApi = api;
     } else {
       final api = HttpVisitorApi(baseUrl: ApiConfig.baseUrl);
+
       _siteApi = api;
       _ownedApi = api;
     }
@@ -95,7 +101,9 @@ class _MapPageState extends State<MapPage> {
         _selectedSite = updatedSelection;
         _loading = false;
       });
-    } catch (_) {
+    } catch (error) {
+      debugPrint('Failed to load heritage sites: $error');
+
       if (!mounted || generation != _generation) return;
 
       setState(() {
@@ -105,6 +113,7 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
+  // Validate site coordinates received from Backend.
   LatLng? _coordinates(VisitorSite site) {
     final latitude = site.latitude;
     final longitude = site.longitude;
@@ -139,24 +148,169 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
+  void _showMessage(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _clearCurrentLocation() {
+    if (!mounted || _currentLocation == null) return;
+
+    setState(() {
+      _currentLocation = null;
+    });
+  }
+
+  // Return the map to all heritage sites.
+  void _focusOnHeritageSites() {
+    final points = _sites.map(_coordinates).whereType<LatLng>().toList();
+
+    if (points.isEmpty) return;
+
+    if (points.length == 1) {
+      _mapController.move(points.first, 15);
+      return;
+    }
+
+    _mapController.fitCamera(
+      CameraFit.coordinates(
+        coordinates: points,
+        padding: const EdgeInsets.all(45),
+        maxZoom: 15,
+      ),
+    );
+  }
+
+  // Request location only when the user taps "My location".
+  Future<void> _locateMe() async {
+    if (_locating) return;
+
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
+
+    setState(() {
+      _locating = true;
+    });
+
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+
+      if (!mounted) return;
+
+      if (!serviceEnabled) {
+        _clearCurrentLocation();
+
+        _showMessage(
+          isEn
+              ? 'Please enable Location on your phone.'
+              : 'Vui lòng bật Vị trí (GPS) trên điện thoại.',
+        );
+        return;
+      }
+
+      var permission = await Geolocator.checkPermission();
+
+      if (!mounted) return;
+
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (!mounted) return;
+
+      if (permission == LocationPermission.denied) {
+        _clearCurrentLocation();
+
+        _showMessage(
+          isEn
+              ? 'Location permission was denied.'
+              : 'Bạn chưa cấp quyền truy cập vị trí.',
+        );
+        return;
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        _clearCurrentLocation();
+
+        _showMessage(
+          isEn ? 'Enable location permission in app settings.' : 'Quyền vị trí đã bị từ chối. Hãy cấp quyền trong Cài đặt ứng dụng.',
+        );
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 20),
+        ),
+      );
+
+      if (!mounted) return;
+
+      if (!position.latitude.isFinite ||
+          !position.longitude.isFinite ||
+          position.latitude < -90 ||
+          position.latitude > 90 ||
+          position.longitude < -180 ||
+          position.longitude > 180) {
+        _clearCurrentLocation();
+
+        _showMessage(
+          isEn
+              ? 'The location coordinates are invalid.'
+              : 'Tọa độ vị trí hiện tại không hợp lệ.',
+        );
+        return;
+      }
+
+      final point = LatLng(position.latitude, position.longitude);
+
+      setState(() {
+        _currentLocation = point;
+      });
+
+      // Move to the phone's current position.
+      _mapController.move(point, 16);
+    } on TimeoutException {
+      _clearCurrentLocation();
+
+      _showMessage(
+        isEn
+            ? 'Location timed out. Please try again.'
+            : 'Lấy vị trí quá lâu. Hãy thử lại ở nơi có tín hiệu GPS tốt hơn.',
+      );
+    } catch (error) {
+      debugPrint('Failed to determine current location: $error');
+
+      _clearCurrentLocation();
+
+      _showMessage(
+        isEn ? 'Could not determine your location.' : 'Không thể xác định vị trí hiện tại. Hãy kiểm tra GPS và quyền truy cập.',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _locating = false;
+        });
+      }
+    }
+  }
+
+  // Open Google Maps using site name and address.
   Future<void> _openDirections(VisitorSite site) async {
     final isEn = Localizations.localeOf(context).languageCode == 'en';
 
     final name = site.name.trim();
     final address = site.address?.trim() ?? '';
 
-    // Prefer a recognizable place name and address over coordinates.
     final destination = address.isNotEmpty ? '$name, $address' : name;
 
     if (destination.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isEn
-                ? 'This site has no destination information.'
-                : 'Địa điểm này chưa có thông tin chỉ đường.',
-          ),
-        ),
+      _showMessage(
+        isEn
+            ? 'This site has no destination information.'
+            : 'Địa điểm này chưa có thông tin chỉ đường.',
       );
       return;
     }
@@ -172,27 +326,15 @@ class _MapPageState extends State<MapPage> {
       if (!mounted) return;
 
       if (!opened) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isEn
-                  ? 'Could not open Google Maps.'
-                  : 'Không thể mở Google Maps.',
-            ),
-          ),
+        _showMessage(
+          isEn ? 'Could not open Google Maps.' : 'Không thể mở Google Maps.',
         );
       }
     } catch (error) {
       debugPrint('Failed to launch Google Maps: $error');
 
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isEn ? 'Could not open Google Maps.' : 'Không thể mở Google Maps.',
-          ),
-        ),
+      _showMessage(
+        isEn ? 'Could not open Google Maps.' : 'Không thể mở Google Maps.',
       );
     }
   }
@@ -213,6 +355,7 @@ class _MapPageState extends State<MapPage> {
     return uri;
   }
 
+  // Build the map with heritage markers and GPS controls.
   Widget _buildMap(bool isEn) {
     final positionedSites = _sites
         .where((site) => _coordinates(site) != null)
@@ -238,60 +381,141 @@ class _MapPageState extends State<MapPage> {
       borderRadius: BorderRadius.circular(AppRadii.medium),
       child: SizedBox(
         height: 270,
-        child: FlutterMap(
-          key: ValueKey(
-            'heritage-map-${_languageCode ?? 'vi'}-${points.length}',
-          ),
-          options: MapOptions(
-            initialCenter: points.first,
-            initialZoom: 14,
-            initialCameraFit: points.length > 1
-                ? CameraFit.coordinates(
-                    coordinates: points,
-                    padding: const EdgeInsets.all(45),
-                    maxZoom: 15,
-                  )
-                : null,
-          ),
+        child: Stack(
           children: [
-            if (widget.enableMapTiles)
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.flutter_application_1',
+            FlutterMap(
+              key: ValueKey(
+                'heritage-map-${_languageCode ?? 'vi'}-${points.length}',
               ),
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: points.first,
+                initialZoom: 14,
+                initialCameraFit: points.length > 1
+                    ? CameraFit.coordinates(
+                        coordinates: points,
+                        padding: const EdgeInsets.all(45),
+                        maxZoom: 15,
+                      )
+                    : null,
+              ),
+              children: [
+                if (widget.enableMapTiles)
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.example.flutter_application_1',
+                  ),
 
-            MarkerLayer(
-              markers: [
-                for (final site in positionedSites)
-                  Marker(
-                    point: _coordinates(site)!,
-                    width: 52,
-                    height: 52,
-                    child: IconButton(
-                      key: ValueKey('map-marker-${site.id}'),
-                      tooltip: site.name,
-                      onPressed: () => _selectSite(site),
-                      icon: Icon(
-                        Icons.location_on,
-                        size: _selectedSite?.id == site.id ? 44 : 38,
-                        color: _selectedSite?.id == site.id
-                            ? HeritagePalette.actionBlue
-                            : HeritagePalette.primaryNavy,
+                MarkerLayer(
+                  markers: [
+                    for (final site in positionedSites)
+                      Marker(
+                        point: _coordinates(site)!,
+                        width: 52,
+                        height: 52,
+                        child: IconButton(
+                          key: ValueKey('map-marker-${site.id}'),
+                          tooltip: site.name,
+                          onPressed: () => _selectSite(site),
+                          icon: Icon(
+                            Icons.location_on,
+                            size: _selectedSite?.id == site.id ? 44 : 38,
+                            color: _selectedSite?.id == site.id
+                                ? HeritagePalette.actionBlue
+                                : HeritagePalette.primaryNavy,
+                          ),
+                        ),
+                      ),
+
+                    // Blue dot: last successfully retrieved GPS position.
+                    if (_currentLocation != null)
+                      Marker(
+                        point: _currentLocation!,
+                        width: 32,
+                        height: 32,
+                        child: Center(
+                          child: Container(
+                            key: const ValueKey('map-current-location'),
+                            width: 22,
+                            height: 22,
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x44000000),
+                                  blurRadius: 6,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+
+                RichAttributionWidget(
+                  attributions: [
+                    TextSourceAttribution(
+                      'OpenStreetMap contributors',
+                      onTap: () => launchUrl(
+                        Uri.parse('https://www.openstreetmap.org/copyright'),
                       ),
                     ),
-                  ),
+                  ],
+                ),
               ],
             ),
 
-            RichAttributionWidget(
-              attributions: [
-                TextSourceAttribution(
-                  'OpenStreetMap contributors',
-                  onTap: () => launchUrl(
-                    Uri.parse('https://www.openstreetmap.org/copyright'),
+            // Two controls: GPS and return to heritage sites.
+            Positioned(
+              top: 10,
+              right: 10,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Material(
+                    color: Theme.of(context).colorScheme.surface,
+                    elevation: 3,
+                    borderRadius: BorderRadius.circular(12),
+                    child: IconButton(
+                      key: const ValueKey('map-my-location'),
+                      tooltip: isEn ? 'My location' : 'Vị trí của tôi',
+                      onPressed: _locating ? null : _locateMe,
+                      icon: _locating
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(
+                              Icons.my_location,
+                              color: HeritagePalette.primaryNavy,
+                            ),
+                    ),
                   ),
-                ),
-              ],
+
+                  const SizedBox(height: 8),
+
+                  Material(
+                    color: Theme.of(context).colorScheme.surface,
+                    elevation: 3,
+                    borderRadius: BorderRadius.circular(12),
+                    child: IconButton(
+                      key: const ValueKey('map-show-heritage-sites'),
+                      tooltip: isEn ? 'Show heritage sites' : 'Xem các di sản',
+                      onPressed: _focusOnHeritageSites,
+                      icon: const Icon(
+                        Icons.account_balance_outlined,
+                        color: HeritagePalette.primaryNavy,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -408,7 +632,6 @@ class _MapPageState extends State<MapPage> {
 
                   const SizedBox(height: 8),
 
-                  // View details and Google Maps directions.
                   Wrap(
                     spacing: 10,
                     runSpacing: 2,
@@ -424,6 +647,7 @@ class _MapPageState extends State<MapPage> {
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                       ),
+
                       TextButton.icon(
                         key: const ValueKey('selected-site-directions'),
                         onPressed: hasCoordinates
@@ -526,6 +750,7 @@ class _MapPageState extends State<MapPage> {
   @override
   Widget build(BuildContext context) {
     final isEn = Localizations.localeOf(context).languageCode == 'en';
+
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -568,7 +793,6 @@ class _MapPageState extends State<MapPage> {
                   child: _buildMap(isEn),
                 ),
 
-                // Preview card below the map.
                 if (_selectedSite != null)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
@@ -624,6 +848,7 @@ class _MapPageState extends State<MapPage> {
 
   @override
   void dispose() {
+    _mapController.dispose();
     _ownedApi?.close();
     super.dispose();
   }
