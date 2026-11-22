@@ -231,7 +231,9 @@ test.describe("Artifact Translations", () => {
     const response = await updateResponse
     expect(response.ok()).toBeTruthy()
 
-    await expect(page.getByText("Translation saved")).toBeVisible()
+    await expect(
+      page.getByText("Translation saved").first(),
+    ).toBeVisible()
 
     await expect(dialog.getByLabel("Title")).toHaveValue(
       "Updated Playwright Translation",
