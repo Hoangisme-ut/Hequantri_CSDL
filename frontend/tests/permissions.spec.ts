@@ -1,7 +1,25 @@
-import { expect, test } from "@playwright/test"
-import { createUser } from "./utils/privateApi"
+import { expect, type Page, test } from "@playwright/test"
+import { firstSuperuser, firstSuperuserPassword } from "./config"
+import { createAdminUser, createUser } from "./utils/privateApi"
 import { randomEmail, randomPassword } from "./utils/random"
 import { logInUser } from "./utils/user"
+
+// Dùng chung để kiểm tra quyền truy cập Users API.
+async function getUsersApiResponse(page: Page) {
+  // Lấy access token từ localStorage của trình duyệt.
+  const token = await page.evaluate(() => localStorage.getItem("access_token"))
+
+  expect(token).toBeTruthy()
+
+  // Gọi backend bằng tên service trong Docker Compose.
+  const apiBaseUrl = process.env.PLAYWRIGHT_API_URL ?? "http://backend:8000"
+
+  return page.context().request.get(`${apiBaseUrl}/api/v1/users/`, {
+    headers: {
+      Authorization: `Bearer ${token!}`,
+    },
+  })
+}
 
 // 1. Unauthenticated - Người dùng chưa đăng nhập
 
@@ -79,5 +97,147 @@ test.describe("Permissions - Visitor role", () => {
     await expect(
       page.getByRole("heading", { name: "Access Denied" }),
     ).toBeVisible()
+  })
+})
+
+// 3. Admin - Người dùng có role admin nhưng không phải Superuser
+
+test.describe("Permissions - Admin role", () => {
+  test.use({
+    storageState: {
+      cookies: [],
+      origins: [],
+    },
+  })
+
+  let email: string
+  let password: string
+
+  test.beforeAll(async () => {
+    email = randomEmail()
+    password = randomPassword()
+
+    const admin = await createAdminUser({
+      email,
+      password,
+    })
+
+    expect(admin.role_name).toBe("admin")
+    expect(admin.is_superuser).toBe(false)
+  })
+
+  test("Admin can access dashboard", async ({ page }) => {
+    await logInUser(page, email, password)
+
+    await page.goto("/")
+
+    await expect(page).toHaveURL(/\/$/)
+
+    await expect(
+      page.getByText("Overview", { exact: true }).first(),
+    ).toBeVisible()
+  })
+
+  test("Admin can access content management pages", async ({ page }) => {
+    await logInUser(page, email, password)
+
+    const routes = [
+      "/sites",
+      "/items",
+      "/beacons",
+      "/analytics",
+      "/feedback",
+      "/visitors",
+      "/settings",
+    ]
+
+    for (const route of routes) {
+      await page.goto(route)
+
+      await expect(page).toHaveURL(new RegExp(`${route.replace("/", "\\/")}$`))
+
+      await expect(
+        page.getByRole("heading", { name: "Access Denied" }),
+      ).toHaveCount(0)
+    }
+  })
+
+  test("Admin cannot access Team & Roles", async ({ page }) => {
+    await logInUser(page, email, password)
+
+    await page.goto("/admin")
+
+    await expect(page).toHaveURL(/\/forbidden$/)
+
+    await expect(
+      page.getByRole("heading", { name: "Access Denied" }),
+    ).toBeVisible()
+  })
+
+  test("Admin sidebar does not display Team & Roles", async ({ page }) => {
+    await logInUser(page, email, password)
+
+    await page.goto("/")
+
+    await expect(page.getByRole("link", { name: "Team & Roles" })).toHaveCount(
+      0,
+    )
+  })
+
+  test("Admin cannot access users API", async ({ page }) => {
+    await logInUser(page, email, password)
+
+    const response = await getUsersApiResponse(page)
+
+    console.log("ADMIN USERS API RESPONSE:", {
+      status: response.status(),
+      body: (await response.text()).slice(0, 500),
+    })
+
+    expect(response.status()).toBe(403)
+  })
+})
+
+// 4. Superuser - Người dùng có toàn quyền quản trị
+
+test.describe("Permissions - Superuser role", () => {
+  test.use({
+    storageState: {
+      cookies: [],
+      origins: [],
+    },
+  })
+
+  test("Superuser can access Team & Roles", async ({ page }) => {
+    await logInUser(page, firstSuperuser, firstSuperuserPassword)
+
+    await page.goto("/admin")
+
+    await expect(page).toHaveURL(/\/admin$/)
+
+    await expect(
+      page.getByRole("heading", { name: "Access Denied" }),
+    ).toHaveCount(0)
+  })
+
+  test("Superuser can see Team & Roles in sidebar", async ({ page }) => {
+    await logInUser(page, firstSuperuser, firstSuperuserPassword)
+
+    await page.goto("/")
+
+    await expect(page.getByRole("link", { name: "Team & Roles" })).toBeVisible()
+  })
+
+  test("Superuser can access users API", async ({ page }) => {
+    await logInUser(page, firstSuperuser, firstSuperuserPassword)
+
+    const response = await getUsersApiResponse(page)
+
+    console.log("SUPERUSER USERS API RESPONSE:", {
+      status: response.status(),
+      body: (await response.text()).slice(0, 500),
+    })
+
+    expect(response.status()).toBe(200)
   })
 })

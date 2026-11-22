@@ -70,12 +70,6 @@ const navItems: Item[] = [
 
 const adminItems: Item[] = [
   {
-    icon: Users,
-    title: "Team & Roles",
-    path: "/admin",
-    section: "Administration",
-  },
-  {
     icon: Settings,
     title: "Settings",
     path: "/settings",
@@ -87,6 +81,15 @@ const adminItems: Item[] = [
     path: "#help",
     section: "Administration",
     disabled: true,
+  },
+]
+
+const superuserItems: Item[] = [
+  {
+    icon: Users,
+    title: "Team & Roles",
+    path: "/admin",
+    section: "Administration",
   },
 ]
 
@@ -175,11 +178,14 @@ export function AppSidebar({ preview = false }: { preview?: boolean }) {
         role_name: "admin",
       }
     : authenticatedUser
+
   const isAdmin = currentUser?.role_name === "admin"
+  const isSuperuser = currentUser?.is_superuser === true
+
   const items = preview
     ? previewItems
     : isAdmin
-      ? [...navItems, ...adminItems]
+      ? [...navItems, ...adminItems, ...(isSuperuser ? superuserItems : [])]
       : []
 
   return (

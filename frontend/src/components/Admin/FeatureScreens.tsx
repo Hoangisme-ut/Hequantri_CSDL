@@ -132,29 +132,36 @@ export function AnalyticsScreen() {
   const [toDate, setToDate] = useState(defaultRange.to)
   const [selectedSiteId, setSelectedSiteId] = useState("")
   const [isExportingPdf, setIsExportingPdf] = useState(false)
+
   const [isExportingExcel, setIsExportingExcel] = useState(false)
 
+  // Kiểm tra đầy đủ khoảng ngày trước khi gọi API.
   const dateRangeError = getDateRangeError(fromDate, toDate)
   const isDateRangeInvalid = dateRangeError !== null
+  const isDateRangeValid = !isDateRangeInvalid
+  // Analytics API sử dụng khoảng thời gian UTC [from, to).
+  // Ngày kết thúc được chuyển thành 00:00 UTC của ngày kế tiếp.
+  const exclusiveEndDate = isDateRangeValid
+    ? new Date(`${toDate}T00:00:00Z`)
+    : null
 
-  // Analytics uses [from, to), so advance the inclusive end date by one day.
-  const analyticsFilters = isDateRangeInvalid
-    ? null
-    : {
+  exclusiveEndDate?.setUTCDate(exclusiveEndDate.getUTCDate() + 1)
+
+  const analyticsFilters = isDateRangeValid
+    ? {
         from: `${fromDate}T00:00:00Z`,
-        to: `${getDateString(
-          new Date(new Date(`${toDate}T00:00:00Z`).getTime() + 86400000),
-        )}T00:00:00Z`,
+        to: `${getDateString(exclusiveEndDate!)}T00:00:00Z`,
         site_id: selectedSiteId || undefined,
       }
+    : null
 
   // Dashboard API sử dụng ngày bắt đầu và kết thúc inclusive.
-  const dashboardFilters = isDateRangeInvalid
-    ? null
-    : {
+  const dashboardFilters = isDateRangeValid
+    ? {
         from_date: fromDate,
         to_date: toDate,
       }
+    : null
 
   // Danh sách Site cho bộ lọc, không phụ thuộc Site đang chọn.
   const siteOptionsFilters = analyticsFilters
@@ -171,7 +178,6 @@ export function AnalyticsScreen() {
       ? () => analyticsService.sites(siteOptionsFilters)
       : skipToken,
   })
-
   // Analytics API
   const overviewQuery = useQuery({
     queryKey: ["analytics", "overview", analyticsFilters],
@@ -801,33 +807,62 @@ export function FeedbackScreen() {
   })
 
   // Moderate only the version currently displayed to the administrator.
+  // Chỉ cập nhật phiên bản Feedback mà Admin đang xem.
   const moderationMutation = useMutation({
     mutationFn: ({
       id,
       status,
-      expected_updated_at,
+      expectedUpdatedAt,
     }: {
       id: string
       status: ModerationStatus
-      expected_updated_at: string | null
-    }) => feedbackService.updateStatus(id, { status, expected_updated_at }),
+      expectedUpdatedAt: string | null
+    }) =>
+      feedbackService.updateStatus(id, {
+        status,
+        expected_updated_at: expectedUpdatedAt,
+      }),
+
     retry: false,
 
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: feedbackKeys.all,
       })
+
+      toast.success("Feedback status updated successfully.")
     },
+
     onError: async (error) => {
-      if (error instanceof FeedbackConflictError) {
-        await queryClient.invalidateQueries({ queryKey: feedbackKeys.all })
+      await queryClient.invalidateQueries({
+        queryKey: feedbackKeys.all,
+      })
+
+      if (
+        error instanceof FeedbackConflictError ||
+        (error instanceof Error &&
+          error.message.includes("Feedback changed; reload before moderating"))
+      ) {
+        toast.warning(
+          "Feedback has changed. The latest data has been reloaded. Please review it again.",
+        )
+        return
       }
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to update feedback status.",
+      )
     },
   })
-
   const requiresReview =
     moderationMutation.isError &&
-    moderationMutation.error instanceof FeedbackConflictError
+    (moderationMutation.error instanceof FeedbackConflictError ||
+      (moderationMutation.error instanceof Error &&
+        moderationMutation.error.message.includes(
+          "Feedback changed; reload before moderating",
+        )))
   const moderationBlocked =
     moderationMutation.isPending ||
     requiresReview ||
@@ -872,10 +907,9 @@ export function FeedbackScreen() {
     moderationMutation.mutate({
       id: selectedFeedback.id,
       status,
-      expected_updated_at: selectedFeedback.updated_at ?? null,
+      expectedUpdatedAt: selectedFeedback.updated_at ?? null,
     })
   }
-
   return (
     <div className="flex flex-col gap-4 md:gap-5">
       {/* Search and filters */}
@@ -1225,13 +1259,6 @@ export function FeedbackScreen() {
               I have read the updated feedback
             </Button>
           )}
-
-          {moderationMutation.isSuccess && (
-            <p className="text-sm text-muted-foreground">
-              Feedback status updated successfully.
-            </p>
-          )}
-
           <p className="text-xs text-muted-foreground">
             Admin can change feedback status between Pending, Approved and
             Hidden. Only approved feedback is displayed publicly.

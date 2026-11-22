@@ -41,23 +41,51 @@ adapted to use **SQL Server** instead of PostgreSQL.
 
 ### Dashboard - Admin
 
-![Admin dashboard screenshot](img/dashboard.png)
+![Admin dashboard screenshot](img/dashboard-overview.png)
 
-### Dashboard - Items
+### Dashboard - Site
 
-![Items dashboard screenshot](img/dashboard-items.png)
+![Site management dashboard screenshot](img/SiteManagement.png)
 
-### Dashboard - Dark Mode
+### Dashboard - Artifact
 
-![Dark mode dashboard screenshot](img/dashboard-dark.png)
+![Artifact management dashboard screenshot](img/ArtifactManagement.png)
 
-### Mailpit - Local Email Testing
+### Dashboard - Beacon
 
-![Mailpit screenshot](img/mailpit.png)
+![Beacon management dashboard screenshot](img/BeaconManagement.png)
+
+### Dashboard - Analytics and Reports
+
+![Analytics and reports dashboard screenshot](img/AnalyticsAndReports.png)
+
+### Dashboard - Feedback review
+
+![Feedback review dashboard screenshot](img/FeedbackReview.png)
+
+### Dashboard - Visitors
+
+![Visitors dashboard screenshot](img/Visitors.png)
+
+### Dashboard - Team and roles
+
+![Team and roles dashboard screenshot](img/TeamAndRoles.png)
+
+### Dashboard - Settings
+
+![Settings dashboard screenshot](img/Settings.png)
 
 ### Interactive API Documentation
 
-![API docs](img/docs.png)
+![API docs overview screenshot](img/API_1.png)
+
+![Languages and Sites API screenshot](img/API_2.png)
+
+![Sites and Artifacts API screenshot](img/API_3.png)
+
+![Dashboard, Analytics, Media and Login API screenshot](img/API_4.png)
+
+![Users, Utils and Private API screenshot](img/API_5.png)
 
 ## Quick Start (Local)
 

@@ -31,10 +31,19 @@ async function createArtifact(page: Page, code: string) {
 
   await siteSelect.selectOption({ index: 1 })
 
-  const responsePromise = page.waitForResponse(
+  // Chờ API tạo Artifact.
+  const createResponsePromise = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&
-      response.url().includes("/api/v1/artifacts/"),
+      new URL(response.url()).pathname.endsWith("/api/v1/artifacts/"),
+  )
+
+  // Chờ API tải lại danh sách Artifact sau khi tạo.
+  // Đăng ký trước khi click để tránh bỏ lỡ request.
+  const listResponsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" &&
+      new URL(response.url()).pathname.endsWith("/api/v1/artifacts/"),
   )
 
   await dialog
@@ -43,10 +52,16 @@ async function createArtifact(page: Page, code: string) {
     })
     .click()
 
-  const response = await responsePromise
-  expect(response.ok()).toBeTruthy()
+  const createResponse = await createResponsePromise
+  expect(createResponse.ok()).toBeTruthy()
 
-  await expect(page.getByText(code)).toBeVisible()
+  const listResponse = await listResponsePromise
+  expect(listResponse.ok()).toBeTruthy()
+
+  // Đợi danh sách được render sau khi tải dữ liệu mới.
+  await expect(page.getByText(code, { exact: true })).toBeVisible({
+    timeout: 10000,
+  })
 }
 
 async function openMediaManager(page: Page, code: string) {

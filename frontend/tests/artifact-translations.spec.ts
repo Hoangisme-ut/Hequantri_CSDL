@@ -27,6 +27,7 @@ async function createArtifact(page: Page, code: string) {
   await dialog.getByLabel("Artifact code").fill(code)
 
   const siteSelect = dialog.getByLabel("Site")
+
   await expect(siteSelect.locator("option"))
     .toHaveCount(2, {
       timeout: 10000,
@@ -53,7 +54,34 @@ async function createArtifact(page: Page, code: string) {
   const response = await createResponse
   expect(response.ok()).toBeTruthy()
 
-  await expect(page.getByText(code)).toBeVisible()
+  // Tìm chính xác Artifact vừa tạo thay vì phụ thuộc vào 200 bản ghi đầu tiên.
+  const search = page.getByRole("textbox", {
+    name: "Search artifact code",
+  })
+
+  const searchResponse = page.waitForResponse((response) => {
+    if (
+      response.request().method() !== "GET" ||
+      !response.url().includes("/api/v1/artifacts/")
+    ) {
+      return false
+    }
+
+    return new URL(response.url()).searchParams.get("q") === code
+  })
+
+  await search.fill(code)
+
+  const filteredResponse = await searchResponse
+  expect(filteredResponse.ok()).toBeTruthy()
+
+  await expect(
+    page.getByRole("button", {
+      name: `Manage translations for ${code}`,
+    }),
+  ).toBeVisible({
+    timeout: 10000,
+  })
 }
 
 async function openTranslationDialog(page: Page, code: string) {
@@ -200,7 +228,7 @@ test.describe("Artifact Translations", () => {
     const response = await updateResponse
     expect(response.ok()).toBeTruthy()
 
-    await expect(page.getByText("Translation saved")).toBeVisible()
+    await expect(page.getByText("Translation saved").first()).toBeVisible()
 
     await expect(dialog.getByLabel("Title")).toHaveValue(
       "Updated Playwright Translation",
