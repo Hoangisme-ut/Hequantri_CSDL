@@ -43,6 +43,10 @@ adapted to use **SQL Server** instead of PostgreSQL.
 
 ![Admin dashboard screenshot](img/dashboard-overview.png)
 
+### Dashboard - Overview (Light Mode)
+
+![Light mode dashboard overview screenshot](img/DashboardOverviewLight.png)
+
 ### Dashboard - Site
 
 ![Site management dashboard screenshot](img/SiteManagement.png)
@@ -71,15 +75,19 @@ adapted to use **SQL Server** instead of PostgreSQL.
 
 ![Team and roles dashboard screenshot](img/TeamAndRoles.png)
 
+### Notifications
+![Notifications dashboard screenshot](img/Notifications.png)
+
+### Dashboard - Account
+![Account dashboard screenshot](img/Account.png)
+
 ### Dashboard - Settings
 
 ![Settings dashboard screenshot](img/Settings.png)
 
 ### Interactive API Documentation
 
-![API docs overview screenshot](img/API_1.png)
-
-![Languages and Sites API screenshot](img/API_2.png)
+![API docs overview and Languages screenshot](img/API_1.png)
 
 ![Sites and Artifacts API screenshot](img/API_3.png)
 
