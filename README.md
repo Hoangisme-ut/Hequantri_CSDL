@@ -35,11 +35,11 @@ adapted to use **SQL Server** instead of PostgreSQL.
 - ✅ Tests with [Pytest](https://pytest.org).
 - 🏭 CI (continuous integration) based on GitHub Actions.
 
-### Dashboard Login
+### Dashboard - Login
 
 ![Dashboard login screenshot](img/login.png)
 
-### Dashboard - Admin
+### Dashboard - Overview
 
 ![Admin dashboard screenshot](img/dashboard-overview.png)
 
@@ -75,7 +75,7 @@ adapted to use **SQL Server** instead of PostgreSQL.
 
 ![Team and roles dashboard screenshot](img/TeamAndRoles.png)
 
-### Notifications
+### Dashboard - Notifications
 ![Notifications dashboard screenshot](img/Notifications.png)
 
 ### Dashboard - Account
