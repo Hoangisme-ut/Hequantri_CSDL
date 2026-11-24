@@ -399,6 +399,7 @@ class _FakeFullApi implements VisitorApi, SiteApi {
     required AuthToken token,
     required String artifactId,
     String? beaconId,
+    String? languageCode,
     int? rssi,
     int? durationSeconds,
   }) async => VisitorVisitReceipt(

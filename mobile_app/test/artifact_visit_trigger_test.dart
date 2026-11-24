@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dchs_flutter_beacon/dchs_flutter_beacon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:flutter_application_1/features/artifacts/artifact.dart';
 import 'package:flutter_application_1/features/artifacts/artifact_detail_page.dart';
 import 'package:flutter_application_1/features/auth/auth_service.dart';
@@ -65,6 +68,59 @@ Future<void> _mount(WidgetTester tester, Widget widget) async {
 }
 
 void main() {
+  testWidgets('visit payload uses the language of the rendered fallback', (
+    tester,
+  ) async {
+    final session = AuthSession()..authenticate(_tokenA);
+    addTearDown(session.dispose);
+    final visits = <http.Request>[];
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/v1/artifacts/$_artifactId') {
+        expect(request.url.queryParameters['lang'], 'en');
+        return _jsonResponse({
+          'id': _artifactId,
+          'site_id': _content.siteId,
+          'code': _content.code,
+          'title': 'Hiện vật tiếng Việt',
+          'language_code': 'vi',
+          'is_fallback': true,
+        });
+      }
+      expect(request.method, 'POST');
+      expect(request.url.path, '/api/v1/visits/');
+      visits.add(request);
+      return _jsonResponse({
+        'id': '40000000-0000-0000-0000-000000000001',
+        'user_id': '50000000-0000-0000-0000-000000000001',
+        'artifact_id': _artifactId,
+      }, status: 201);
+    });
+    addTearDown(client.close);
+    final api = HttpVisitorApi(
+      baseUrl: Uri.parse('https://api.example.test'),
+      client: client,
+    );
+
+    await _mount(
+      tester,
+      _app(
+        session,
+        ArtifactDetailPage(
+          artifact: _artifact,
+          visitorApi: api,
+          initialIsFavorite: false,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hiện vật tiếng Việt'), findsOneWidget);
+    expect(jsonDecode(visits.single.body), {
+      'artifact_id': _artifactId,
+      'language_code': 'vi',
+    });
+  });
+
   testWidgets(
     'an in-flight detail visit is not sent again during a locale change',
     (tester) async {
@@ -431,6 +487,7 @@ class _Api implements VisitorApi {
     required AuthToken token,
     required String artifactId,
     String? beaconId,
+    String? languageCode,
     int? rssi,
     int? durationSeconds,
   }) async {
@@ -449,6 +506,13 @@ class _Api implements VisitorApi {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
+
+http.Response _jsonResponse(Map<String, Object> body, {int status = 200}) =>
+    http.Response(
+      jsonEncode(body),
+      status,
+      headers: {'content-type': 'application/json; charset=utf-8'},
+    );
 
 class _Contents extends BeaconContentService {
   _Contents() : super(baseUrl: Uri.parse('https://example.test'));

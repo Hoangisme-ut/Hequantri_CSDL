@@ -355,6 +355,7 @@ class _ArtifactDetailPageState extends State<ArtifactDetailPage> {
         token: token,
         artifactId: content.id,
         beaconId: widget.visitBeaconId,
+        languageCode: content.languageCode,
         rssi: widget.visitRssi,
       );
       _completedViews.add(key);

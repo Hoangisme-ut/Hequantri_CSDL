@@ -60,7 +60,8 @@ class AnalyticsExportTests(TestCase):
                 }
             ],
             [
-                {"code": "en", "name": "English", "views": 4},
+                {"code": "en", "name": "English", "views": 3},
+                {"code": "vi", "name": "Tiếng Việt", "views": 1},
                 {"code": None, "name": None, "views": 1},
             ],
         ]
@@ -106,8 +107,10 @@ class AnalyticsExportTests(TestCase):
         self.assertEqual(
             list(artifacts.values)[1], (str(self.artifact_id), "A<1&2>", 5, 2)
         )
-        self.assertEqual(list(languages.values)[1], ("en", "English", 4))
-        unknown = list(languages.values)[2]
+        self.assertEqual(
+            list(languages.values)[1:3], [("en", "English", 3), ("vi", "Tiếng Việt", 1)]
+        )
+        unknown = list(languages.values)[3]
         self.assertEqual((unknown[0], unknown[2]), ("unknown", 1))
         self.assertTrue(unknown[1])
         for sheet in workbook.worksheets:
@@ -155,8 +158,11 @@ class AnalyticsExportTests(TestCase):
         )
         self.assertEqual(table_rows[2][1][0].getPlainText(), "North & <River> Site")
         self.assertEqual(table_rows[3][1][0].getPlainText(), "A<1&2>")
-        self.assertEqual(table_rows[4][2][0].getPlainText(), "unknown")
-        self.assertTrue(table_rows[4][2][1].getPlainText())
+        self.assertEqual(
+            {row[0].getPlainText(): row[2].getPlainText() for row in table_rows[4][1:]},
+            {"en": "3", "vi": "1", "unknown": "1"},
+        )
+        self.assertTrue(table_rows[4][3][1].getPlainText())
 
     def test_pdf_empty_report_has_placeholders_in_all_detail_tables(self) -> None:
         self.set_report_data(empty=True)

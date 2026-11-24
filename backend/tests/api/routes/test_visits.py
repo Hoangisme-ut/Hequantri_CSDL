@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, col, select
 
 from app import crud
-from app.models import VisitLog
+from app.models import Language, VisitLog
 from tests.utils.heritage import (
     API,
     add_translation,
@@ -45,6 +45,89 @@ def _artifact(
     return artifact
 
 
+def _visitor_with_language(
+    client: TestClient, db: Session, code: str
+) -> dict[str, str]:
+    headers = authentication_token_from_email(
+        client=client, email=f"visit-language-{uuid.uuid4().hex}@example.com", db=db
+    )
+    response = client.patch(
+        f"{API}/users/me",
+        headers=headers,
+        json={"language_id": get_language_id(client, code)},
+    )
+    assert response.status_code == 200, response.text
+    return headers
+
+
+@pytest.mark.parametrize(
+    ("profile", "has_english", "rendered"),
+    [("vi", True, "en"), ("en", False, "vi")],
+    ids=["english-translation-over-vietnamese-preference", "vietnamese-fallback"],
+)
+def test_visit_records_rendered_artifact_language(
+    client: TestClient,
+    db: Session,
+    superuser_token_headers: dict[str, str],
+    site_ids: list[str],
+    profile: str,
+    has_english: bool,
+    rendered: str,
+) -> None:
+    admin = superuser_token_headers
+    headers = _visitor_with_language(client, db, profile)
+    artifact = _artifact(client, admin, site_ids, "Bình gốm")
+    if has_english:
+        add_translation(
+            client, admin, artifact["id"], get_language_id(client, "en"), "Vase"
+        )
+
+    detail = client.get(
+        f"{API}/artifacts/{artifact['id']}", headers=headers, params={"lang": "en"}
+    )
+    assert detail.status_code == 200, detail.text
+    content = detail.json()
+    assert content["language_code"] == rendered
+    assert content["is_fallback"] is (not has_english)
+
+    response = client.post(
+        f"{API}/visits/",
+        headers=headers,
+        json={"artifact_id": artifact["id"], "language_code": content["language_code"]},
+    )
+    assert response.status_code == 201, response.text
+    expected_id = get_language_id(client, rendered)
+    assert response.json()["language_id"] == expected_id
+    row = db.get(VisitLog, uuid.UUID(response.json()["id"]))
+    assert row is not None and str(row.language_id) == expected_id
+
+
+def test_invalid_and_inactive_visit_codes_keep_profile_fallback(
+    client: TestClient,
+    db: Session,
+    superuser_token_headers: dict[str, str],
+    site_ids: list[str],
+) -> None:
+    headers = _visitor_with_language(client, db, "en")
+    inactive_code = f"x{uuid.uuid4().hex[:8]}"
+    inactive = Language(code=inactive_code, name="Inactive", is_active=False)
+    db.add(inactive)
+    db.commit()
+    try:
+        for code in (inactive_code, f"x{uuid.uuid4().hex[:8]}", " ", 123, None):
+            artifact = _artifact(client, superuser_token_headers, site_ids, "Bình gốm")
+            response = client.post(
+                f"{API}/visits/",
+                headers=headers,
+                json={"artifact_id": artifact["id"], "language_code": code},
+            )
+            assert response.status_code == 201, response.text
+            assert response.json()["language_id"] == get_language_id(client, "en")
+    finally:
+        db.delete(inactive)
+        db.commit()
+
+
 def test_visit_keeps_explicit_language_id(
     client: TestClient,
     superuser_token_headers: dict[str, str],
@@ -57,7 +140,11 @@ def test_visit_keeps_explicit_language_id(
     created = client.post(
         f"{API}/visits/",
         headers=normal_user_token_headers,
-        json={"artifact_id": artifact["id"], "language_id": en_id},
+        json={
+            "artifact_id": artifact["id"],
+            "language_id": en_id,
+            "language_code": "vi",
+        },
     )
     assert created.status_code == 201
     assert created.json()["language_id"] == en_id
@@ -99,13 +186,19 @@ def test_repeated_signal_within_window_is_one_visit(
 ) -> None:
     """Gửi lại nhiều lần (như nhận BLE lặp) chỉ tạo 1 lượt xem."""
     artifact = _artifact(client, superuser_token_headers, site_ids, "Bình gốm")
-    payload = {"artifact_id": artifact["id"]}
     responses = [
-        client.post(f"{API}/visits/", headers=normal_user_token_headers, json=payload)
-        for _ in range(3)
+        client.post(
+            f"{API}/visits/",
+            headers=normal_user_token_headers,
+            json={"artifact_id": artifact["id"], "language_code": code},
+        )
+        for code in ("en", "vi", "en")
     ]
     assert [r.status_code for r in responses] == [201, 200, 200]
     assert len({r.json()["id"] for r in responses}) == 1
+    assert {r.json()["language_id"] for r in responses} == {
+        get_language_id(client, "en")
+    }
     rows = db.exec(
         select(VisitLog).where(col(VisitLog.artifact_id) == uuid.UUID(artifact["id"]))
     ).all()

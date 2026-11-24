@@ -805,6 +805,7 @@ class _FakeVisitorApi implements VisitorApi {
     required AuthToken token,
     required String artifactId,
     String? beaconId,
+    String? languageCode,
     int? rssi,
     int? durationSeconds,
   }) async => const VisitorVisitReceipt(

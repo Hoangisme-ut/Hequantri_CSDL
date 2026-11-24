@@ -1782,6 +1782,10 @@ export type VisitLogCreate = {
      */
     language_id?: string | null;
     /**
+     * Language Code
+     */
+    language_code?: string | null;
+    /**
      * Rssi
      */
     rssi?: number | null;
