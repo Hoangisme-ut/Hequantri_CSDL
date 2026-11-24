@@ -457,6 +457,7 @@ abstract interface class VisitorApi {
     required AuthToken token,
     required String artifactId,
     String? beaconId,
+    String? languageCode,
     int? rssi,
     int? durationSeconds,
   });
@@ -733,6 +734,7 @@ class HttpVisitorApi implements VisitorApi, SiteApi, UserApi {
     required AuthToken token,
     required String artifactId,
     String? beaconId,
+    String? languageCode,
     int? rssi,
     int? durationSeconds,
   }) async {
@@ -743,6 +745,10 @@ class HttpVisitorApi implements VisitorApi, SiteApi, UserApi {
     if (beaconId != null && beaconId.isNotEmpty) {
       _requireRequestUuid(beaconId, 'beacon_id');
       payload['beacon_id'] = beaconId;
+    }
+
+    if (languageCode != null) {
+      payload['language_code'] = languageCode;
     }
 
     if (rssi != null && rssi < 0) {

@@ -1032,7 +1032,9 @@ export class VisitsService {
      * **300 giây** chỉ tính 1 lượt: trả **200** với bản ghi cũ (không tạo mới);
      * lượt mới trả **201**.
      * - `beacon_id` (nếu gửi) phải là beacon đang gắn đúng hiện vật này.
-     * - `language_id` bỏ trống thì lấy ngôn ngữ ưa thích của người dùng / mặc định.
+     * - Khi bỏ trống `language_id`, app có thể gửi `language_code` từ nội dung đã hiển thị.
+     * Mã đang bật được dùng để ghi lượt xem; thiếu mã hoặc mã không dùng được thì lấy
+     * ngôn ngữ ưa thích của người dùng / mặc định.
      */
     public static recordVisit<ThrowOnError extends boolean = true>(options: Options<visitsRecordVisitData, ThrowOnError>) {
         return (options.client ?? client).post<visitsRecordVisitResponses, visitsRecordVisitErrors, ThrowOnError>({
