@@ -18,6 +18,11 @@ class VisitorApiException implements Exception {
   String toString() => message;
 }
 
+class ProfileLanguageUnavailable extends VisitorApiException {
+  const ProfileLanguageUnavailable({super.statusCode})
+    : super('The selected language is not available.');
+}
+
 class VisitorArtifactSummary {
   const VisitorArtifactSummary({
     required this.id,
@@ -359,10 +364,44 @@ class UserProfile {
       languageId: _optionalResponseUuid(json, 'language_id'),
     );
   }
+
+  UserProfile withRoleName(String? fallback) => UserProfile(
+    id: id,
+    email: email,
+    fullName: fullName,
+    roleName: roleName ?? fallback,
+    isActive: isActive,
+    isSuperuser: isSuperuser,
+    createdAt: createdAt,
+    roleId: roleId,
+    languageId: languageId,
+  );
+}
+
+class ProfileLanguage {
+  const ProfileLanguage({required this.id, required this.code});
+
+  final String id;
+  final String code;
+
+  factory ProfileLanguage.fromJson(Map<String, dynamic> json) =>
+      ProfileLanguage(
+        id: _responseUuid(json, 'id'),
+        code: json['code'] as String,
+      );
 }
 
 abstract interface class UserApi {
   Future<UserProfile> loadCurrentUser({required AuthToken token});
+
+  Future<List<ProfileLanguage>> loadLanguages();
+
+  Future<UserProfile> updateCurrentUser({
+    required AuthToken token,
+    String? fullName,
+    String? email,
+    String? languageId,
+  });
 }
 
 abstract interface class SiteApi {
@@ -507,11 +546,16 @@ class HttpVisitorApi implements VisitorApi, SiteApi, UserApi {
     );
   }
 
-  Future<http.Response> _send(Future<http.Response> Function() request) async {
+  Future<http.Response> _send(
+    Future<http.Response> Function() request, {
+    VisitorApiException? Function(http.Response)? responseError,
+  }) async {
     try {
       final response = await request().timeout(_timeout);
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
+        final specificError = responseError?.call(response);
+        if (specificError != null) throw specificError;
         throw VisitorApiException(switch (response.statusCode) {
           401 => 'Your session has expired. Please sign in again.',
           403 => 'Your account cannot access this data.',
@@ -866,12 +910,61 @@ class HttpVisitorApi implements VisitorApi, SiteApi, UserApi {
   @override
   Future<UserProfile> loadCurrentUser({required AuthToken token}) async {
     final response = await _send(
-      () => _client.get(
-        _uri('/users/me'),
-        headers: _headers(token),
-      ),
+      () => _client.get(_uri('/users/me'), headers: _headers(token)),
     );
 
+    return UserProfile.fromJson(_decodeObject(response));
+  }
+
+  @override
+  Future<List<ProfileLanguage>> loadLanguages() async {
+    final response = await _send(
+      () => _client.get(
+        _uri('/languages/'),
+        headers: const {'Accept': 'application/json'},
+      ),
+    );
+    return (_decodeObject(response)['data'] as List<dynamic>)
+        .map((item) => ProfileLanguage.fromJson(item as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  @override
+  Future<UserProfile> updateCurrentUser({
+    required AuthToken token,
+    String? fullName,
+    String? email,
+    String? languageId,
+  }) async {
+    if (languageId != null) _requireRequestUuid(languageId, 'languageId');
+    final response = await _send(
+      () => _client.patch(
+        _uri('/users/me'),
+        headers: _headers(token, json: true),
+        body: jsonEncode({
+          'full_name': ?fullName,
+          'email': ?email,
+          'language_id': ?languageId,
+        }),
+      ),
+      responseError: (response) {
+        final status = response.statusCode;
+        if (status == 409) {
+          return const VisitorApiException(
+            'This email address is already in use.',
+            statusCode: 409,
+          );
+        }
+        if (languageId != null && (status == 400 || status == 404)) {
+          final body = utf8.decode(response.bodyBytes, allowMalformed: true);
+          if (body.contains('Language is inactive') ||
+              body.contains('Language not found')) {
+            return ProfileLanguageUnavailable(statusCode: status);
+          }
+        }
+        return null;
+      },
+    );
     return UserProfile.fromJson(_decodeObject(response));
   }
 
