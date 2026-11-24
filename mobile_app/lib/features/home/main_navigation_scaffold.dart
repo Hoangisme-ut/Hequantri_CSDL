@@ -31,6 +31,7 @@ class MainNavigationScaffold extends StatefulWidget {
 class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
   int _currentIndex = 0;
   final _favoritesPageKey = GlobalKey<FavoritesPageState>();
+  final _profilePageKey = GlobalKey<ProfilePageState>();
   late final VisitorApi _visitorApi;
   late final bool _ownsVisitorApi;
 
@@ -60,11 +61,13 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
       const MapPage(),
       ArtifactListPage(
         catalog: ArtifactCatalog(),
-        onLocaleChanged: widget.onLocaleChanged,
+        onLocaleChanged: (locale) =>
+            _profilePageKey.currentState?.changePreferredLocale(locale),
         visitorApi: _visitorApi,
       ),
       FavoritesPage(key: _favoritesPageKey, api: _visitorApi),
       ProfilePage(
+        key: _profilePageKey,
         onLocaleChanged: widget.onLocaleChanged,
         onLogout: widget.onLogout,
         visitorApi: _visitorApi,
