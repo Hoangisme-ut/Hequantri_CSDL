@@ -78,7 +78,7 @@ def readiness(response: Response) -> Readiness:
     )
     try:
         with Session(engine) as session:
-            if session.execute(text("SELECT 1")).scalar_one() == 1:
+            if session.connection().execute(text("SELECT 1")).scalar_one() == 1:
                 result.checks["database"] = "ok"
                 for name, check in (
                     ("alembic_revision", _has_current_revision),
