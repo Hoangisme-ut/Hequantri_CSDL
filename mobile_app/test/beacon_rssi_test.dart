@@ -17,6 +17,9 @@ const _token = AuthToken(accessToken: 'test-token', tokenType: 'bearer');
 
 final _now = DateTime.utc(2026, 11, 6);
 
+Finder _discoveryNotification(int minor) =>
+    find.text('Phát hiện beacon mới\nUUID: $_uuid\nMajor: 1 — Minor: $minor');
+
 String _artifactId(int minor) =>
     '20000000-0000-0000-0000-${minor.toString().padLeft(12, '0')}';
 
@@ -204,15 +207,17 @@ void main() {
   });
 
   testWidgets(
-    'weak packets learn the threshold once and do not display or log content',
+    'weak packets learn the threshold and only an accepted resolve notifies',
     (tester) async {
       await _withScanner(tester, (harness) async {
         await harness.emit(tester, rssi: -90);
 
         expect(harness.service.requests, hasLength(1));
+        expect(_discoveryNotification(1), findsNothing);
 
         await harness.completeLatest(tester);
 
+        expect(_discoveryNotification(1), findsNothing);
         expect(find.text('Nội dung beacon 1'), findsNothing);
         expect(harness.visits.artifactIds, isEmpty);
 
@@ -223,15 +228,48 @@ void main() {
         expect(harness.service.requests, hasLength(1));
 
         await tester.pump(const Duration(seconds: 3));
-        await harness.emit(tester, rssi: -70);
+        await harness.emit(tester, rssi: -60);
 
         expect(harness.service.requests, hasLength(2));
+        expect(_discoveryNotification(1), findsNothing);
 
         await harness.completeLatest(tester);
 
+        expect(_discoveryNotification(1), findsOneWidget);
         expect(find.text('Nội dung beacon 1'), findsOneWidget);
         expect(harness.visits.artifactIds, isEmpty);
         expect(harness.visits.readings, isEmpty);
+
+        await harness.emit(tester, rssi: -60);
+        final context = tester.element(find.byType(BeaconTestPage));
+        ScaffoldMessenger.of(context).clearSnackBars();
+        await tester.pumpAndSettle();
+        final technicalDetails = find.text('Thông tin kỹ thuật');
+        final scanScroll = find
+            .descendant(
+              of: find.byType(CustomScrollView),
+              matching: find.byType(Scrollable),
+            )
+            .first;
+        await tester.scrollUntilVisible(
+          technicalDetails,
+          120,
+          scrollable: scanScroll,
+        );
+        await tester.pumpAndSettle();
+        await Scrollable.ensureVisible(
+          tester.element(technicalDetails),
+          alignment: 0.3,
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(technicalDetails.hitTestable());
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Lần báo mới: 1 · lần lặp đã chặn: 1'),
+          findsOneWidget,
+        );
+        expect(harness.service.requests, hasLength(2));
       });
     },
   );
@@ -248,8 +286,46 @@ void main() {
         await harness.emit(tester, rssi: -90);
         await harness.completeLatest(tester);
 
+        expect(_discoveryNotification(1), findsNothing);
         expect(find.text('Nội dung beacon 1'), findsNothing);
         expect(harness.visits.artifactIds, isEmpty);
+      });
+    },
+  );
+
+  testWidgets('resolve failure does not notify or show a preview', (
+    tester,
+  ) async {
+    await _withScanner(tester, (harness) async {
+      await harness.emit(tester, rssi: -60);
+      expect(_discoveryNotification(1), findsNothing);
+
+      harness.service.requests.single.completer.completeError(
+        const BeaconApiException('Không tải được beacon.'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(_discoveryNotification(1), findsNothing);
+      expect(find.text('Nội dung beacon 1'), findsNothing);
+      expect(
+        find.text('Chưa tải được nội dung. Xem thông báo bên dưới.'),
+        findsOneWidget,
+      );
+    });
+  });
+
+  testWidgets(
+    'a resolve cannot activate a beacon missing from the latest scan',
+    (tester) async {
+      await _withScanner(tester, (harness) async {
+        await harness.emit(tester, rssi: -60);
+        harness.source.add([]);
+        await tester.pump();
+
+        await harness.completeLatest(tester);
+
+        expect(_discoveryNotification(1), findsNothing);
+        expect(find.text('Nội dung beacon 1'), findsNothing);
       });
     },
   );
@@ -267,6 +343,7 @@ void main() {
         await harness.emit(tester, minor: 2, rssi: -45);
 
         expect(harness.service.requests, hasLength(1));
+        expect(_discoveryNotification(2), findsNothing);
         expect(find.text('Nội dung beacon 1'), findsOneWidget);
 
         await harness.emit(tester, minor: 2, rssi: -45);
@@ -274,9 +351,12 @@ void main() {
 
         expect(harness.service.requests, hasLength(2));
         expect(harness.service.requests.last.minor, 2);
+        expect(_discoveryNotification(2), findsNothing);
 
         await harness.completeLatest(tester);
 
+        await tester.pumpAndSettle();
+        expect(_discoveryNotification(2), findsOneWidget);
         expect(find.text('Nội dung beacon 1'), findsNothing);
         expect(find.text('Nội dung beacon 2'), findsOneWidget);
         expect(harness.visits.artifactIds, isEmpty);
