@@ -26,8 +26,8 @@ jobs:
       - name: Verify migration and seed are repeatable
         run: docker compose run --rm backend bash scripts/prestart.sh
       - run: docker compose up -d --wait backend
-      - name: Test backend is up
-        run: curl --fail --retry 10 --retry-delay 3 --retry-connrefused http://localhost:8000/api/v1/utils/health-check
+      - name: Test backend readiness
+        run: curl --fail-with-body --retry 10 --retry-delay 3 --retry-connrefused --max-time 10 http://localhost:8000/api/v1/utils/ready
       - name: Test frontend is up
         run: curl --fail http://localhost:8000
       - name: Test seeded Admin and media API
