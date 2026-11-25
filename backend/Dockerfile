@@ -48,7 +48,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-workspace --package app
+    uv sync --no-cache --frozen --no-install-workspace --package app
 
 COPY ./backend/scripts /app/backend/scripts
 
@@ -65,7 +65,7 @@ COPY --from=frontend-build /app/backend/app/frontend /app/backend/app/frontend
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --package app
+    uv sync --no-cache --frozen --package app
 
 WORKDIR /app/backend/
 
