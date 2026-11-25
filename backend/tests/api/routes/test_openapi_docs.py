@@ -18,6 +18,7 @@ HERITAGE_TAGS = {
     "feedbacks",
     "visits",
     "dashboard",
+    "roles",
 }
 BODY_METHODS = {"post", "put", "patch"}
 
