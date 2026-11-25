@@ -37,10 +37,11 @@ def get_current_user(session: SessionDep, token: TokenDep) -> User:
             options={"require": ["exp", "sub"]},
         )
         token_data = TokenPayload(**payload)
-    except InvalidTokenError, ValidationError:
+    except (InvalidTokenError, ValidationError):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     user = session.get(User, token_data.sub)
     if not user:
@@ -122,7 +123,7 @@ def get_optional_user(
             options={"require": ["exp", "sub"]},
         )
         token_data = TokenPayload(**payload)
-    except InvalidTokenError, ValidationError:
+    except (InvalidTokenError, ValidationError):
         return None
     user = session.get(User, token_data.sub)
     if not user or not user.is_active:

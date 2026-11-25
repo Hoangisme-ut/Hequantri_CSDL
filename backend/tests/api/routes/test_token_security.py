@@ -31,7 +31,7 @@ def signed(claims):
 def test_invalid_access_subject_and_purpose(client, claims):
     token = signed({"exp": datetime.now(UTC) + timedelta(minutes=5), **claims})
     headers = {"Authorization": f"Bearer {token}"}
-    assert client.get(f"{API}/users/me", headers=headers).status_code == 403
+    assert client.get(f"{API}/users/me", headers=headers).status_code == 401
     assert client.get(f"{API}/artifacts/", headers=headers).status_code == 200
 
 
@@ -50,7 +50,7 @@ def test_reset_is_consumed_atomically_and_access_sessions_survive(client, db):
         client.get(
             f"{API}/users/me", headers={"Authorization": f"Bearer {token}"}
         ).status_code
-        == 403
+        == 401
     )
     start = Barrier(2)
 

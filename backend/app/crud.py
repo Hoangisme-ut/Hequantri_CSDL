@@ -44,21 +44,48 @@ def create_user(
     user_create: UserCreate,
     email_conflict_detail: str = "The user with this email already exists in the system.",
 ) -> User:
-    # [Smart Heritage] user mới tự có role: superuser -> admin, còn lại -> visitor
-    role = get_role_by_name(
-        session=session,
-        name=ROLE_ADMIN if user_create.is_superuser else ROLE_VISITOR,
-    )
+    # Xác định role được yêu cầu tường minh hay dùng role mặc định.
+    if "role_id" in user_create.model_fields_set:
+        role = session.get(Role, user_create.role_id)
+
+        if role is None:
+            raise InvalidRoleAssignmentError("Role not found")
+    else:
+        # Mặc định: Superuser -> admin, tài khoản thường -> visitor.
+        role = get_role_by_name(
+            session=session,
+            name=ROLE_ADMIN if user_create.is_superuser else ROLE_VISITOR,
+        )
+
+        if role is None:
+            raise InvalidRoleAssignmentError(
+                "Required role is not configured"
+            )
+
+    # Chỉ chấp nhận hai role thuộc chính sách tài khoản hiện tại.
+    if role.name not in {ROLE_ADMIN, ROLE_VISITOR}:
+        raise InvalidRoleAssignmentError("Unsupported role")
+
+    # Superuser bắt buộc phải có role admin.
+    if user_create.is_superuser and role.name != ROLE_ADMIN:
+        raise InvalidRoleAssignmentError(
+            "Superusers must have the admin role"
+        )
+
     db_obj = User.model_validate(
         user_create,
         update={
             "hashed_password": get_password_hash(user_create.password),
-            "role_id": role.id if role else None,
+            "role_id": role.id,
         },
     )
+
     session.add(db_obj)
     commit_with_conflicts(
-        session, "ix_user_email", status_code=400, detail=email_conflict_detail
+        session,
+        "ix_user_email",
+        status_code=400,
+        detail=email_conflict_detail,
     )
     session.refresh(db_obj)
     return db_obj
@@ -87,6 +114,13 @@ def update_user(
         effective_role = session.get(Role, role_id) if role_id is not None else None
         if role_id is not None and effective_role is None:
             raise InvalidRoleAssignmentError("Role not found")
+
+        if effective_role is not None and effective_role.name not in {
+            ROLE_ADMIN,
+            ROLE_VISITOR,
+        }:
+            raise InvalidRoleAssignmentError("Unsupported role")
+
         if (
             user_data.get("is_superuser", db_user.is_superuser)
             and effective_role is not None
