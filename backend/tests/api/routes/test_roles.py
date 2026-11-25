@@ -10,7 +10,6 @@ from tests.utils.utils import random_email
 
 def test_read_roles_as_superuser(
     client: TestClient,
-    db: Session,
     superuser_token_headers: dict[str, str],
 ) -> None:
     response = client.get(
@@ -35,7 +34,6 @@ def test_read_roles_as_superuser(
 def test_read_roles_as_admin_forbidden(
     client: TestClient,
     db: Session,
-    superuser_token_headers: dict[str, str],
 ) -> None:
     admin_role = db.exec(
         select(Role).where(Role.name == "admin")

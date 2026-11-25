@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from sqlmodel import select
+from sqlmodel import col, select
 
 from app.api.deps import SessionDep, get_current_active_superuser
 from app.models import Role, RolePublic
@@ -18,7 +18,7 @@ def read_roles(session: SessionDep) -> list[RolePublic]:
     """
     statement = (
         select(Role)
-        .where(Role.name.in_(["admin", "visitor"]))
+        .where(col(Role.name).in_(["admin", "visitor"]))
         .order_by(Role.name)
     )
     roles = session.exec(statement).all()
