@@ -1145,6 +1145,18 @@ export type RatingStats = {
 };
 
 /**
+ * Readiness
+ */
+export type Readiness = {
+    /**
+     * Checks
+     */
+    checks: {
+        [key: string]: 'ok' | 'failed' | 'skipped';
+    };
+};
+
+/**
  * RolePublic
  */
 export type RolePublic = {
@@ -1160,18 +1172,6 @@ export type RolePublic = {
      * Id
      */
     id: string;
-};
-
-/**
- * Readiness
- */
-export type Readiness = {
-    /**
-     * Checks
-     */
-    checks: {
-        [key: string]: 'ok' | 'failed' | 'skipped';
-    };
 };
 
 /**
