@@ -17,6 +17,7 @@ from app.core.config import settings
 from app.models import (
     Artifact,
     Language,
+    Role,
     Site,
     SiteTranslation,
     SiteTranslationInput,
@@ -40,6 +41,13 @@ class WritePathConflictTests(TestCase):
         self.addCleanup(engine.dispose)
         SQLModel.metadata.create_all(engine)
         self.session = self.enterContext(Session(engine))
+        self.session.add_all(
+            [
+                Role(name="admin", description="Administrator"),
+                Role(name="visitor", description="Regular visitor"),
+            ]
+        )
+        self.session.commit()
         self.site = Site(name="Test site")
         self.english = Language(code="en", name="English")
         self.session.add_all([self.site, self.english])
