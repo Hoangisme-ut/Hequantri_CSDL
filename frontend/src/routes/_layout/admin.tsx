@@ -5,8 +5,8 @@ import { useMemo, useState } from "react"
 
 import {
   type RolePublic,
-  type UserPublic,
   RolesService,
+  type UserPublic,
   UsersService,
 } from "@/client"
 import AddUser from "@/components/Admin/AddUser"
@@ -62,40 +62,36 @@ function Admin() {
     )
   }, [users, search])
 
-  const tableData: UserTableData[] = filteredUsers.map(
-    (user: UserPublic) => {
-      let roleLabel: UserTableData["roleLabel"]
+  const tableData: UserTableData[] = filteredUsers.map((user: UserPublic) => {
+    let roleLabel: UserTableData["roleLabel"]
 
-      if (user.is_superuser) {
-        roleLabel = "Superuser"
-      } else if (user.role_id == null) {
-        // Preserve the legacy fallback for accounts without role_id.
+    if (user.is_superuser) {
+      roleLabel = "Superuser"
+    } else if (user.role_id == null) {
+      // Preserve the legacy fallback for accounts without role_id.
+      roleLabel = "Visitor"
+    } else if (rolesQuery.isLoading) {
+      roleLabel = "Loading..."
+    } else if (rolesQuery.isError) {
+      roleLabel = "Unknown role"
+    } else {
+      const role = roles.find((item: RolePublic) => item.id === user.role_id)
+
+      if (role?.name === "admin") {
+        roleLabel = "Admin"
+      } else if (role?.name === "visitor") {
         roleLabel = "Visitor"
-      } else if (rolesQuery.isLoading) {
-        roleLabel = "Loading..."
-      } else if (rolesQuery.isError) {
-        roleLabel = "Unknown role"
       } else {
-        const role = roles.find(
-          (item: RolePublic) => item.id === user.role_id,
-        )
-
-        if (role?.name === "admin") {
-          roleLabel = "Admin"
-        } else if (role?.name === "visitor") {
-          roleLabel = "Visitor"
-        } else {
-          roleLabel = "Unknown role"
-        }
+        roleLabel = "Unknown role"
       }
+    }
 
-      return {
-        ...user,
-        isCurrentUser: currentUser?.id === user.id,
-        roleLabel,
-      }
-    },
-  )
+    return {
+      ...user,
+      isCurrentUser: currentUser?.id === user.id,
+      roleLabel,
+    }
+  })
 
   return (
     <div className="flex flex-col gap-4 md:gap-5">

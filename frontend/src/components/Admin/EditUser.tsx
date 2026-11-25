@@ -7,8 +7,8 @@ import { z } from "zod"
 
 import {
   type RolePublic,
-  type UserPublic,
   RolesService,
+  type UserPublic,
   UsersService,
   type UserUpdate,
 } from "@/client"
@@ -146,8 +146,7 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
 
     // Khi thay đổi loại tài khoản, cập nhật đồng thời role_id và is_superuser.
     if (dirtyFields.account_type) {
-      const roleName =
-        data.account_type === "visitor" ? "visitor" : "admin"
+      const roleName = data.account_type === "visitor" ? "visitor" : "admin"
 
       const role = rolesQuery.data?.find(
         (item: RolePublic) => item.name === roleName,
@@ -219,11 +218,7 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
                   <FormItem>
                     <FormLabel>Full Name</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Full name"
-                        type="text"
-                        {...field}
-                      />
+                      <Input placeholder="Full name" type="text" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -318,9 +313,7 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormLabel className="font-normal">
-                      Is active?
-                    </FormLabel>
+                    <FormLabel className="font-normal">Is active?</FormLabel>
                   </FormItem>
                 )}
               />

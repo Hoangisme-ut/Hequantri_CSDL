@@ -37,10 +37,7 @@ async function openUserEditor(page: Page, initial: Partial<UserPublic> = {}) {
 
     if (request.method() === "GET" && path === "/api/v1/users/me") {
       await route.fulfill({ json: currentUser })
-    } else if (
-      request.method() === "GET" &&
-      path === "/api/v1/roles/"
-    ) {
+    } else if (request.method() === "GET" && path === "/api/v1/roles/") {
       await route.fulfill({
         json: [
           {
@@ -262,10 +259,7 @@ test("reverting edits and clearing the password leaves nothing to save", async (
     .nth(0)
     .fill("TemporaryPassword123!")
 
-  await dialog
-    .getByPlaceholder("Password", { exact: true })
-    .nth(0)
-    .fill("")
+  await dialog.getByPlaceholder("Password", { exact: true }).nth(0).fill("")
 
   await expect(save).toBeDisabled()
   expect(updates).toEqual([])

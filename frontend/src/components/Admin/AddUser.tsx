@@ -7,8 +7,8 @@ import { z } from "zod"
 
 import {
   type RolePublic,
-  type UserCreate,
   RolesService,
+  type UserCreate,
   UsersService,
 } from "@/client"
 import { Button } from "@/components/ui/button"
@@ -33,8 +33,6 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
-import useCustomToast from "@/hooks/useCustomToast"
-import { handleError } from "@/utils"
 import {
   Select,
   SelectContent,
@@ -42,6 +40,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import useCustomToast from "@/hooks/useCustomToast"
+import { handleError } from "@/utils"
 
 const formSchema = z
   .object({
@@ -101,8 +101,7 @@ const AddUser = () => {
   })
 
   const onSubmit = (data: FormData) => {
-    const roleName =
-      data.account_type === "visitor" ? "visitor" : "admin"
+    const roleName = data.account_type === "visitor" ? "visitor" : "admin"
 
     const role = rolesQuery.data?.find(
       (item: RolePublic) => item.name === roleName,
