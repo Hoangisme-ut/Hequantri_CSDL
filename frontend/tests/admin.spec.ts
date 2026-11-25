@@ -52,22 +52,25 @@ test.describe("Admin user management", () => {
 
     await page.getByRole("button", { name: "Add User" }).click()
 
-    await page.getByPlaceholder("Email").fill(email)
-    await page.getByPlaceholder("Password").first().fill(password)
-    await page.getByPlaceholder("Password").last().fill(password)
-    await page.getByLabel("Is superuser?").check()
-    await page.getByLabel("Is active?").check()
+    const dialog = page.getByRole("dialog")
+    await dialog.getByPlaceholder("Email").fill(email)
+    await dialog.getByPlaceholder("Password").first().fill(password)
+    await dialog.getByPlaceholder("Password").last().fill(password)
 
-    await page.getByRole("button", { name: "Save" }).click()
+    const accountType = dialog.getByRole("combobox")
+    await expect(accountType).toBeEnabled()
+    await accountType.click()
+    await page.getByRole("option", { name: "Superuser" }).click()
+
+    await dialog.getByLabel("Is active?").check()
+    await dialog.getByRole("button", { name: "Save" }).click()
 
     await expect(page.getByText("User created successfully")).toBeVisible()
-
-    await expect(page.getByRole("dialog")).not.toBeVisible()
+    await expect(dialog).not.toBeVisible()
 
     const userRow = page.getByRole("row").filter({ hasText: email })
     await expect(userRow.getByText("Superuser")).toBeVisible()
   })
-
   test("Edit a user successfully", async ({ page }) => {
     await page.goto("/admin")
 
