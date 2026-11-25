@@ -22,7 +22,6 @@ export const createUser = async ({
     body: {
       email,
       password,
-      is_verified: true,
       full_name: "Test User",
     },
   })
