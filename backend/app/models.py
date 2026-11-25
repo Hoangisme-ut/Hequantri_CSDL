@@ -741,6 +741,7 @@ class VisitLogCreate(SQLModel):
     artifact_id: uuid.UUID
     beacon_id: uuid.UUID | None = None
     language_id: uuid.UUID | None = None
+    language_code: str | None = None
     rssi: int | None = Field(default=None, ge=SQL_SERVER_INT_MIN, le=SQL_SERVER_INT_MAX)
     duration_seconds: int | None = Field(default=None, ge=0, le=SQL_SERVER_INT_MAX)
 
@@ -748,9 +749,17 @@ class VisitLogCreate(SQLModel):
         {
             "artifact_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
             "beacon_id": "b3a1c2d4-1111-4222-8333-444455556666",
+            "language_code": "vi",
             "rssi": -62,
         }
     )
+
+    @field_validator("language_code", mode="before")
+    @classmethod
+    def _optional_language_code(cls, value: object) -> str | None:
+        if isinstance(value, str):
+            return value.strip() or None
+        return None
 
 
 class VisitLog(SQLModel, table=True):

@@ -54,7 +54,9 @@ def record_visit(
       **300 giây** chỉ tính 1 lượt: trả **200** với bản ghi cũ (không tạo mới);
       lượt mới trả **201**.
     - `beacon_id` (nếu gửi) phải là beacon đang gắn đúng hiện vật này.
-    - `language_id` bỏ trống thì lấy ngôn ngữ ưa thích của người dùng / mặc định.
+    - Khi bỏ trống `language_id`, app có thể gửi `language_code` từ nội dung đã hiển thị.
+      Mã đang bật được dùng để ghi lượt xem; thiếu mã hoặc mã không dùng được thì lấy
+      ngôn ngữ ưa thích của người dùng / mặc định.
     """
     acquire_transaction_lock(session, f"visit:{current_user.id}:{visit_in.artifact_id}")
     artifact = crud.get_visible_artifact(
@@ -77,9 +79,8 @@ def record_visit(
         # app chọn ngôn ngữ rõ ràng: phải tồn tại (404) và đang bật (400), giữ nguyên
         get_active_language_or_error(session, language_id)
     else:
-        # bỏ trống: ngôn ngữ ưa thích của người dùng -> ngôn ngữ mặc định
         language = crud.resolve_language(
-            session=session, lang_code=None, user=current_user
+            session=session, lang_code=visit_in.language_code, user=current_user
         )
         language_id = language.id if language else None
 

@@ -1,12 +1,20 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_application_1/features/auth/auth_service.dart';
 import 'package:flutter_application_1/features/auth/auth_session.dart';
 import 'package:flutter_application_1/features/data/visitor_api_service.dart';
+import 'package:flutter_application_1/features/home/main_navigation_scaffold.dart';
 import 'package:flutter_application_1/features/home/profile_page.dart';
 import 'package:flutter_application_1/l10n/app_strings.dart';
+import 'package:flutter_application_1/l10n/locale_controller.dart';
 import 'package:flutter_application_1/theme/app_theme.dart';
 
 void main() {
@@ -36,6 +44,7 @@ void main() {
     required UserApi userApi,
     Locale locale = const Locale('vi'),
     VoidCallback? onLogout,
+    Widget? home,
   }) {
     return AuthSessionScope(
       session: session,
@@ -49,11 +58,13 @@ void main() {
           GlobalCupertinoLocalizations.delegate,
         ],
         theme: AppTheme.light(),
-        home: ProfilePage(
-          onLocaleChanged: (_) {},
-          onLogout: onLogout,
-          userApi: userApi,
-        ),
+        home:
+            home ??
+            ProfilePage(
+              onLocaleChanged: (_) {},
+              onLogout: onLogout,
+              userApi: userApi,
+            ),
       ),
     );
   }
@@ -292,9 +303,245 @@ void main() {
     expect(find.text('SUPPORT & INFORMATION'), findsOneWidget);
     expect(find.text('Log Out'), findsOneWidget);
   });
+
+  group('account profile editing and locale', () {
+    const englishId = '33333333-3333-3333-3333-333333333333';
+    const vietnameseId = '44444444-4444-4444-4444-444444444444';
+    final locale = LocaleController.instance;
+    final saveButton = find.byKey(const Key('profile-edit-save'));
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      await locale.initialized;
+      await locale.setLocale(const Locale('vi'));
+    });
+
+    HttpVisitorApi mockAccountApi({
+      String? languageId,
+      Future<http.Response> Function(http.Request)? patch,
+    }) {
+      final client = MockClient((request) async {
+        if (request.url.path == '/api/v1/languages/') {
+          expect(request.method, 'GET');
+          return _jsonResponse({
+            'data': [
+              {'id': vietnameseId, 'code': 'vi'},
+              {'id': englishId, 'code': 'en'},
+            ],
+          });
+        }
+        if (request.url.path != '/api/v1/users/me') {
+          return _jsonResponse({'data': [], 'count': 0});
+        }
+        expect(request.headers['authorization'], 'Bearer token-a');
+        if (request.method == 'PATCH') return patch!(request);
+        expect(request.method, 'GET');
+        return _jsonResponse({
+          'id': profileA.id,
+          'full_name': profileA.fullName,
+          'email': profileA.email,
+          'role_name': profileA.roleName,
+          'language_id': languageId,
+        });
+      });
+      addTearDown(client.close);
+      return HttpVisitorApi(
+        baseUrl: Uri.parse('https://api.example.test'),
+        client: client,
+      );
+    }
+
+    Future<void> openEditor(WidgetTester tester, UserApi api) async {
+      final session = AuthSession()..authenticate(tokenA);
+      addTearDown(session.dispose);
+      await tester.pumpWidget(buildTestApp(session: session, userApi: api));
+      await tester.pumpAndSettle();
+      final editTile = find.text('Thông tin cá nhân');
+      await tester.ensureVisible(editTile);
+      await tester.tap(editTile);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('saves name, email and mapped language with a loading state', (
+      tester,
+    ) async {
+      final response = Completer<http.Response>();
+      final api = mockAccountApi(
+        patch: (request) async {
+          expect(request.headers['content-type'], contains('application/json'));
+          expect(jsonDecode(request.body), {
+            'full_name': 'Updated Name',
+            'email': 'new@example.com',
+            'language_id': englishId,
+          });
+          return response.future;
+        },
+      );
+      await openEditor(tester, api);
+      await tester.enterText(
+        find.byKey(const Key('profile-edit-name')),
+        'Updated Name',
+      );
+      await tester.enterText(
+        find.byKey(const Key('profile-edit-email')),
+        'new@example.com',
+      );
+      await tester.tap(find.byKey(const Key('profile-edit-language')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('English').last);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(saveButton);
+      await tester.tap(saveButton);
+      await tester.pump();
+
+      expect(tester.widget<FilledButton>(saveButton).onPressed, isNull);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(locale.locale, const Locale('en'));
+
+      response.complete(
+        _jsonResponse({
+          'id': profileA.id,
+          'full_name': 'Updated Name',
+          'email': 'new@example.com',
+          'language_id': englishId,
+        }),
+      );
+      await tester.pumpAndSettle();
+
+      expect(saveButton, findsNothing);
+      expect(find.text('Updated Name'), findsOneWidget);
+      expect(find.text('new@example.com'), findsOneWidget);
+      expect(find.text('Khách tham quan'), findsOneWidget);
+      expect(find.text('Đã lưu hồ sơ.'), findsOneWidget);
+    });
+
+    for (final (name, respond, message) in [
+      (
+        'duplicate email',
+        () => _jsonResponse({
+          'detail': 'User with this email already exists',
+        }, status: 409),
+        'Email này đã được sử dụng.',
+      ),
+      (
+        'network failure',
+        () => throw http.ClientException('offline'),
+        'Không thể kết nối máy chủ. Hãy kiểm tra mạng rồi thử lại.',
+      ),
+      (
+        'expired session',
+        () => _jsonResponse({'detail': 'Not authenticated'}, status: 401),
+        'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+      ),
+    ]) {
+      testWidgets('keeps the draft and reports $name', (tester) async {
+        final api = mockAccountApi(
+          patch: (request) async {
+            expect(jsonDecode(request.body), {'email': 'new@example.com'});
+            return respond();
+          },
+        );
+        await openEditor(tester, api);
+        await tester.enterText(
+          find.byKey(const Key('profile-edit-email')),
+          'new@example.com',
+        );
+        await tester.ensureVisible(saveButton);
+        await tester.tap(saveButton);
+        await tester.pumpAndSettle();
+
+        expect(find.text(message), findsOneWidget);
+        expect(find.text('new@example.com'), findsOneWidget);
+        expect(tester.widget<FilledButton>(saveButton).onPressed, isNotNull);
+      });
+    }
+
+    testWidgets(
+      'restores the server locale after login with profile offstage',
+      (tester) async {
+        final session = AuthSession();
+        addTearDown(session.dispose);
+        final api = mockAccountApi(languageId: englishId);
+        await tester.pumpWidget(
+          buildTestApp(
+            session: session,
+            userApi: api,
+            home: MainNavigationScaffold(
+              onLocaleChanged: (_) {},
+              visitorApi: api,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(locale.locale, const Locale('vi'));
+
+        session.authenticate(tokenA);
+        await tester.pumpAndSettle();
+
+        expect(locale.locale, const Locale('en'));
+        await _expectPersistedLocale('en');
+      },
+    );
+
+    testWidgets('keeps the language on device when PATCH rejects it', (
+      tester,
+    ) async {
+      final session = AuthSession()..authenticate(tokenA);
+      addTearDown(session.dispose);
+      final api = mockAccountApi(
+        patch: (request) async {
+          expect(jsonDecode(request.body), {'language_id': englishId});
+          return _jsonResponse({'detail': 'Language is inactive'}, status: 400);
+        },
+      );
+      await tester.pumpWidget(buildTestApp(session: session, userApi: api));
+      await tester.pumpAndSettle();
+      final languageTile = find.text('Ngôn ngữ');
+      await tester.ensureVisible(languageTile);
+      await tester.tap(languageTile);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('English'));
+      await tester.pumpAndSettle();
+
+      expect(locale.locale, const Locale('en'));
+      expect(
+        find.text(
+          'This language is no longer available for your account. '
+          'Your language choice is saved on this device.',
+        ),
+        findsOneWidget,
+      );
+      await _expectPersistedLocale('en');
+    });
+  });
 }
 
-class _FakeUserApi implements UserApi {
+http.Response _jsonResponse(Map<String, dynamic> body, {int status = 200}) =>
+    http.Response(
+      jsonEncode(body),
+      status,
+      headers: {'content-type': 'application/json'},
+    );
+
+Future<void> _expectPersistedLocale(String code) async {
+  final preferences = await SharedPreferences.getInstance();
+  expect(preferences.getString('app_locale'), code);
+}
+
+abstract class _ReadOnlyUserApi implements UserApi {
+  @override
+  Future<List<ProfileLanguage>> loadLanguages() async => const [];
+
+  @override
+  Future<UserProfile> updateCurrentUser({
+    required AuthToken token,
+    String? fullName,
+    String? email,
+    String? languageId,
+  }) => throw UnsupportedError('Read-only test API');
+}
+
+class _FakeUserApi extends _ReadOnlyUserApi {
   _FakeUserApi({required this.profiles});
 
   final Map<String, UserProfile> profiles;
@@ -309,7 +556,7 @@ class _FakeUserApi implements UserApi {
   }
 }
 
-class _DeferredUserApi implements UserApi {
+class _DeferredUserApi extends _ReadOnlyUserApi {
   _DeferredUserApi({required this.profile});
 
   final UserProfile profile;
@@ -329,7 +576,7 @@ class _DeferredUserApi implements UserApi {
   }
 }
 
-class _FailingUserApi implements UserApi {
+class _FailingUserApi extends _ReadOnlyUserApi {
   _FailingUserApi({required this.error, required this.fallbackProfile});
 
   final Exception error;

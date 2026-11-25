@@ -1163,6 +1163,18 @@ export type RolePublic = {
 };
 
 /**
+ * Readiness
+ */
+export type Readiness = {
+    /**
+     * Checks
+     */
+    checks: {
+        [key: string]: 'ok' | 'failed' | 'skipped';
+    };
+};
+
+/**
  * SiteCreate
  */
 export type SiteCreate = {
@@ -1769,6 +1781,10 @@ export type VisitLogCreate = {
      * Language Id
      */
     language_id?: string | null;
+    /**
+     * Language Code
+     */
+    language_code?: string | null;
     /**
      * Rssi
      */
@@ -2578,6 +2594,31 @@ export type utilsHealthCheckResponses = {
 };
 
 export type utilsHealthCheckResponse = utilsHealthCheckResponses[keyof utilsHealthCheckResponses];
+
+export type utilsReadinessData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/utils/ready';
+};
+
+export type utilsReadinessErrors = {
+    /**
+     * Service Unavailable
+     */
+    503: Readiness;
+};
+
+export type utilsReadinessError = utilsReadinessErrors[keyof utilsReadinessErrors];
+
+export type utilsReadinessResponses = {
+    /**
+     * Successful Response
+     */
+    200: Readiness;
+};
+
+export type utilsReadinessResponse = utilsReadinessResponses[keyof utilsReadinessResponses];
 
 export type languagesReadLanguagesData = {
     body?: never;

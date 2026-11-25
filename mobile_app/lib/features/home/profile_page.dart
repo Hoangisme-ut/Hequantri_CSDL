@@ -33,9 +33,12 @@ class ProfilePage extends StatefulWidget {
 class ProfilePageState extends State<ProfilePage> {
   UserProfile? _profile;
   bool _isLoading = false;
+  bool _isSaving = false;
   String? _errorMessage;
   int _requestGeneration = 0;
-  String? _lastToken;
+  int _localeSelectionGeneration = 0;
+  AuthToken? _lastToken;
+  HttpVisitorApi? _fallbackUserApi;
 
   // Notification toggles for demonstration
   bool _beaconAlerts = true;
@@ -44,7 +47,13 @@ class ProfilePageState extends State<ProfilePage> {
   UserApi get _resolvedUserApi {
     if (widget.userApi != null) return widget.userApi!;
     if (widget.visitorApi is UserApi) return widget.visitorApi as UserApi;
-    return HttpVisitorApi(baseUrl: ApiConfig.baseUrl);
+    return _fallbackUserApi ??= HttpVisitorApi(baseUrl: ApiConfig.baseUrl);
+  }
+
+  @override
+  void dispose() {
+    _fallbackUserApi?.close();
+    super.dispose();
   }
 
   @override
@@ -55,12 +64,14 @@ class ProfilePageState extends State<ProfilePage> {
 
   void _syncAuthSession() {
     final session = AuthSessionScope.maybeOf(context);
-    final currentToken = session?.readToken()?.accessToken;
+    final currentToken = session?.readToken();
 
-    if (currentToken != _lastToken) {
+    if (!identical(currentToken, _lastToken)) {
       _lastToken = currentToken;
-      if (session != null && session.isAuthenticated && currentToken != null) {
-        _loadProfile(session.readToken()!);
+      _isSaving = false;
+      _profile = null;
+      if (session != null && currentToken != null) {
+        _loadProfile(session, currentToken, syncLocale: true);
       } else {
         // Logged out or guest: clear old profile data immediately
         _requestGeneration++;
@@ -75,8 +86,14 @@ class ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _loadProfile(AuthToken token) async {
+  Future<void> _loadProfile(
+    AuthSession session,
+    AuthToken token, {
+    required bool syncLocale,
+  }) async {
     final generation = ++_requestGeneration;
+    final selectionGeneration = _localeSelectionGeneration;
+    final initialLocale = LocaleController.instance.locale;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -84,15 +101,34 @@ class ProfilePageState extends State<ProfilePage> {
 
     try {
       final user = await _resolvedUserApi.loadCurrentUser(token: token);
-      if (!mounted || generation != _requestGeneration) return;
+      if (!mounted ||
+          generation != _requestGeneration ||
+          !identical(session.readToken(), token)) {
+        return;
+      }
 
       setState(() {
         _profile = user;
         _isLoading = false;
         _errorMessage = null;
       });
+      if (syncLocale && user.languageId != null) {
+        await _restoreAccountLocale(
+          user.languageId!,
+          canApply: () =>
+              mounted &&
+              generation == _requestGeneration &&
+              identical(session.readToken(), token) &&
+              selectionGeneration == _localeSelectionGeneration &&
+              LocaleController.instance.locale == initialLocale,
+        );
+      }
     } catch (e) {
-      if (!mounted || generation != _requestGeneration) return;
+      if (!mounted ||
+          generation != _requestGeneration ||
+          !identical(session.readToken(), token)) {
+        return;
+      }
 
       final isEn = AppStrings.of(context).isEnglish;
       setState(() {
@@ -100,8 +136,8 @@ class ProfilePageState extends State<ProfilePage> {
         _errorMessage = e is VisitorApiException
             ? e.message
             : (isEn
-                ? 'Failed to load user profile. Tap to retry.'
-                : 'Không thể tải thông tin tài khoản. Chạm để thử lại.');
+                  ? 'Failed to load user profile. Tap to retry.'
+                  : 'Không thể tải thông tin tài khoản. Chạm để thử lại.');
       });
     }
   }
@@ -112,8 +148,137 @@ class ProfilePageState extends State<ProfilePage> {
     if (session != null && session.isAuthenticated) {
       final token = session.readToken();
       if (token != null) {
-        await _loadProfile(token);
+        await _loadProfile(session, token, syncLocale: _profile == null);
       }
+    }
+  }
+
+  Future<void> _applyLocalLocale(Locale locale) async {
+    final saved = LocaleController.instance.setLocale(locale);
+    widget.onLocaleChanged(locale);
+    await saved;
+  }
+
+  Future<void> _restoreAccountLocale(
+    String languageId, {
+    required bool Function() canApply,
+  }) async {
+    try {
+      final languages = await _resolvedUserApi.loadLanguages();
+      final language = languages
+          .where((item) => item.id == languageId)
+          .firstOrNull;
+      if (canApply() && (language?.code == 'vi' || language?.code == 'en')) {
+        await _applyLocalLocale(Locale(language!.code));
+      }
+    } catch (_) {
+      // Sign-in can continue with the device's locale if it cannot be resolved.
+    }
+  }
+
+  Future<bool> _saveProfile({
+    required AuthSession session,
+    required AuthToken token,
+    String? fullName,
+    String? email,
+    Locale? locale,
+  }) async {
+    if (_isSaving || !identical(session.readToken(), token)) return false;
+    if (fullName == null && email == null && locale == null) return true;
+
+    setState(() => _isSaving = true);
+    final api = _resolvedUserApi;
+    try {
+      String? languageId;
+      if (locale != null) {
+        _localeSelectionGeneration++;
+        await _applyLocalLocale(locale);
+        if (!mounted || !identical(session.readToken(), token)) return false;
+        final languages = await api.loadLanguages();
+        languageId = languages
+            .where((item) => item.code == locale.languageCode)
+            .firstOrNull
+            ?.id;
+        if (languageId == null) throw const ProfileLanguageUnavailable();
+      }
+      if (!mounted || !identical(session.readToken(), token)) return false;
+      final updated = await api.updateCurrentUser(
+        token: token,
+        fullName: fullName,
+        email: email,
+        languageId: languageId,
+      );
+      if (!mounted || !identical(session.readToken(), token)) return false;
+      final previousRole = _profile?.roleId == updated.roleId
+          ? _profile?.roleName
+          : null;
+      _requestGeneration++;
+      setState(() {
+        _profile = updated.withRoleName(previousRole);
+        _isLoading = false;
+        _errorMessage = null;
+      });
+      return true;
+    } finally {
+      if (mounted && identical(session.readToken(), token)) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  String _saveError(Object error, bool isEn) {
+    if (error is ProfileLanguageUnavailable) {
+      return isEn
+          ? 'This language is no longer available for your account.'
+          : 'Ngôn ngữ này hiện không khả dụng cho tài khoản.';
+    }
+    if (error is VisitorApiException) {
+      if (error.isAuthenticationError) {
+        return isEn
+            ? 'Your session has expired. Please sign in again.'
+            : 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+      }
+      if (error.statusCode == 409) {
+        return isEn
+            ? 'This email address is already in use.'
+            : 'Email này đã được sử dụng.';
+      }
+      if (error.statusCode == null) {
+        return isEn
+            ? 'Could not connect to the server. Check your network and try again.'
+            : 'Không thể kết nối máy chủ. Hãy kiểm tra mạng rồi thử lại.';
+      }
+      if (error.statusCode == 422) {
+        return isEn
+            ? 'Check the name and email address and try again.'
+            : 'Hãy kiểm tra họ tên và địa chỉ email rồi thử lại.';
+      }
+    }
+    return isEn
+        ? 'Could not save your changes. Please try again.'
+        : 'Không thể lưu thay đổi. Vui lòng thử lại.';
+  }
+
+  Future<void> changePreferredLocale(Locale locale) async {
+    if (_isSaving) return;
+    final session = AuthSessionScope.maybeOf(context);
+    final token = session?.readToken();
+    if (session == null || token == null) {
+      await _applyLocalLocale(locale);
+      return;
+    }
+    try {
+      await _saveProfile(session: session, token: token, locale: locale);
+    } catch (error) {
+      if (!mounted || !identical(session.readToken(), token)) return;
+      final isEn = LocaleController.instance.isEnglish;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${_saveError(error, isEn)} ${isEn ? 'Your language choice is saved on this device.' : 'Lựa chọn ngôn ngữ vẫn được lưu trên thiết bị này.'}',
+          ),
+        ),
+      );
     }
   }
 
@@ -195,9 +360,8 @@ class ProfilePageState extends State<ProfilePage> {
                     borderRadius: BorderRadius.circular(AppRadii.small),
                   ),
                   onTap: () {
-                    widget.onLocaleChanged(const Locale('vi'));
-                    LocaleController.instance.setLocale(const Locale('vi'));
                     Navigator.pop(ctx);
+                    changePreferredLocale(const Locale('vi'));
                   },
                 ),
                 const Divider(height: 1, color: HeritagePalette.border),
@@ -228,9 +392,8 @@ class ProfilePageState extends State<ProfilePage> {
                     borderRadius: BorderRadius.circular(AppRadii.small),
                   ),
                   onTap: () {
-                    widget.onLocaleChanged(const Locale('en'));
-                    LocaleController.instance.setLocale(const Locale('en'));
                     Navigator.pop(ctx);
+                    changePreferredLocale(const Locale('en'));
                   },
                 ),
                 const SizedBox(height: AppSpacing.small),
@@ -365,8 +528,10 @@ class ProfilePageState extends State<ProfilePage> {
   void _showPersonalInfo(BuildContext context, bool isEn) {
     final theme = Theme.of(context);
     final profile = _profile;
+    final session = AuthSessionScope.maybeOf(context);
+    final token = session?.readToken();
 
-    if (profile == null) {
+    if (profile == null || session == null || token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -379,6 +544,14 @@ class ProfilePageState extends State<ProfilePage> {
       return;
     }
 
+    final formKey = GlobalKey<FormState>();
+    var name = profile.fullName ?? '';
+    var email = profile.email;
+    final initialLanguage = LocaleController.instance.locale.languageCode;
+    Locale? selectedLocale;
+    var saving = false;
+    Object? saveError;
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -386,45 +559,161 @@ class ProfilePageState extends State<ProfilePage> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadii.large)),
       ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.large),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: HeritagePalette.border,
-                    borderRadius: BorderRadius.circular(AppRadii.pill),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final isEn = AppStrings.of(ctx).isEnglish;
+
+          Future<void> submit() async {
+            final form = formKey.currentState!;
+            if (!mounted || saving || !form.validate()) return;
+            form.save();
+            FocusScope.of(ctx).unfocus();
+            setModalState(() {
+              saving = true;
+              saveError = null;
+            });
+            try {
+              final saved = await _saveProfile(
+                session: session,
+                token: token,
+                fullName: name == (profile.fullName ?? '') ? null : name,
+                email: email == profile.email ? null : email,
+                locale: selectedLocale,
+              );
+              if (!ctx.mounted) return;
+              if (saved) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  SnackBar(
+                    content: Text(isEn ? 'Profile saved.' : 'Đã lưu hồ sơ.'),
                   ),
+                );
+                Navigator.of(ctx).pop();
+              }
+            } catch (error) {
+              if (ctx.mounted) setModalState(() => saveError = error);
+            } finally {
+              if (ctx.mounted) setModalState(() => saving = false);
+            }
+          }
+
+          return SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.large,
+                AppSpacing.large,
+                AppSpacing.large,
+                AppSpacing.large + MediaQuery.viewInsetsOf(ctx).bottom,
+              ),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      isEn ? 'Personal Information' : 'Thông tin cá nhân',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: HeritagePalette.primaryNavy,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.medium),
+                    TextFormField(
+                      key: const Key('profile-edit-name'),
+                      initialValue: name,
+                      enabled: !saving,
+                      decoration: InputDecoration(
+                        labelText: isEn ? 'Full Name' : 'Họ và tên',
+                      ),
+                      textInputAction: TextInputAction.next,
+                      validator: (value) => (value?.trim().length ?? 0) > 255
+                          ? (isEn
+                                ? 'Use 255 characters or fewer.'
+                                : 'Họ tên tối đa 255 ký tự.')
+                          : null,
+                      onSaved: (value) => name = value!.trim(),
+                    ),
+                    const SizedBox(height: AppSpacing.small),
+                    TextFormField(
+                      key: const Key('profile-edit-email'),
+                      initialValue: email,
+                      enabled: !saving,
+                      decoration: const InputDecoration(labelText: 'Email'),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        final input = value?.trim() ?? '';
+                        return input.length <= 255 &&
+                                RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                                    .hasMatch(input)
+                            ? null
+                            : (isEn
+                                  ? 'Enter a valid email address.'
+                                  : 'Hãy nhập địa chỉ email hợp lệ.');
+                      },
+                      onSaved: (value) => email = value!.trim(),
+                    ),
+                    const SizedBox(height: AppSpacing.small),
+                    DropdownButtonFormField<String>(
+                      key: const Key('profile-edit-language'),
+                      initialValue: initialLanguage,
+                      decoration: InputDecoration(
+                        labelText: isEn ? 'Language' : 'Ngôn ngữ',
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'vi',
+                          child: Text('Tiếng Việt'),
+                        ),
+                        DropdownMenuItem(value: 'en', child: Text('English')),
+                      ],
+                      onChanged: saving
+                          ? null
+                          : (value) => selectedLocale = Locale(value!),
+                    ),
+                    const SizedBox(height: AppSpacing.medium),
+                    _buildInfoRow(
+                      isEn ? 'Role' : 'Vai trò',
+                      _formatRoleName(profile, isEn),
+                      theme,
+                    ),
+                    _buildInfoRow(
+                      isEn ? 'Account Status' : 'Trạng thái',
+                      profile.isActive
+                          ? (isEn ? 'Active' : 'Hoạt động')
+                          : (isEn ? 'Locked' : 'Khóa'),
+                      theme,
+                    ),
+                    _buildInfoRow(
+                      isEn ? 'Account ID' : 'Mã tài khoản',
+                      profile.id,
+                      theme,
+                      isMonospace: true,
+                    ),
+                    if (saveError != null) ...[
+                      const SizedBox(height: AppSpacing.small),
+                      Text(
+                        _saveError(saveError!, isEn),
+                        key: const Key('profile-edit-error'),
+                        style: TextStyle(color: theme.colorScheme.error),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.medium),
+                    FilledButton(
+                      key: const Key('profile-edit-save'),
+                      onPressed: saving ? null : submit,
+                      child: saving
+                          ? const SizedBox.square(
+                              dimension: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(isEn ? 'Save changes' : 'Lưu thay đổi'),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: AppSpacing.medium),
-              Text(
-                isEn ? 'Personal Information' : 'Thông tin cá nhân',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: HeritagePalette.primaryNavy,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.medium),
-              _buildInfoRow(isEn ? 'Full Name' : 'Họ và tên', profile.fullName ?? (isEn ? 'Not set' : 'Chưa cập nhật'), theme),
-              const Divider(color: HeritagePalette.border, height: 16),
-              _buildInfoRow(isEn ? 'Email' : 'Địa chỉ email', profile.email, theme),
-              const Divider(color: HeritagePalette.border, height: 16),
-              _buildInfoRow(isEn ? 'Role' : 'Vai trò', _formatRoleName(profile, isEn), theme),
-              const Divider(color: HeritagePalette.border, height: 16),
-              _buildInfoRow(isEn ? 'Account Status' : 'Trạng thái', profile.isActive ? (isEn ? 'Active' : 'Hoạt động') : (isEn ? 'Locked' : 'Khóa'), theme),
-              const Divider(color: HeritagePalette.border, height: 16),
-              _buildInfoRow(isEn ? 'Account ID' : 'Mã tài khoản', profile.id, theme, isMonospace: true),
-              const SizedBox(height: AppSpacing.large),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -808,7 +1097,9 @@ class ProfilePageState extends State<ProfilePage> {
                 _buildSettingTile(
                   icon: Icons.person_outline_rounded,
                   title: isEn ? 'Personal Information' : 'Thông tin cá nhân',
-                  onTap: () => _showPersonalInfo(context, isEn),
+                  onTap: _isSaving
+                      ? null
+                      : () => _showPersonalInfo(context, isEn),
                   theme: theme,
                 ),
                 const Divider(
@@ -830,8 +1121,12 @@ class ProfilePageState extends State<ProfilePage> {
                 _buildSettingTile(
                   icon: Icons.language_rounded,
                   title: isEn ? 'Language' : 'Ngôn ngữ',
-                  trailingText: isEn ? 'English' : 'Tiếng Việt',
-                  onTap: () => _showLanguageSelector(context, isEn),
+                  trailingText: _isSaving
+                      ? (isEn ? 'Saving…' : 'Đang lưu…')
+                      : (isEn ? 'English' : 'Tiếng Việt'),
+                  onTap: _isSaving
+                      ? null
+                      : () => _showLanguageSelector(context, isEn),
                   theme: theme,
                 ),
                 const Divider(
@@ -1112,13 +1407,7 @@ class ProfilePageState extends State<ProfilePage> {
                   borderRadius: BorderRadius.circular(AppRadii.pill),
                 ),
               ),
-              onPressed: () {
-                final session = AuthSessionScope.maybeOf(context);
-                final token = session?.readToken();
-                if (token != null) {
-                  _loadProfile(token);
-                }
-              },
+              onPressed: reloadProfile,
               icon: const Icon(Icons.refresh_rounded, size: 16),
               label: Text(isEn ? 'Retry' : 'Thử lại'),
             ),
@@ -1330,7 +1619,7 @@ class ProfilePageState extends State<ProfilePage> {
     required String title,
     String? subtitle,
     String? trailingText,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
     required ThemeData theme,
   }) {
     return ListTile(

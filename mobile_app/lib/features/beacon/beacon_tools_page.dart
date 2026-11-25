@@ -109,6 +109,7 @@ class BeaconTestPageState extends State<BeaconTestPage>
   final Map<String, int?> _rssiThresholds = {};
 
   List<Beacon> _beacons = [];
+  List<Beacon> _latestDetections = const [];
 
   String _status = 'Chưa bắt đầu quét';
   bool _scanning = false;
@@ -218,11 +219,17 @@ class BeaconTestPageState extends State<BeaconTestPage>
     final key = _beaconKey(selected);
     _rssiThresholds[key] = content.rssiThreshold;
 
-    // Kiểm tra lại tín hiệu mới nhất sau khi API trả về.
-    final readings = _beacons.where((beacon) => _beaconKey(beacon) == key);
+    // Chỉ beacon đã thông báo mới được dùng gói giữ lại khi tải lại preview.
+    final readings = _lastNotifiedBeaconKey == key && _latestDetections.isEmpty
+        ? _beacons
+        : _latestDetections;
+    final reading = readings
+        .where((beacon) => _beaconKey(beacon) == key)
+        .firstOrNull;
 
-    if (readings.isNotEmpty && content.acceptsRssi(readings.first.rssi)) {
-      _selectedBeacon = readings.first;
+    if (reading != null && content.acceptsRssi(reading.rssi)) {
+      _selectedBeacon = reading;
+      if (_lastNotifiedBeaconKey != key) _notifyBeacon(reading);
       return true;
     }
 
@@ -235,8 +242,9 @@ class BeaconTestPageState extends State<BeaconTestPage>
     _candidateHits = 0;
 
     setState(() {
-      _notificationStatus =
-          'Tín hiệu beacon yếu hơn ngưỡng cho phép. Hãy đến gần hơn.';
+      _notificationStatus = reading == null
+          ? 'Đã mất tín hiệu beacon đang chọn. Chờ nhận lại.'
+          : 'Tín hiệu beacon yếu hơn ngưỡng cho phép. Hãy đến gần hơn.';
     });
 
     return false;
@@ -316,6 +324,8 @@ class BeaconTestPageState extends State<BeaconTestPage>
   void _updateBeaconDisplay(List<Beacon> detectedBeacons) {
     if (!mounted || !_scanning) return;
 
+    _latestDetections = List<Beacon>.of(detectedBeacons);
+
     if (detectedBeacons.isNotEmpty) {
       _rawExpiryTimer?.cancel();
 
@@ -334,19 +344,21 @@ class BeaconTestPageState extends State<BeaconTestPage>
       );
     }
 
-    final selectedReadings = detectedBeacons.where(
-      (beacon) =>
-          _eligible(beacon) && _beaconKey(beacon) == _lastNotifiedBeaconKey,
-    );
-
-    if (selectedReadings.isNotEmpty) {
-      _selectedBeacon = selectedReadings.first;
-      _armSelectionExpiry();
+    final selected = _selectedBeacon;
+    if (selected != null) {
+      final key = _beaconKey(selected);
+      final reading = detectedBeacons
+          .where((beacon) => _beaconKey(beacon) == key && _eligible(beacon))
+          .firstOrNull;
+      if (reading != null) {
+        _selectedBeacon = reading;
+        _armSelectionExpiry();
+      }
     }
 
     setState(() {
       if (detectedBeacons.isNotEmpty) {
-        _beacons = List<Beacon>.of(detectedBeacons);
+        _beacons = _latestDetections;
         _status = 'Phát hiện ${_beacons.length} beacon';
       } else {
         _status = _beacons.isNotEmpty
@@ -377,10 +389,13 @@ class BeaconTestPageState extends State<BeaconTestPage>
 
     final selected = candidates.first;
     final selectedKey = _beaconKey(selected);
+    final tracked = _selectedBeacon;
 
-    if (selectedKey == _lastNotifiedBeaconKey) {
+    if (tracked != null && selectedKey == _beaconKey(tracked)) {
       _candidateBeaconKey = null;
       _candidateHits = 0;
+
+      if (selectedKey != _lastNotifiedBeaconKey) return;
 
       setState(() {
         _suppressedCount++;
@@ -392,7 +407,7 @@ class BeaconTestPageState extends State<BeaconTestPage>
       return;
     }
 
-    if (_lastNotifiedBeaconKey != null) {
+    if (tracked != null) {
       if (_candidateBeaconKey == selectedKey) {
         _candidateHits++;
       } else {
@@ -400,30 +415,30 @@ class BeaconTestPageState extends State<BeaconTestPage>
         _candidateHits = 1;
       }
 
-      if (_candidateHits < _requiredCandidateHits) {
-        setState(() {
-          _notificationStatus =
-              'Đang xác nhận chuyển beacon '
-              '($_candidateHits/$_requiredCandidateHits)';
-        });
+      setState(() {
+        _notificationStatus =
+            'Đang xác nhận chuyển beacon '
+            '($_candidateHits/$_requiredCandidateHits)';
+      });
 
-        return;
-      }
+      if (_candidateHits < _requiredCandidateHits) return;
     }
 
     _candidateBeaconKey = null;
     _candidateHits = 0;
+    _selectedBeacon = selected;
+    _armSelectionExpiry();
+    _requestContent(selected);
+  }
 
+  void _notifyBeacon(Beacon selected) {
+    final selectedKey = _beaconKey(selected);
     setState(() {
       _lastNotifiedBeaconKey = selectedKey;
       _notificationCount++;
       _notificationStatus =
           'Beacon mới: Major ${selected.major}, Minor ${selected.minor}';
     });
-
-    _selectedBeacon = selected;
-    _armSelectionExpiry();
-    _requestContent(selected);
 
     final messenger = ScaffoldMessenger.of(context);
     messenger.clearSnackBars();
@@ -494,6 +509,7 @@ class BeaconTestPageState extends State<BeaconTestPage>
       _rssiThresholds.clear();
       _contentController?.reset();
       _selectedBeacon = null;
+      _latestDetections = const [];
 
       final epoch = ++_scanEpoch;
 

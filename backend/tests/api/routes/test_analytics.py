@@ -14,7 +14,13 @@ from sqlalchemy import event
 from app.api.routes import analytics
 from app.core.db import engine
 from app.models import VisitLog
-from tests.utils.heritage import API, create_artifact, create_site, purge_sites
+from tests.utils.heritage import (
+    API,
+    create_artifact,
+    create_site,
+    get_language_id,
+    purge_sites,
+)
 
 
 @pytest.fixture
@@ -203,6 +209,84 @@ EXPORT_SHEETS = [
 
 def _rows(workbook, name):
     return [list(row) for row in workbook[name].iter_rows(values_only=True)]
+
+
+def test_dashboard_and_exports_agree_on_recorded_visit_languages(
+    client, db, superuser_token_headers, normal_user_token_headers
+):
+    admin = superuser_token_headers
+    site = create_site(client, admin)
+    language_ids = {code: get_language_id(client, code) for code in ("vi", "en")}
+    expected = {"vi": 1, "en": 2}
+    try:
+        visit_codes = {}
+        for code in ("vi", "en", "en"):
+            artifact = create_artifact(client, admin, site["id"])
+            recorded = client.post(
+                f"{API}/visits/",
+                headers=normal_user_token_headers,
+                json={"artifact_id": artifact["id"], "language_code": code},
+            )
+            assert recorded.status_code == 201, recorded.text
+            visit_codes[uuid.UUID(recorded.json()["id"])] = code
+
+        for visit_id, code in visit_codes.items():
+            visit = db.get(VisitLog, visit_id)
+            assert visit is not None and str(visit.language_id) == language_ids[code]
+            visit.visited_at = datetime(2000, 4, 12, 12, tzinfo=UTC)
+        db.commit()
+
+        dashboard = client.get(
+            f"{API}/dashboard/visits-by-language",
+            headers=admin,
+            params={"from_date": "2000-04-12", "to_date": "2000-04-12"},
+        )
+        assert dashboard.status_code == 200, dashboard.text
+        assert {
+            row["code"]: (row["language_id"], row["count"])
+            for row in dashboard.json()["data"]
+        } == {code: (language_ids[code], count) for code, count in expected.items()}
+
+        params = {"site_id": site["id"]}
+        overview = client.get(f"{API}/analytics/overview", headers=admin, params=params)
+        assert overview.status_code == 200, overview.text
+        assert (
+            overview.json()["views"]
+            == dashboard.json()["total"]
+            == sum(expected.values())
+        )
+
+        excel = client.get(
+            f"{API}/analytics/export/excel", headers=admin, params=params
+        )
+        assert excel.status_code == 200, excel.text
+        workbook = load_workbook(BytesIO(excel.content))
+        try:
+            assert {
+                row[0]: row[2] for row in _rows(workbook, "Theo ngon ngu")[1:]
+            } == expected
+        finally:
+            workbook.close()
+
+        with (
+            patch.object(
+                analytics,
+                "_register_pdf_fonts",
+                return_value=("Helvetica", "Helvetica-Bold"),
+            ),
+            patch.object(analytics, "LongTable", wraps=analytics.LongTable) as tables,
+        ):
+            pdf = client.get(
+                f"{API}/analytics/export/pdf", headers=admin, params=params
+            )
+        assert pdf.status_code == 200, pdf.text
+        assert pdf.content.startswith(b"%PDF-")
+        language_rows = tables.call_args_list[-1].args[0][1:]
+        assert {
+            row[0].getPlainText(): int(row[2].getPlainText()) for row in language_rows
+        } == expected
+    finally:
+        purge_sites(db, [site["id"]])
 
 
 @pytest.mark.parametrize("path", ["export/excel", "export/pdf"])
