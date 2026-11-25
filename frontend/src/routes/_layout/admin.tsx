@@ -3,7 +3,12 @@ import { createFileRoute, redirect } from "@tanstack/react-router"
 import { Shield, Users } from "lucide-react"
 import { useMemo, useState } from "react"
 
-import { type UserPublic, UsersService } from "@/client"
+import {
+  type RolePublic,
+  RolesService,
+  type UserPublic,
+  UsersService,
+} from "@/client"
 import AddUser from "@/components/Admin/AddUser"
 import { columns, type UserTableData } from "@/components/Admin/columns"
 import {
@@ -41,7 +46,12 @@ function Admin() {
     queryFn: async () =>
       (await UsersService.readUsers({ query: { skip: 0, limit: 100 } })).data,
   })
+  const rolesQuery = useQuery({
+    queryKey: ["roles"],
+    queryFn: async () => (await RolesService.readRoles()).data,
+  })
   const users = usersQuery.data?.data ?? []
+  const roles = rolesQuery.data ?? []
   const filteredUsers = useMemo(() => {
     const term = search.trim().toLocaleLowerCase()
     if (!term) return users
@@ -51,10 +61,37 @@ function Admin() {
         .includes(term),
     )
   }, [users, search])
-  const tableData: UserTableData[] = filteredUsers.map((user: UserPublic) => ({
-    ...user,
-    isCurrentUser: currentUser?.id === user.id,
-  }))
+
+  const tableData: UserTableData[] = filteredUsers.map((user: UserPublic) => {
+    let roleLabel: UserTableData["roleLabel"]
+
+    if (user.is_superuser) {
+      roleLabel = "Superuser"
+    } else if (user.role_id == null) {
+      // Preserve the legacy fallback for accounts without role_id.
+      roleLabel = "Visitor"
+    } else if (rolesQuery.isLoading) {
+      roleLabel = "Loading..."
+    } else if (rolesQuery.isError) {
+      roleLabel = "Unknown role"
+    } else {
+      const role = roles.find((item: RolePublic) => item.id === user.role_id)
+
+      if (role?.name === "admin") {
+        roleLabel = "Admin"
+      } else if (role?.name === "visitor") {
+        roleLabel = "Visitor"
+      } else {
+        roleLabel = "Unknown role"
+      }
+    }
+
+    return {
+      ...user,
+      isCurrentUser: currentUser?.id === user.id,
+      roleLabel,
+    }
+  })
 
   return (
     <div className="flex flex-col gap-4 md:gap-5">
@@ -96,7 +133,7 @@ function Admin() {
               aria-label="Search staff"
             />
             <span className="text-xs text-muted-foreground">
-              Roles available: Administrator and User
+              Roles available: Visitor, Admin and Superuser
             </span>
           </div>
           <div className="overflow-x-auto">

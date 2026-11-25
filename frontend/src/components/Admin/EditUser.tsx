@@ -1,11 +1,17 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Pencil } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { type UserPublic, UsersService, type UserUpdate } from "@/client"
+import {
+  type RolePublic,
+  RolesService,
+  type UserPublic,
+  UsersService,
+  type UserUpdate,
+} from "@/client"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -28,6 +34,13 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -41,7 +54,7 @@ const formSchema = z
       .optional()
       .or(z.literal("")),
     confirm_password: z.string().optional(),
-    is_superuser: z.boolean().optional(),
+    account_type: z.enum(["visitor", "admin", "superuser"]),
     is_active: z.boolean().optional(),
   })
   .refine((data) => !data.password || data.password === data.confirm_password, {
@@ -61,6 +74,11 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
   const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
 
+  const rolesQuery = useQuery({
+    queryKey: ["roles"],
+    queryFn: async () => (await RolesService.readRoles()).data,
+  })
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",
@@ -70,14 +88,41 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
       full_name: user.full_name ?? "",
       password: "",
       confirm_password: "",
-      is_superuser: user.is_superuser,
+      account_type: user.is_superuser ? "superuser" : "visitor",
       is_active: user.is_active,
     },
   })
 
+  // Đồng bộ dữ liệu tài khoản mỗi khi mở hộp thoại.
+  useEffect(() => {
+    if (!isOpen || !rolesQuery.isSuccess) return
+
+    const currentRole = rolesQuery.data.find(
+      (role: RolePublic) => role.id === user.role_id,
+    )
+
+    const accountType = user.is_superuser
+      ? "superuser"
+      : currentRole?.name === "admin"
+        ? "admin"
+        : "visitor"
+
+    form.reset({
+      email: user.email,
+      full_name: user.full_name ?? "",
+      password: "",
+      confirm_password: "",
+      account_type: accountType,
+      is_active: user.is_active,
+    })
+  }, [isOpen, rolesQuery.isSuccess, rolesQuery.data, user, form])
+
   const mutation = useMutation({
     mutationFn: (data: UserUpdate) =>
-      UsersService.updateUser({ path: { user_id: user.id }, body: data }),
+      UsersService.updateUser({
+        path: { user_id: user.id },
+        body: data,
+      }),
     onSuccess: () => {
       showSuccessToast("User updated successfully")
       setIsOpen(false)
@@ -98,8 +143,22 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
     if (dirtyFields.full_name) {
       submitData.full_name = data.full_name
     }
-    if (dirtyFields.is_superuser) {
-      submitData.is_superuser = data.is_superuser
+
+    // Khi thay đổi loại tài khoản, cập nhật đồng thời role_id và is_superuser.
+    if (dirtyFields.account_type) {
+      const roleName = data.account_type === "visitor" ? "visitor" : "admin"
+
+      const role = rolesQuery.data?.find(
+        (item: RolePublic) => item.name === roleName,
+      )
+
+      if (!role) {
+        showErrorToast("Unable to find the selected account role")
+        return
+      }
+
+      submitData.role_id = role.id
+      submitData.is_superuser = data.account_type === "superuser"
     }
     if (dirtyFields.is_active) {
       submitData.is_active = data.is_active
@@ -204,16 +263,41 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
 
               <FormField
                 control={form.control}
-                name="is_superuser"
+                name="account_type"
                 render={({ field }) => (
-                  <FormItem className="flex items-center gap-3 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormLabel className="font-normal">Is superuser?</FormLabel>
+                  <FormItem>
+                    <FormLabel>Account Type</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={!rolesQuery.isSuccess}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select account type" />
+                        </SelectTrigger>
+                      </FormControl>
+
+                      <SelectContent>
+                        <SelectItem value="visitor">Visitor</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="superuser">Superuser</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <FormMessage />
+
+                    {rolesQuery.isLoading && (
+                      <p className="text-xs text-muted-foreground">
+                        Loading account roles...
+                      </p>
+                    )}
+
+                    {rolesQuery.isError && (
+                      <p className="text-xs text-destructive">
+                        Unable to load account roles. Please try again.
+                      </p>
+                    )}
                   </FormItem>
                 )}
               />

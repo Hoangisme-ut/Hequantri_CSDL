@@ -77,6 +77,10 @@ OPENAPI_TAGS = [
         "description": "Thống kê lượt xem theo khoảng thời gian có múi giờ (overview, visits, top-artifacts, sites). Chỉ Admin.",
     },
     {
+        "name": "roles",
+        "description": "Danh sách vai trò tài khoản (admin, visitor). Chỉ Superuser được xem.",
+    },
+    {
         "name": "media",
         "description": "Metadata media (ảnh/video/audio) của hiện vật. Chỉ Admin.",
     },

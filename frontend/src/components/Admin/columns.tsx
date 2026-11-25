@@ -8,6 +8,7 @@ import { UserActionsMenu } from "./UserActionsMenu"
 
 export type UserTableData = UserPublic & {
   isCurrentUser: boolean
+  roleLabel: "Visitor" | "Admin" | "Superuser" | "Unknown role" | "Loading..."
 }
 
 export const columns: ColumnDef<DataTableFeatures, UserTableData>[] = [
@@ -40,13 +41,25 @@ export const columns: ColumnDef<DataTableFeatures, UserTableData>[] = [
     ),
   },
   {
-    accessorKey: "is_superuser",
+    accessorKey: "roleLabel",
     header: "Role",
-    cell: ({ row }) => (
-      <Badge variant={row.original.is_superuser ? "default" : "secondary"}>
-        {row.original.is_superuser ? "Superuser" : "User"}
-      </Badge>
-    ),
+    cell: ({ row }) => {
+      const role = row.original.roleLabel
+
+      return (
+        <Badge
+          variant={
+            role === "Superuser"
+              ? "default"
+              : role === "Admin"
+                ? "outline"
+                : "secondary"
+          }
+        >
+          {role}
+        </Badge>
+      )
+    },
   },
   {
     accessorKey: "is_active",

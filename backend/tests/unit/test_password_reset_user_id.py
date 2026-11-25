@@ -15,7 +15,7 @@ from app.api.deps import get_db
 from app.api.routes import login
 from app.core.config import settings
 from app.core.security import ALGORITHM, verify_password
-from app.models import User, UserCreate, UserUpdate
+from app.models import Role, User, UserCreate, UserUpdate
 from app.utils import generate_reset_password_email
 
 
@@ -28,6 +28,14 @@ class PasswordResetUserIdTests(TestCase):
         )
         self.addCleanup(engine.dispose)
         SQLModel.metadata.create_all(engine)
+        with Session(engine) as session:
+            session.add_all(
+                [
+                    Role(name="admin", description="Administrator"),
+                    Role(name="visitor", description="Regular visitor"),
+                ]
+            )
+            session.commit()
         self.session = self.enterContext(Session(engine))
 
         def get_session() -> Generator[Session]:

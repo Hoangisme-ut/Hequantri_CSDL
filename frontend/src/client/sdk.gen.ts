@@ -2,7 +2,7 @@
 
 import { type Client, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { analyticsExportExcelData, analyticsExportExcelErrors, analyticsExportExcelResponses, analyticsExportPdfData, analyticsExportPdfErrors, analyticsExportPdfResponses, analyticsOverviewData, analyticsOverviewErrors, analyticsOverviewResponses, analyticsSitesData, analyticsSitesErrors, analyticsSitesResponses, analyticsTopArtifactsData, analyticsTopArtifactsErrors, analyticsTopArtifactsResponses, analyticsVisitsData, analyticsVisitsErrors, analyticsVisitsResponses, artifactsCreateArtifactData, artifactsCreateArtifactErrors, artifactsCreateArtifactResponses, artifactsDeleteArtifactData, artifactsDeleteArtifactErrors, artifactsDeleteArtifactResponses, artifactsDeleteTranslationData, artifactsDeleteTranslationErrors, artifactsDeleteTranslationResponses, artifactsReadArtifactData, artifactsReadArtifactErrors, artifactsReadArtifactResponses, artifactsReadArtifactsData, artifactsReadArtifactsErrors, artifactsReadArtifactsResponses, artifactsReadTranslationsData, artifactsReadTranslationsErrors, artifactsReadTranslationsResponses, artifactsUpdateArtifactData, artifactsUpdateArtifactErrors, artifactsUpdateArtifactResponses, artifactsUpsertTranslationData, artifactsUpsertTranslationErrors, artifactsUpsertTranslationResponses, beaconsCreateBeaconData, beaconsCreateBeaconErrors, beaconsCreateBeaconResponses, beaconsDeleteBeaconData, beaconsDeleteBeaconErrors, beaconsDeleteBeaconResponses, beaconsReadBeaconData, beaconsReadBeaconErrors, beaconsReadBeaconResponses, beaconsReadBeaconsData, beaconsReadBeaconsErrors, beaconsReadBeaconsResponses, beaconsResolveBeaconData, beaconsResolveBeaconErrors, beaconsResolveBeaconResponses, beaconsUpdateBeaconData, beaconsUpdateBeaconErrors, beaconsUpdateBeaconResponses, dashboardReadSummaryData, dashboardReadSummaryErrors, dashboardReadSummaryResponses, dashboardReadTopArtifactsData, dashboardReadTopArtifactsErrors, dashboardReadTopArtifactsResponses, dashboardReadVisitsByDayData, dashboardReadVisitsByDayErrors, dashboardReadVisitsByDayResponses, dashboardReadVisitsByLanguageData, dashboardReadVisitsByLanguageErrors, dashboardReadVisitsByLanguageResponses, favoritesAddFavoriteData, favoritesAddFavoriteErrors, favoritesAddFavoriteResponses, favoritesReadMyFavoritesData, favoritesReadMyFavoritesErrors, favoritesReadMyFavoritesResponses, favoritesRemoveFavoriteData, favoritesRemoveFavoriteErrors, favoritesRemoveFavoriteResponses, feedbacksCreateFeedbackData, feedbacksCreateFeedbackErrors, feedbacksCreateFeedbackResponses, feedbacksModerateFeedbackData, feedbacksModerateFeedbackErrors, feedbacksModerateFeedbackResponses, feedbacksReadArtifactReviewsData, feedbacksReadArtifactReviewsErrors, feedbacksReadArtifactReviewsResponses, feedbacksReadFeedbackData, feedbacksReadFeedbackErrors, feedbacksReadFeedbackResponses, feedbacksReadFeedbacksData, feedbacksReadFeedbacksErrors, feedbacksReadFeedbacksResponses, feedbacksReadMyFeedbacksData, feedbacksReadMyFeedbacksErrors, feedbacksReadMyFeedbacksResponses, feedbacksUpdateMyFeedbackData, feedbacksUpdateMyFeedbackErrors, feedbacksUpdateMyFeedbackResponses, languagesCreateLanguageData, languagesCreateLanguageErrors, languagesCreateLanguageResponses, languagesDeleteLanguageData, languagesDeleteLanguageErrors, languagesDeleteLanguageResponses, languagesReadLanguagesData, languagesReadLanguagesErrors, languagesReadLanguagesResponses, languagesUpdateLanguageData, languagesUpdateLanguageErrors, languagesUpdateLanguageResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, mediaCreateMediaData, mediaCreateMediaErrors, mediaCreateMediaResponses, mediaDeleteMediaData, mediaDeleteMediaErrors, mediaDeleteMediaResponses, mediaReadMediaData, mediaReadMediaErrors, mediaReadMediaListData, mediaReadMediaListErrors, mediaReadMediaListResponses, mediaReadMediaResponses, mediaUpdateMediaData, mediaUpdateMediaErrors, mediaUpdateMediaResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, sitesCreateSiteData, sitesCreateSiteErrors, sitesCreateSiteResponses, sitesDeleteSiteData, sitesDeleteSiteErrors, sitesDeleteSiteResponses, sitesDeleteSiteTranslationData, sitesDeleteSiteTranslationErrors, sitesDeleteSiteTranslationResponses, sitesReadSiteData, sitesReadSiteErrors, sitesReadSiteResponses, sitesReadSitesData, sitesReadSitesErrors, sitesReadSitesResponses, sitesReadSiteTranslationsData, sitesReadSiteTranslationsErrors, sitesReadSiteTranslationsResponses, sitesUpdateSiteData, sitesUpdateSiteErrors, sitesUpdateSiteResponses, sitesUpsertSiteTranslationData, sitesUpsertSiteTranslationErrors, sitesUpsertSiteTranslationResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsReadinessData, utilsReadinessErrors, utilsReadinessResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses, visitsReadMyVisitsData, visitsReadMyVisitsErrors, visitsReadMyVisitsResponses, visitsRecordVisitData, visitsRecordVisitErrors, visitsRecordVisitResponses } from './types.gen';
+import type { analyticsExportExcelData, analyticsExportExcelErrors, analyticsExportExcelResponses, analyticsExportPdfData, analyticsExportPdfErrors, analyticsExportPdfResponses, analyticsOverviewData, analyticsOverviewErrors, analyticsOverviewResponses, analyticsSitesData, analyticsSitesErrors, analyticsSitesResponses, analyticsTopArtifactsData, analyticsTopArtifactsErrors, analyticsTopArtifactsResponses, analyticsVisitsData, analyticsVisitsErrors, analyticsVisitsResponses, artifactsCreateArtifactData, artifactsCreateArtifactErrors, artifactsCreateArtifactResponses, artifactsDeleteArtifactData, artifactsDeleteArtifactErrors, artifactsDeleteArtifactResponses, artifactsDeleteTranslationData, artifactsDeleteTranslationErrors, artifactsDeleteTranslationResponses, artifactsReadArtifactData, artifactsReadArtifactErrors, artifactsReadArtifactResponses, artifactsReadArtifactsData, artifactsReadArtifactsErrors, artifactsReadArtifactsResponses, artifactsReadTranslationsData, artifactsReadTranslationsErrors, artifactsReadTranslationsResponses, artifactsUpdateArtifactData, artifactsUpdateArtifactErrors, artifactsUpdateArtifactResponses, artifactsUpsertTranslationData, artifactsUpsertTranslationErrors, artifactsUpsertTranslationResponses, beaconsCreateBeaconData, beaconsCreateBeaconErrors, beaconsCreateBeaconResponses, beaconsDeleteBeaconData, beaconsDeleteBeaconErrors, beaconsDeleteBeaconResponses, beaconsReadBeaconData, beaconsReadBeaconErrors, beaconsReadBeaconResponses, beaconsReadBeaconsData, beaconsReadBeaconsErrors, beaconsReadBeaconsResponses, beaconsResolveBeaconData, beaconsResolveBeaconErrors, beaconsResolveBeaconResponses, beaconsUpdateBeaconData, beaconsUpdateBeaconErrors, beaconsUpdateBeaconResponses, dashboardReadSummaryData, dashboardReadSummaryErrors, dashboardReadSummaryResponses, dashboardReadTopArtifactsData, dashboardReadTopArtifactsErrors, dashboardReadTopArtifactsResponses, dashboardReadVisitsByDayData, dashboardReadVisitsByDayErrors, dashboardReadVisitsByDayResponses, dashboardReadVisitsByLanguageData, dashboardReadVisitsByLanguageErrors, dashboardReadVisitsByLanguageResponses, favoritesAddFavoriteData, favoritesAddFavoriteErrors, favoritesAddFavoriteResponses, favoritesReadMyFavoritesData, favoritesReadMyFavoritesErrors, favoritesReadMyFavoritesResponses, favoritesRemoveFavoriteData, favoritesRemoveFavoriteErrors, favoritesRemoveFavoriteResponses, feedbacksCreateFeedbackData, feedbacksCreateFeedbackErrors, feedbacksCreateFeedbackResponses, feedbacksModerateFeedbackData, feedbacksModerateFeedbackErrors, feedbacksModerateFeedbackResponses, feedbacksReadArtifactReviewsData, feedbacksReadArtifactReviewsErrors, feedbacksReadArtifactReviewsResponses, feedbacksReadFeedbackData, feedbacksReadFeedbackErrors, feedbacksReadFeedbackResponses, feedbacksReadFeedbacksData, feedbacksReadFeedbacksErrors, feedbacksReadFeedbacksResponses, feedbacksReadMyFeedbacksData, feedbacksReadMyFeedbacksErrors, feedbacksReadMyFeedbacksResponses, feedbacksUpdateMyFeedbackData, feedbacksUpdateMyFeedbackErrors, feedbacksUpdateMyFeedbackResponses, languagesCreateLanguageData, languagesCreateLanguageErrors, languagesCreateLanguageResponses, languagesDeleteLanguageData, languagesDeleteLanguageErrors, languagesDeleteLanguageResponses, languagesReadLanguagesData, languagesReadLanguagesErrors, languagesReadLanguagesResponses, languagesUpdateLanguageData, languagesUpdateLanguageErrors, languagesUpdateLanguageResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, mediaCreateMediaData, mediaCreateMediaErrors, mediaCreateMediaResponses, mediaDeleteMediaData, mediaDeleteMediaErrors, mediaDeleteMediaResponses, mediaReadMediaData, mediaReadMediaErrors, mediaReadMediaListData, mediaReadMediaListErrors, mediaReadMediaListResponses, mediaReadMediaResponses, mediaUpdateMediaData, mediaUpdateMediaErrors, mediaUpdateMediaResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, rolesReadRolesData, rolesReadRolesResponses, sitesCreateSiteData, sitesCreateSiteErrors, sitesCreateSiteResponses, sitesDeleteSiteData, sitesDeleteSiteErrors, sitesDeleteSiteResponses, sitesDeleteSiteTranslationData, sitesDeleteSiteTranslationErrors, sitesDeleteSiteTranslationResponses, sitesReadSiteData, sitesReadSiteErrors, sitesReadSiteResponses, sitesReadSitesData, sitesReadSitesErrors, sitesReadSitesResponses, sitesReadSiteTranslationsData, sitesReadSiteTranslationsErrors, sitesReadSiteTranslationsResponses, sitesUpdateSiteData, sitesUpdateSiteErrors, sitesUpdateSiteResponses, sitesUpsertSiteTranslationData, sitesUpsertSiteTranslationErrors, sitesUpsertSiteTranslationResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsReadinessData, utilsReadinessErrors, utilsReadinessResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses, visitsReadMyVisitsData, visitsReadMyVisitsErrors, visitsReadMyVisitsResponses, visitsRecordVisitData, visitsRecordVisitErrors, visitsRecordVisitResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -178,7 +178,7 @@ export class UsersService {
     /**
      * Read Users
      *
-     * Retrieve users. Admin only.
+     * Retrieve users. Superuser only.
      */
     public static readUsers<ThrowOnError extends boolean = true>(options?: Options<usersReadUsersData, ThrowOnError>) {
         return (options?.client ?? client).get<usersReadUsersResponses, usersReadUsersErrors, ThrowOnError>({
@@ -192,7 +192,7 @@ export class UsersService {
     /**
      * Create User
      *
-     * Create new user. Admin only.
+     * Create new user. Superuser only.
      */
     public static createUser<ThrowOnError extends boolean = true>(options: Options<usersCreateUserData, ThrowOnError>) {
         return (options.client ?? client).post<usersCreateUserResponses, usersCreateUserErrors, ThrowOnError>({
@@ -210,7 +210,7 @@ export class UsersService {
     /**
      * Delete User Me
      *
-     * Delete own user. Admin accounts cannot delete themselves.
+     * Delete own user. Superusers cannot delete themselves.
      */
     public static deleteUserMe<ThrowOnError extends boolean = true>(options?: Options<usersDeleteUserMeData, ThrowOnError>) {
         return (options?.client ?? client).delete<usersDeleteUserMeResponses, unknown, ThrowOnError>({
@@ -239,7 +239,6 @@ export class UsersService {
      * Update User Me
      *
      * Update own user.
-     *
      * - `language_id` (ngôn ngữ ưa thích) phải tồn tại (404) và đang bật (400);
      * gửi `null` để bỏ ngôn ngữ ưa thích.
      * - `email: null` -> 422. Không đổi được role / quyền qua endpoint này.
@@ -295,7 +294,7 @@ export class UsersService {
     /**
      * Delete User
      *
-     * Delete a user. Admin only.
+     * Delete a user. Superuser only.
      */
     public static deleteUser<ThrowOnError extends boolean = true>(options: Options<usersDeleteUserData, ThrowOnError>) {
         return (options.client ?? client).delete<usersDeleteUserResponses, usersDeleteUserErrors, ThrowOnError>({
@@ -309,10 +308,9 @@ export class UsersService {
     /**
      * Read User By Id
      *
-     * Get own user information or another user's information as Admin.
-     *
+     * Get own user information or another user's information as Superuser.
      * Kiểm tra quyền TRƯỚC khi tra cứu: người không phải superuser xem user khác -> 403
-     * (không lộ id có tồn tại hay không); admin xem id không có -> 404.
+     * (không lộ id có tồn tại hay không); Superuser xem id không có -> 404.
      */
     public static readUserById<ThrowOnError extends boolean = true>(options: Options<usersReadUserByIdData, ThrowOnError>) {
         return (options.client ?? client).get<usersReadUserByIdResponses, usersReadUserByIdErrors, ThrowOnError>({
@@ -326,13 +324,13 @@ export class UsersService {
     /**
      * Update User
      *
-     * Update a user. Admin only.
+     * Update a user. Superuser only.
      *
      * Chính sách quyền (hai tầng):
      * - Endpoint này cần `is_superuser`. Role `admin` chỉ quản lý nội dung di sản.
      * - Gán `role_id` không tự nâng quyền: `is_superuser` giữ nguyên. `role_id: null` xóa role.
      * - Chỉ gửi `is_superuser` (không kèm role) thì role tự đồng bộ admin / visitor.
-     * - Superuser mà role là visitor (hoặc gán role không tồn tại) -> 409; không đổi gì.
+     * - Superuser mà role là visitor -> 409; không đổi gì.
      * - `role_id` không tồn tại -> 404.
      * - Không được tự gỡ `is_superuser` hoặc tự vô hiệu hóa chính mình -> 400.
      * - `null` cho `email` / `is_active` / `is_superuser` / `password` -> 422.
@@ -347,6 +345,22 @@ export class UsersService {
                 'Content-Type': 'application/json',
                 ...options.headers
             }
+        });
+    }
+}
+
+export class RolesService {
+    /**
+     * Read Roles
+     *
+     * Retrieve supported roles. Superuser only.
+     */
+    public static readRoles<ThrowOnError extends boolean = true>(options?: Options<rolesReadRolesData, ThrowOnError>) {
+        return (options?.client ?? client).get<rolesReadRolesResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/roles/',
+            ...options
         });
     }
 }
@@ -1229,11 +1243,12 @@ export class PrivateService {
     /**
      * Create User
      *
-     * Create a new user.
+     * Create a new user. Superuser only.
      */
     public static createUser<ThrowOnError extends boolean = true>(options: Options<privateCreateUserData, ThrowOnError>) {
         return (options.client ?? client).post<privateCreateUserResponses, privateCreateUserErrors, ThrowOnError>({
             responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/private/users/',
             ...options,
             headers: {

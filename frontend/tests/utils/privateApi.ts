@@ -1,15 +1,65 @@
 import { LoginService, PrivateService, UsersService } from "../../src/client"
 import { createClient } from "../../src/client/client"
-import { client } from "../../src/client/client.gen"
 import { firstSuperuser, firstSuperuserPassword } from "../config"
 
-client.setConfig({
-  baseURL: `${process.env.VITE_API_URL}`,
-})
+/**
+ * Tạo client riêng đã xác thực bằng tài khoản Superuser.
+ * Không thay đổi client dùng chung của các bài kiểm thử.
+ */
+const createSuperuserClient = async () => {
+  const adminClient = createClient({
+    baseURL: `${process.env.VITE_API_URL}`,
+    throwOnError: true,
+  })
+
+  // Đăng nhập bằng Superuser hiện có.
+  const loginResponse = await LoginService.loginAccessToken({
+    client: adminClient,
+    body: {
+      username: firstSuperuser,
+      password: firstSuperuserPassword,
+    },
+  })
+
+  const accessToken = loginResponse.data.access_token
+
+  if (!accessToken) {
+    throw new Error("Không lấy được access token của Superuser.")
+  }
+
+  // Gắn token vào client riêng.
+  adminClient.setConfig({
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
+
+  // Xác minh tài khoản thực sự là Superuser.
+  const userResponse = await UsersService.readUserMe({
+    client: adminClient,
+  })
+
+  const superuser = userResponse.data
+
+  if (
+    superuser.is_superuser !== true ||
+    superuser.role_name !== "admin" ||
+    !superuser.role_id
+  ) {
+    throw new Error(
+      "Tài khoản kiểm thử không có quyền Superuser hoặc không có role_id Admin.",
+    )
+  }
+
+  return {
+    adminClient,
+    superuser,
+  }
+}
 
 /**
  * Tạo tài khoản Visitor bằng Private API.
- * Giữ nguyên hành vi hiện tại để sử dụng trong các bài kiểm thử Visitor.
+ * Endpoint yêu cầu quyền Superuser.
  */
 export const createUser = async ({
   email,
@@ -18,25 +68,28 @@ export const createUser = async ({
   email: string
   password: string
 }) => {
+  const { adminClient } = await createSuperuserClient()
+
   const response = await PrivateService.createUser({
+    client: adminClient,
     body: {
       email,
       password,
-      is_verified: true,
       full_name: "Test User",
     },
   })
+
   return response.data
 }
 
 /**
  * Tạo tài khoản Admin phục vụ kiểm thử phân quyền.
+ *
  * Quy trình:
- * 1. Tạo tài khoản Visitor.
- * 2. Đăng nhập bằng Superuser hiện có.
- * 3. Kiểm tra quyền Superuser và lấy role_id của Admin.
- * 4. Dùng Superuser cập nhật role_id cho tài khoản vừa tạo.
- * 5. Đăng nhập tài khoản mới và xác minh quyền Admin.
+ * 1. Đăng nhập bằng Superuser.
+ * 2. Tạo tài khoản Visitor qua Private API.
+ * 3. Gán role Admin nhưng giữ is_superuser = false.
+ * 4. Đăng nhập tài khoản mới và xác minh quyền Admin.
  */
 export const createAdminUser = async ({
   email,
@@ -45,62 +98,27 @@ export const createAdminUser = async ({
   email: string
   password: string
 }) => {
-  // 1. Tạo tài khoản Visitor trước.
-  const createdUser = await createUser({ email, password })
+  const { adminClient, superuser } = await createSuperuserClient()
 
-  if (!createdUser?.id) {
+  // 1. Tạo tài khoản Visitor trước.
+  const createdUser = await PrivateService.createUser({
+    client: adminClient,
+    body: {
+      email,
+      password,
+      full_name: "Test User",
+    },
+  })
+
+  if (!createdUser.data?.id) {
     throw new Error("Không thể tạo tài khoản Visitor để nâng quyền Admin.")
   }
 
-  // Tạo client riêng, không thay đổi client dùng chung.
-  const adminClient = createClient({
-    baseURL: `${process.env.VITE_API_URL}`,
-    throwOnError: true,
-  })
-
-  // 2. Đăng nhập bằng Superuser hiện có.
-  const superuserLogin = await LoginService.loginAccessToken({
-    client: adminClient,
-    body: {
-      username: firstSuperuser,
-      password: firstSuperuserPassword,
-    },
-  })
-
-  const superuserToken = superuserLogin.data.access_token
-
-  if (!superuserToken) {
-    throw new Error("Không lấy được access token của Superuser.")
-  }
-
-  adminClient.setConfig({
-    headers: {
-      Authorization: `Bearer ${superuserToken}`,
-    },
-  })
-
-  // 3. Xác minh Superuser và lấy role_id Admin.
-  const superuserResponse = await UsersService.readUserMe({
-    client: adminClient,
-  })
-
-  const superuser = superuserResponse.data
-
-  if (
-    superuser.is_superuser !== true ||
-    superuser.role_name !== "admin" ||
-    !superuser.role_id
-  ) {
-    throw new Error(
-      "Tài khoản đăng nhập không có quyền Superuser hoặc không có role_id Admin.",
-    )
-  }
-
-  // 4. Gán role Admin, tuyệt đối không bật is_superuser.
+  // 2. Gán role Admin, tuyệt đối không bật is_superuser.
   await UsersService.updateUser({
     client: adminClient,
     path: {
-      user_id: createdUser.id,
+      user_id: createdUser.data.id,
     },
     body: {
       role_id: superuser.role_id,
@@ -108,7 +126,7 @@ export const createAdminUser = async ({
     },
   })
 
-  // 5. Đăng nhập tài khoản vừa tạo.
+  // 3. Đăng nhập tài khoản vừa tạo.
   const adminLogin = await LoginService.loginAccessToken({
     client: adminClient,
     body: {
@@ -129,7 +147,7 @@ export const createAdminUser = async ({
     },
   })
 
-  // 6. Xác minh quyền thực tế thông qua GET /users/me.
+  // 4. Xác minh quyền thực tế thông qua GET /users/me.
   const adminResponse = await UsersService.readUserMe({
     client: adminClient,
   })

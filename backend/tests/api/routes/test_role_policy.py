@@ -105,3 +105,42 @@ def test_role_only_update_cannot_silently_demote_superuser_role(
         json={"role_id": str(visitor.id)},
     )
     assert response.status_code == 409
+
+
+def test_user_rejects_existing_unsupported_role(
+    client: TestClient,
+    db: Session,
+    superuser_token_headers: dict[str, str],
+) -> None:
+    # Arrange: Create a Visitor account.
+    visitor = crud.create_user(
+        session=db,
+        user_create=UserCreate(
+            email=random_email(),
+            password="RolePolicy123!",
+            is_superuser=False,
+        ),
+    )
+    original_role_id = visitor.role_id
+    original_is_superuser = visitor.is_superuser
+
+    # Create an unsupported role.
+    unsupported_role = Role(name="moderator")
+    db.add(unsupported_role)
+    db.commit()
+    db.refresh(unsupported_role)
+
+    # Act: Try to assign the unsupported role.
+    response = client.patch(
+        f"{API}/users/{visitor.id}",
+        headers=superuser_token_headers,
+        json={"role_id": str(unsupported_role.id)},
+    )
+
+    # Assert: The API rejects the assignment.
+    assert response.status_code == 409
+
+    # Assert: The user's privilege data remains unchanged.
+    db.refresh(visitor)
+    assert visitor.role_id == original_role_id
+    assert visitor.is_superuser == original_is_superuser

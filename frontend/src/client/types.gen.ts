@@ -1131,28 +1131,6 @@ export type Overview = {
 };
 
 /**
- * PrivateUserCreate
- */
-export type PrivateUserCreate = {
-    /**
-     * Email
-     */
-    email: string;
-    /**
-     * Password
-     */
-    password: string;
-    /**
-     * Full Name
-     */
-    full_name: string;
-    /**
-     * Is Verified
-     */
-    is_verified?: boolean;
-};
-
-/**
  * RatingStats
  */
 export type RatingStats = {
@@ -1176,6 +1154,24 @@ export type Readiness = {
     checks: {
         [key: string]: 'ok' | 'failed' | 'skipped';
     };
+};
+
+/**
+ * RolePublic
+ */
+export type RolePublic = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Id
+     */
+    id: string;
 };
 
 /**
@@ -1520,6 +1516,10 @@ export type UserCreate = {
      * Password
      */
     password: string;
+    /**
+     * Role Id
+     */
+    role_id?: string | null;
 };
 
 /**
@@ -2528,6 +2528,24 @@ export type usersUpdateUserResponses = {
 };
 
 export type usersUpdateUserResponse = usersUpdateUserResponses[keyof usersUpdateUserResponses];
+
+export type rolesReadRolesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/roles/';
+};
+
+export type rolesReadRolesResponses = {
+    /**
+     * Response Roles-Read Roles
+     *
+     * Successful Response
+     */
+    200: Array<RolePublic>;
+};
+
+export type rolesReadRolesResponse = rolesReadRolesResponses[keyof rolesReadRolesResponses];
 
 export type utilsTestEmailData = {
     body?: never;
@@ -4659,7 +4677,7 @@ export type dashboardReadVisitsByLanguageResponses = {
 export type dashboardReadVisitsByLanguageResponse = dashboardReadVisitsByLanguageResponses[keyof dashboardReadVisitsByLanguageResponses];
 
 export type privateCreateUserData = {
-    body: PrivateUserCreate;
+    body: UserCreate;
     path?: never;
     query?: never;
     url: '/api/v1/private/users/';

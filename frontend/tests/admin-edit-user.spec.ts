@@ -30,12 +30,28 @@ async function openUserEditor(page: Page, initial: Partial<UserPublic> = {}) {
   await page.addInitScript(() => {
     localStorage.setItem("access_token", "mock-superuser-token")
   })
+
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request()
     const path = new URL(request.url()).pathname
 
     if (request.method() === "GET" && path === "/api/v1/users/me") {
       await route.fulfill({ json: currentUser })
+    } else if (request.method() === "GET" && path === "/api/v1/roles/") {
+      await route.fulfill({
+        json: [
+          {
+            id: adminRoleId,
+            name: "admin",
+            description: "Administrator",
+          },
+          {
+            id: visitorRoleId,
+            name: "visitor",
+            description: "Visitor",
+          },
+        ],
+      })
     } else if (request.method() === "GET" && path === "/api/v1/users/") {
       await route.fulfill({ json: { data: [user], count: 1 } })
     } else if (
@@ -44,12 +60,10 @@ async function openUserEditor(page: Page, initial: Partial<UserPublic> = {}) {
     ) {
       const update = request.postDataJSON() as UserUpdate
       updates.push(update)
+
       const { password: _, ...publicFields } = update
       Object.assign(user, publicFields)
-      // Preserve the backend contract for boolean-only privilege updates.
-      if ("is_superuser" in update && !("role_id" in update)) {
-        user.role_id = update.is_superuser ? adminRoleId : visitorRoleId
-      }
+
       await route.fulfill({ json: user })
     } else {
       await route.abort("blockedbyclient")
@@ -57,9 +71,11 @@ async function openUserEditor(page: Page, initial: Partial<UserPublic> = {}) {
   })
 
   await page.goto("/admin")
+
   const row = page.getByRole("row").filter({ hasText: user.email })
   await row.getByRole("button").click()
   await page.getByRole("menuitem", { name: "Edit User" }).click()
+
   const dialog = page.getByRole("dialog")
   await expect(dialog).toBeVisible()
 
@@ -79,10 +95,12 @@ for (const [field, placeholder, value] of [
     page,
   }) => {
     const { user, updates, dialog, save } = await openUserEditor(page)
+
     await dialog.getByPlaceholder(placeholder, { exact: true }).fill(value)
     await save.click()
 
     await expect(dialog).not.toBeVisible()
+
     expect(updates).toEqual([{ [field]: value }])
     expect(user).toMatchObject({
       role_id: adminRoleId,
@@ -97,17 +115,21 @@ test("editing only the password preserves the role and flags", async ({
 }) => {
   const { user, updates, dialog, save } = await openUserEditor(page)
   const password = "NewEditorPassword123!"
+
   await dialog
     .getByPlaceholder("Password", { exact: true })
     .nth(0)
     .fill(password)
+
   await dialog
     .getByPlaceholder("Password", { exact: true })
     .nth(1)
     .fill(password)
+
   await save.click()
 
   await expect(dialog).not.toBeVisible()
+
   expect(updates).toEqual([{ password }])
   expect(user).toMatchObject({
     role_id: adminRoleId,
@@ -116,35 +138,89 @@ test("editing only the password preserves the role and flags", async ({
   })
 })
 
-for (const initial of [false, true]) {
-  test(`changing is_superuser from ${initial} sends the flag and synchronizes the role`, async ({
+const accountTransitions = [
+  {
+    from: "Visitor",
+    to: "Admin",
+    initialRoleId: visitorRoleId,
+    initialSuperuser: false,
+    target: "Admin",
+    expectedRoleId: adminRoleId,
+    expectedSuperuser: false,
+  },
+  {
+    from: "Admin",
+    to: "Superuser",
+    initialRoleId: adminRoleId,
+    initialSuperuser: false,
+    target: "Superuser",
+    expectedRoleId: adminRoleId,
+    expectedSuperuser: true,
+  },
+  {
+    from: "Superuser",
+    to: "Admin",
+    initialRoleId: adminRoleId,
+    initialSuperuser: true,
+    target: "Admin",
+    expectedRoleId: adminRoleId,
+    expectedSuperuser: false,
+  },
+  {
+    from: "Admin",
+    to: "Visitor",
+    initialRoleId: adminRoleId,
+    initialSuperuser: false,
+    target: "Visitor",
+    expectedRoleId: visitorRoleId,
+    expectedSuperuser: false,
+  },
+] as const
+
+for (const transition of accountTransitions) {
+  test(`changing account type from ${transition.from} to ${transition.to}`, async ({
     page,
   }) => {
     const { user, updates, dialog, save } = await openUserEditor(page, {
-      is_superuser: initial,
+      role_id: transition.initialRoleId,
+      is_superuser: transition.initialSuperuser,
     })
-    await dialog.getByLabel("Is superuser?").setChecked(!initial)
+
+    await dialog.getByRole("combobox").click()
+    await page.getByRole("option", { name: transition.target }).click()
+
     await save.click()
 
     await expect(dialog).not.toBeVisible()
-    expect(updates).toEqual([{ is_superuser: !initial }])
+
+    expect(updates).toEqual([
+      {
+        role_id: transition.expectedRoleId,
+        is_superuser: transition.expectedSuperuser,
+      },
+    ])
+
     expect(user).toMatchObject({
-      is_superuser: !initial,
+      role_id: transition.expectedRoleId,
+      is_superuser: transition.expectedSuperuser,
       is_active: true,
-      role_id: initial ? visitorRoleId : adminRoleId,
     })
   })
+}
 
+for (const initial of [false, true]) {
   test(`changing is_active from ${initial} sends only that flag`, async ({
     page,
   }) => {
     const { user, updates, dialog, save } = await openUserEditor(page, {
       is_active: initial,
     })
+
     await dialog.getByLabel("Is active?").setChecked(!initial)
     await save.click()
 
     await expect(dialog).not.toBeVisible()
+
     expect(updates).toEqual([{ is_active: !initial }])
     expect(user).toMatchObject({
       is_active: !initial,
@@ -156,6 +232,7 @@ for (const initial of [false, true]) {
 
 test("an unchanged form cannot submit an update", async ({ page }) => {
   const { updates, save } = await openUserEditor(page)
+
   await expect(save).toBeDisabled()
   expect(updates).toEqual([])
 })
@@ -164,16 +241,24 @@ test("reverting edits and clearing the password leaves nothing to save", async (
   page,
 }) => {
   const { updates, dialog, save } = await openUserEditor(page)
+
   await dialog.getByPlaceholder("Full name").fill("Temporary Name")
   await dialog.getByPlaceholder("Full name").fill("Content Editor")
-  await dialog.getByLabel("Is superuser?").check()
-  await dialog.getByLabel("Is superuser?").uncheck()
+
+  await dialog.getByRole("combobox").click()
+  await page.getByRole("option", { name: "Superuser" }).click()
+
+  await dialog.getByRole("combobox").click()
+  await page.getByRole("option", { name: "Admin" }).click()
+
   await dialog.getByLabel("Is active?").uncheck()
   await dialog.getByLabel("Is active?").check()
+
   await dialog
     .getByPlaceholder("Password", { exact: true })
     .nth(0)
     .fill("TemporaryPassword123!")
+
   await dialog.getByPlaceholder("Password", { exact: true }).nth(0).fill("")
 
   await expect(save).toBeDisabled()

@@ -33,9 +33,13 @@ export const Route = createFileRoute("/_layout")({
           ? error.response?.status
           : (error as { response?: { status?: number } }).response?.status
 
-      if ([401, 403].includes(status ?? 0)) {
+      if (status === 401) {
         localStorage.removeItem("access_token")
         throw redirect({ to: "/login" })
+      }
+
+      if (status === 403) {
+        throw redirect({ to: "/forbidden" })
       }
 
       throw error

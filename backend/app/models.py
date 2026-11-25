@@ -55,6 +55,13 @@ class UserBase(SQLModel):
 # Properties to receive via API on creation
 class UserCreate(UserBase):
     password: str = Field(min_length=8, max_length=128)
+    role_id: uuid.UUID | None = None
+
+    @model_validator(mode="after")
+    def validate_role_id(self) -> Self:
+        if "role_id" in self.model_fields_set and self.role_id is None:
+            raise ValueError("role_id must not be null when explicitly provided")
+        return self
 
 
 class UserRegister(SQLModel):

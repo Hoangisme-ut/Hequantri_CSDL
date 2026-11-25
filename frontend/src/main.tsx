@@ -20,12 +20,17 @@ client.setConfig({
 })
 
 const handleApiError = (error: Error) => {
-  if (
-    error instanceof AxiosError &&
-    [401, 403].includes(error.response?.status ?? 0)
-  ) {
+  if (!(error instanceof AxiosError)) {
+    return
+  }
+
+  const status = error.response?.status
+
+  if (status === 401) {
     localStorage.removeItem("access_token")
     window.location.href = "/login"
+  } else if (status === 403) {
+    window.location.href = "/forbidden"
   }
 }
 const queryClient = new QueryClient({

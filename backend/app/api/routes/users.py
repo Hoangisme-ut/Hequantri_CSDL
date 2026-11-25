@@ -46,7 +46,7 @@ def read_users(
     limit: int = Query(default=100, ge=1),
 ) -> Any:
     """
-    Retrieve users. Admin only.
+    Retrieve users. Superuser only.
     """
     count_statement = select(func.count()).select_from(User)
     count = session.exec(count_statement).one()
@@ -65,7 +65,7 @@ def read_users(
 )
 def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     """
-    Create new user. Admin only.
+    Create new user. Superuser only.
     """
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user:
@@ -74,7 +74,19 @@ def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
             detail="The user with this email already exists in the system.",
         )
 
-    user = crud.create_user(session=session, user_create=user_in)
+    if user_in.role_id is not None:
+        get_role_or_404(session, user_in.role_id)
+
+    try:
+        user = crud.create_user(
+            session=session,
+            user_create=user_in,
+        )
+    except crud.InvalidRoleAssignmentError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=str(exc),
+        ) from exc
     if settings.emails_enabled and user_in.email:
         email_data = generate_new_account_email(
             email_to=user_in.email,
@@ -104,9 +116,8 @@ def update_user_me(
 ) -> Any:
     """
     Update own user.
-
     - `language_id` (ngôn ngữ ưa thích) phải tồn tại (404) và đang bật (400);
-      gửi `null` để bỏ ngôn ngữ ưa thích.
+    gửi `null` để bỏ ngôn ngữ ưa thích.
     - `email: null` -> 422. Không đổi được role / quyền qua endpoint này.
     """
     if user_in.language_id is not None:
@@ -187,7 +198,7 @@ def delete_user_me(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Delete own user. Admin accounts cannot delete themselves.
+    Delete own user. Superusers cannot delete themselves.
     """
     if current_user.is_superuser:
         raise HTTPException(
@@ -216,12 +227,23 @@ def register_user(
             status_code=400,
             detail="The user with this email already exists in the system",
         )
-    user_create = UserCreate.model_validate(user_in)
-    user = crud.create_user(
-        session=session,
-        user_create=user_create,
-        email_conflict_detail="The user with this email already exists in the system",
+    user_create = UserCreate(
+        email=user_in.email,
+        password=user_in.password,
+        full_name=user_in.full_name,
+        is_superuser=False,
     )
+    try:
+        user = crud.create_user(
+            session=session,
+            user_create=user_create,
+            email_conflict_detail="The user with this email already exists in the system",
+        )
+    except crud.InvalidRoleAssignmentError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=str(exc),
+        ) from exc
 
     return user
 
@@ -233,10 +255,9 @@ def read_user_by_id(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Get own user information or another user's information as Admin.
-
+    Get own user information or another user's information as Superuser.
     Kiểm tra quyền TRƯỚC khi tra cứu: người không phải superuser xem user khác -> 403
-    (không lộ id có tồn tại hay không); admin xem id không có -> 404.
+    (không lộ id có tồn tại hay không); Superuser xem id không có -> 404.
     """
     if user_id != current_user.id and not current_user.is_superuser:
         raise HTTPException(
@@ -265,13 +286,13 @@ def update_user(
     user_in: UserUpdate,
 ) -> Any:
     """
-    Update a user. Admin only.
+    Update a user. Superuser only.
 
     Chính sách quyền (hai tầng):
     - Endpoint này cần `is_superuser`. Role `admin` chỉ quản lý nội dung di sản.
     - Gán `role_id` không tự nâng quyền: `is_superuser` giữ nguyên. `role_id: null` xóa role.
     - Chỉ gửi `is_superuser` (không kèm role) thì role tự đồng bộ admin / visitor.
-    - Superuser mà role là visitor (hoặc gán role không tồn tại) -> 409; không đổi gì.
+    - Superuser mà role là visitor -> 409; không đổi gì.
     - `role_id` không tồn tại -> 404.
     - Không được tự gỡ `is_superuser` hoặc tự vô hiệu hóa chính mình -> 400.
     - `null` cho `email` / `is_active` / `is_superuser` / `password` -> 422.
@@ -319,7 +340,7 @@ def delete_user(
     session: SessionDep, current_user: CurrentUser, user_id: uuid.UUID
 ) -> Message:
     """
-    Delete a user. Admin only.
+    Delete a user. Superuser only.
     """
     user = session.get(User, user_id)
     if not user:

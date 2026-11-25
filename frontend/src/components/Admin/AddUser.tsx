@@ -1,11 +1,16 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Plus } from "lucide-react"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { type UserCreate, UsersService } from "@/client"
+import {
+  type RolePublic,
+  RolesService,
+  type UserCreate,
+  UsersService,
+} from "@/client"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -28,6 +33,13 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
 
@@ -42,7 +54,7 @@ const formSchema = z
     confirm_password: z
       .string()
       .min(1, { message: "Please confirm your password" }),
-    is_superuser: z.boolean(),
+    account_type: z.enum(["visitor", "admin", "superuser"]),
     is_active: z.boolean(),
   })
   .refine((data) => data.password === data.confirm_password, {
@@ -55,6 +67,10 @@ type FormData = z.infer<typeof formSchema>
 const AddUser = () => {
   const [isOpen, setIsOpen] = useState(false)
   const queryClient = useQueryClient()
+  const rolesQuery = useQuery({
+    queryKey: ["roles"],
+    queryFn: async () => (await RolesService.readRoles()).data,
+  })
   const { showSuccessToast, showErrorToast } = useCustomToast()
 
   const form = useForm<FormData>({
@@ -66,7 +82,7 @@ const AddUser = () => {
       full_name: "",
       password: "",
       confirm_password: "",
-      is_superuser: false,
+      account_type: "visitor",
       is_active: false,
     },
   })
@@ -85,7 +101,27 @@ const AddUser = () => {
   })
 
   const onSubmit = (data: FormData) => {
-    mutation.mutate(data)
+    const roleName = data.account_type === "visitor" ? "visitor" : "admin"
+
+    const role = rolesQuery.data?.find(
+      (item: RolePublic) => item.name === roleName,
+    )
+
+    if (!role) {
+      showErrorToast("Unable to find the selected account role")
+      return
+    }
+
+    const payload: UserCreate = {
+      email: data.email,
+      full_name: data.full_name,
+      password: data.password,
+      is_active: data.is_active,
+      role_id: role.id,
+      is_superuser: data.account_type === "superuser",
+    }
+
+    mutation.mutate(payload)
   }
 
   return (
@@ -186,16 +222,37 @@ const AddUser = () => {
 
               <FormField
                 control={form.control}
-                name="is_superuser"
+                name="account_type"
                 render={({ field }) => (
-                  <FormItem className="flex items-center gap-3 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormLabel className="font-normal">Is superuser?</FormLabel>
+                  <FormItem>
+                    <FormLabel>Account Type</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={rolesQuery.isLoading || rolesQuery.isError}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select account type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="visitor">Visitor</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="superuser">Superuser</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    {rolesQuery.isLoading && (
+                      <p className="text-xs text-muted-foreground">
+                        Loading account roles...
+                      </p>
+                    )}
+                    {rolesQuery.isError && (
+                      <p className="text-xs text-destructive">
+                        Unable to load account roles. Please try again.
+                      </p>
+                    )}
                   </FormItem>
                 )}
               />
@@ -223,7 +280,11 @@ const AddUser = () => {
                   Cancel
                 </Button>
               </DialogClose>
-              <LoadingButton type="submit" loading={mutation.isPending}>
+              <LoadingButton
+                type="submit"
+                loading={mutation.isPending}
+                disabled={!rolesQuery.isSuccess || rolesQuery.isError}
+              >
                 Save
               </LoadingButton>
             </DialogFooter>
