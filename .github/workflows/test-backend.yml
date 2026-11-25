@@ -49,7 +49,7 @@ jobs:
         env:
           DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
       - name: Run tests
-        run: uv run bash scripts/tests-start.sh "Coverage for ${{ github.sha }}"
+        run: uv run bash scripts/tests-start.sh
         working-directory: backend
       - name: Store coverage files
         if: always()
