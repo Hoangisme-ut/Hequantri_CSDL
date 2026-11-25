@@ -27,13 +27,9 @@ def test_create_user(
 
     data = response.json()
 
-    user = db.exec(
-        select(User).where(User.id == data["id"])
-    ).first()
+    user = db.exec(select(User).where(User.id == data["id"])).first()
 
-    visitor_role = db.exec(
-        select(Role).where(Role.name == "visitor")
-    ).first()
+    visitor_role = db.exec(select(Role).where(Role.name == "visitor")).first()
 
     assert user is not None
     assert visitor_role is not None
@@ -81,9 +77,7 @@ def test_create_user_forbidden_for_regular_admin(
 ) -> None:
     password = "RegularAdmin123!"
 
-    admin_role = db.exec(
-        select(Role).where(Role.name == "admin")
-    ).first()
+    admin_role = db.exec(select(Role).where(Role.name == "admin")).first()
 
     assert admin_role is not None
 

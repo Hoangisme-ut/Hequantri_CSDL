@@ -35,9 +35,7 @@ def test_read_roles_as_admin_forbidden(
     client: TestClient,
     db: Session,
 ) -> None:
-    admin_role = db.exec(
-        select(Role).where(Role.name == "admin")
-    ).one()
+    admin_role = db.exec(select(Role).where(Role.name == "admin")).one()
 
     password = "AdminRole123!"
     admin = crud.create_user(
@@ -62,9 +60,7 @@ def test_read_roles_as_admin_forbidden(
     )
 
     assert response.status_code == 403
-    assert response.json() == {
-        "detail": "The user doesn't have enough privileges"
-    }
+    assert response.json() == {"detail": "The user doesn't have enough privileges"}
 
 
 def test_read_roles_as_visitor_forbidden(
@@ -77,9 +73,7 @@ def test_read_roles_as_visitor_forbidden(
     )
 
     assert response.status_code == 403
-    assert response.json() == {
-        "detail": "The user doesn't have enough privileges"
-    }
+    assert response.json() == {"detail": "The user doesn't have enough privileges"}
 
 
 def test_read_roles_without_authentication(

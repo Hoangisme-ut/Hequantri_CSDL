@@ -17,9 +17,7 @@ def read_roles(session: SessionDep) -> list[RolePublic]:
     Retrieve supported roles. Superuser only.
     """
     statement = (
-        select(Role)
-        .where(col(Role.name).in_(["admin", "visitor"]))
-        .order_by(Role.name)
+        select(Role).where(col(Role.name).in_(["admin", "visitor"])).order_by(Role.name)
     )
     roles = session.exec(statement).all()
     return [RolePublic.model_validate(role) for role in roles]

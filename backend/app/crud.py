@@ -58,9 +58,7 @@ def create_user(
         )
 
         if role is None:
-            raise InvalidRoleAssignmentError(
-                "Required role is not configured"
-            )
+            raise InvalidRoleAssignmentError("Required role is not configured")
 
     # Chỉ chấp nhận hai role thuộc chính sách tài khoản hiện tại.
     if role.name not in {ROLE_ADMIN, ROLE_VISITOR}:
@@ -68,9 +66,7 @@ def create_user(
 
     # Superuser bắt buộc phải có role admin.
     if user_create.is_superuser and role.name != ROLE_ADMIN:
-        raise InvalidRoleAssignmentError(
-            "Superusers must have the admin role"
-        )
+        raise InvalidRoleAssignmentError("Superusers must have the admin role")
 
     db_obj = User.model_validate(
         user_create,
