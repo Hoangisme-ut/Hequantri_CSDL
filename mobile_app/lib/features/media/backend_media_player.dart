@@ -79,7 +79,13 @@ class BackendMediaSession extends ChangeNotifier {
   }
 
   Future<void> _initVideo(Uri uri, {required bool muted}) async {
-    final player = VideoPlayerController.networkUrl(uri);
+    final player = VideoPlayerController.networkUrl(
+      uri,
+      // Cho phép phát song song với audio thuyết minh mà không chiếm AudioFocus
+      videoPlayerOptions: muted
+          ? VideoPlayerOptions(mixWithOthers: true)
+          : null,
+    );
     _video = player;
 
     player.addListener(_videoChanged);
