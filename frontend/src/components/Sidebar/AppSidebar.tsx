@@ -3,6 +3,7 @@ import {
   Bell,
   ChartNoAxesColumnIncreasing,
   CircleHelp,
+  Languages,
   MapPin,
   MessageSquare,
   Radio,
@@ -40,6 +41,12 @@ const navItems: Item[] = [
     icon: Archive,
     title: "Artifact Management",
     path: "/items",
+    section: "Navigation",
+  },
+  {
+    icon: Languages,
+    title: "Ngôn ngữ",
+    path: "/languages",
     section: "Navigation",
   },
   {

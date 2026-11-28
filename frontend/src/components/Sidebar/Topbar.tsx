@@ -23,6 +23,10 @@ const pageDetails: Record<string, { title: string; subtitle: string }> = {
     title: "Artifact Management",
     subtitle: "Manage the artifact catalog",
   },
+  "/languages": {
+    title: "Quản lý ngôn ngữ",
+    subtitle: "Ngôn ngữ hỗ trợ cho nội dung di sản",
+  },
   "/beacons": {
     title: "Beacon Management",
     subtitle: "Monitor and assign beacons",

@@ -23,6 +23,7 @@ import { Route as LayoutAnalyticsRouteImport } from './routes/_layout/analytics'
 import { Route as LayoutBeaconsRouteImport } from './routes/_layout/beacons'
 import { Route as LayoutFeedbackRouteImport } from './routes/_layout/feedback'
 import { Route as LayoutItemsRouteImport } from './routes/_layout/items'
+import { Route as LayoutLanguagesRouteImport } from './routes/_layout/languages'
 import { Route as LayoutNotificationsRouteImport } from './routes/_layout/notifications'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutSitesRouteImport } from './routes/_layout/sites'
@@ -100,6 +101,11 @@ const LayoutItemsRoute = LayoutItemsRouteImport.update({
   path: '/items',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutLanguagesRoute = LayoutLanguagesRouteImport.update({
+  id: '/languages',
+  path: '/languages',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutNotificationsRoute = LayoutNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -150,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/beacons': typeof LayoutBeaconsRoute
   '/feedback': typeof LayoutFeedbackRoute
   '/items': typeof LayoutItemsRoute
+  '/languages': typeof LayoutLanguagesRoute
   '/notifications': typeof LayoutNotificationsRoute
   '/settings': typeof LayoutSettingsRoute
   '/sites': typeof LayoutSitesRouteWithChildren
@@ -170,6 +177,7 @@ export interface FileRoutesByTo {
   '/beacons': typeof LayoutBeaconsRoute
   '/feedback': typeof LayoutFeedbackRoute
   '/items': typeof LayoutItemsRoute
+  '/languages': typeof LayoutLanguagesRoute
   '/notifications': typeof LayoutNotificationsRoute
   '/settings': typeof LayoutSettingsRoute
   '/sites': typeof LayoutSitesRouteWithChildren
@@ -194,6 +202,7 @@ export interface FileRoutesById {
   '/_layout/beacons': typeof LayoutBeaconsRoute
   '/_layout/feedback': typeof LayoutFeedbackRoute
   '/_layout/items': typeof LayoutItemsRoute
+  '/_layout/languages': typeof LayoutLanguagesRoute
   '/_layout/notifications': typeof LayoutNotificationsRoute
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/sites': typeof LayoutSitesRouteWithChildren
@@ -219,6 +228,7 @@ export interface FileRouteTypes {
     | '/beacons'
     | '/feedback'
     | '/items'
+    | '/languages'
     | '/notifications'
     | '/settings'
     | '/sites'
@@ -239,6 +249,7 @@ export interface FileRouteTypes {
     | '/beacons'
     | '/feedback'
     | '/items'
+    | '/languages'
     | '/notifications'
     | '/settings'
     | '/sites'
@@ -262,6 +273,7 @@ export interface FileRouteTypes {
     | '/_layout/beacons'
     | '/_layout/feedback'
     | '/_layout/items'
+    | '/_layout/languages'
     | '/_layout/notifications'
     | '/_layout/settings'
     | '/_layout/sites'
@@ -382,6 +394,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutItemsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/languages': {
+      id: '/_layout/languages'
+      path: '/languages'
+      fullPath: '/languages'
+      preLoaderRoute: typeof LayoutLanguagesRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/notifications': {
       id: '/_layout/notifications'
       path: '/notifications'
@@ -453,6 +472,7 @@ interface LayoutRouteChildren {
   LayoutBeaconsRoute: typeof LayoutBeaconsRoute
   LayoutFeedbackRoute: typeof LayoutFeedbackRoute
   LayoutItemsRoute: typeof LayoutItemsRoute
+  LayoutLanguagesRoute: typeof LayoutLanguagesRoute
   LayoutNotificationsRoute: typeof LayoutNotificationsRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutSitesRoute: typeof LayoutSitesRouteWithChildren
@@ -467,6 +487,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutBeaconsRoute: LayoutBeaconsRoute,
   LayoutFeedbackRoute: LayoutFeedbackRoute,
   LayoutItemsRoute: LayoutItemsRoute,
+  LayoutLanguagesRoute: LayoutLanguagesRoute,
   LayoutNotificationsRoute: LayoutNotificationsRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutSitesRoute: LayoutSitesRouteWithChildren,
