@@ -262,6 +262,17 @@ def get_artifact_content(
         for m in session.exec(media_stmt.order_by(col(Media.sort_order))).all()
         if m.language_id is None or m.language_id in lang_ids
     ]
+
+    # Build mapping language_id -> language_code để populate MediaPublic
+    lang_code_map: dict[str, str] = {}
+    for lang_obj in (language, used_lang):
+        if lang_obj is not None:
+            lang_code_map[str(lang_obj.id)] = lang_obj.code
+
+    def _media_public(m: Media) -> MediaPublic:
+        lang_code = lang_code_map.get(str(m.language_id)) if m.language_id else None
+        return MediaPublic.model_validate(m, update={"language_code": lang_code})
+
     return ArtifactContentPublic.model_validate(
         artifact,
         update={
@@ -274,7 +285,7 @@ def get_artifact_content(
                 and language is not None
                 and translation.language_id != language.id
             ),
-            "media": [MediaPublic.model_validate(m) for m in media_list],
+            "media": [_media_public(m) for m in media_list],
         },
     )
 

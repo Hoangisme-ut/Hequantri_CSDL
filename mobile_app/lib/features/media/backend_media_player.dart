@@ -60,7 +60,41 @@ class BackendMediaSession extends ChangeNotifier {
     }
   }
 
-  Future<void> initialize(ArtifactMedia media, Uri origin) async {
+  Future<void> _initAudio(Uri uri) async {
+    final player = audio.AudioPlayer();
+    _audio = player;
+
+    _subscriptions.add(player.playerStateStream.listen((_) => _changed()));
+    _subscriptions.add(player.positionStream.listen((_) => _changed()));
+    _subscriptions.add(player.durationStream.listen((_) => _changed()));
+    _subscriptions.add(
+      player.errorStream.listen((_) {
+        if (_disposed) return;
+        failed = true;
+        _changed();
+      }),
+    );
+
+    await player.setUrl(uri.toString()).timeout(const Duration(seconds: 20));
+  }
+
+  Future<void> _initVideo(Uri uri, {required bool muted}) async {
+    final player = VideoPlayerController.networkUrl(uri);
+    _video = player;
+
+    player.addListener(_videoChanged);
+
+    await player.initialize().timeout(const Duration(seconds: 20));
+    if (muted && !_disposed) {
+      await player.setVolume(0.0);
+    }
+  }
+
+  Future<void> initialize(
+    ArtifactMedia media,
+    Uri origin, {
+    ArtifactMedia? audioTrack,
+  }) async {
     if (_disposed || loading || ready) return;
 
     loading = true;
@@ -71,30 +105,17 @@ class BackendMediaSession extends ChangeNotifier {
       final uri = mediaUri(media.url, origin);
 
       if (media.type == 'audio') {
-        final player = audio.AudioPlayer();
-        _audio = player;
-
-        _subscriptions.add(player.playerStateStream.listen((_) => _changed()));
-        _subscriptions.add(player.positionStream.listen((_) => _changed()));
-        _subscriptions.add(player.durationStream.listen((_) => _changed()));
-        _subscriptions.add(
-          player.errorStream.listen((_) {
-            if (_disposed) return;
-            failed = true;
-            _changed();
-          }),
-        );
-
-        await player
-            .setUrl(uri.toString())
-            .timeout(const Duration(seconds: 20));
+        await _initAudio(uri);
       } else if (media.type == 'video') {
-        final player = VideoPlayerController.networkUrl(uri);
-        _video = player;
-
-        player.addListener(_videoChanged);
-
-        await player.initialize().timeout(const Duration(seconds: 20));
+        if (audioTrack != null && audioTrack.type == 'audio') {
+          final audioUri = mediaUri(audioTrack.url, origin);
+          await Future.wait([
+            _initVideo(uri, muted: true),
+            _initAudio(audioUri),
+          ]);
+        } else {
+          await _initVideo(uri, muted: false);
+        }
       } else {
         throw const FormatException('Unsupported media type');
       }
@@ -129,7 +150,8 @@ class BackendMediaSession extends ChangeNotifier {
 
     try {
       if (playing && !completed) {
-        await (_audio?.pause() ?? _video?.pause());
+        if (_audio != null) await _audio!.pause();
+        if (_video != null) await _video!.pause();
       } else {
         if (completed) {
           await seek(Duration.zero);
@@ -138,6 +160,11 @@ class BackendMediaSession extends ChangeNotifier {
         if (_disposed || failed) return;
 
         final sound = _audio;
+        final video = _video;
+
+        if (video != null) {
+          await video.play();
+        }
 
         if (sound != null) {
           // Future của play() kết thúc khi audio phát xong.
@@ -149,8 +176,6 @@ class BackendMediaSession extends ChangeNotifier {
               }
             }),
           );
-        } else {
-          await _video?.play();
         }
       }
     } catch (_) {
@@ -166,7 +191,8 @@ class BackendMediaSession extends ChangeNotifier {
     if (_disposed || !ready || failed) return;
 
     try {
-      await (_audio?.seek(value) ?? _video?.seekTo(value));
+      if (_audio != null) await _audio!.seek(value);
+      if (_video != null) await _video!.seekTo(value);
     } catch (_) {
       if (!_disposed) {
         failed = true;
@@ -220,18 +246,97 @@ class BackendMediaPlayer extends StatefulWidget {
   final Uri? baseUrl;
   final BackendMediaSession Function()? createSession;
 
+  /// Trả về mã ngôn ngữ hiện tại ('vi' hoặc 'en').
+  String get currentLangCode => isEnglish ? 'en' : 'vi';
+
   @override
   State<BackendMediaPlayer> createState() => _BackendMediaPlayerState();
+}
+
+class _ResolvedMedia {
+  const _ResolvedMedia({
+    required this.primary,
+    this.accompanyingAudio,
+  });
+
+  final ArtifactMedia primary;
+  final ArtifactMedia? accompanyingAudio;
 }
 
 class _BackendMediaPlayerState extends State<BackendMediaPlayer>
     with WidgetsBindingObserver {
   BackendMediaSession? _session;
-  int _selectedIndex = 0;
   bool _appActive = true;
 
+  /// Toàn bộ media có thể phát (audio/video).
   List<ArtifactMedia> get _items =>
       widget.media.where((item) => item.isPlayable).toList();
+
+  /// Tự động chọn media phù hợp nhất với ngôn ngữ hiện tại.
+  ///
+  /// Thứ tự ưu tiên:
+  ///   1. Video đúng ngôn ngữ hiện tại
+  ///   2. Video dùng chung (shared) + Audio đúng ngôn ngữ hiện tại (phát đồng bộ)
+  ///   3. Audio đúng ngôn ngữ hiện tại
+  ///   4. Video dùng chung (shared)
+  ///   5. Audio dùng chung (shared)
+  ///   6. Bất kỳ media playable nào (fallback)
+  _ResolvedMedia? _resolveMedia(List<ArtifactMedia> items) {
+    if (items.isEmpty) return null;
+
+    final lang = widget.currentLangCode;
+
+    ArtifactMedia? firstWhereOrNull(bool Function(ArtifactMedia) test) {
+      for (final item in items) {
+        if (test(item)) return item;
+      }
+      return null;
+    }
+
+    // 1. Video đúng ngôn ngữ
+    final langVideo = firstWhereOrNull(
+      (m) => m.type == 'video' && m.languageCode == lang,
+    );
+    if (langVideo != null) {
+      return _ResolvedMedia(primary: langVideo);
+    }
+
+    final sharedVideo = firstWhereOrNull(
+      (m) => m.type == 'video' && m.languageCode == null,
+    );
+    final langAudio = firstWhereOrNull(
+      (m) => m.type == 'audio' && m.languageCode == lang,
+    );
+
+    // 2. Video dùng chung + Audio đúng ngôn ngữ (xem video kèm thuyết minh theo ngôn ngữ)
+    if (sharedVideo != null && langAudio != null) {
+      return _ResolvedMedia(
+        primary: sharedVideo,
+        accompanyingAudio: langAudio,
+      );
+    }
+
+    // 3. Chỉ có Audio đúng ngôn ngữ
+    if (langAudio != null) {
+      return _ResolvedMedia(primary: langAudio);
+    }
+
+    // 4. Video dùng chung
+    if (sharedVideo != null) {
+      return _ResolvedMedia(primary: sharedVideo);
+    }
+
+    // 5. Audio dùng chung
+    final sharedAudio = firstWhereOrNull(
+      (m) => m.type == 'audio' && m.languageCode == null,
+    );
+    if (sharedAudio != null) {
+      return _ResolvedMedia(primary: sharedAudio);
+    }
+
+    // 6. Fallback
+    return _ResolvedMedia(primary: items.first);
+  }
 
   bool get _routeActive => ModalRoute.of(context)?.isCurrent ?? true;
 
@@ -253,17 +358,24 @@ class _BackendMediaPlayerState extends State<BackendMediaPlayer>
   }
 
   String _signature(List<ArtifactMedia> items) => items
-      .map((item) => '${item.id}\u0000${item.type}\u0000${item.url}')
+      .map(
+        (item) =>
+            '${item.id}\u0000${item.type}\u0000${item.url}\u0000${item.languageCode ?? ''}',
+      )
       .join('\u0001');
 
   @override
   void didUpdateWidget(covariant BackendMediaPlayer oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (_signature(oldWidget.media) != _signature(widget.media) ||
-        oldWidget.baseUrl != widget.baseUrl) {
+    final mediaChanged =
+        _signature(oldWidget.media) != _signature(widget.media) ||
+        oldWidget.baseUrl != widget.baseUrl;
+    final langChanged = oldWidget.isEnglish != widget.isEnglish;
+
+    if (mediaChanged || langChanged) {
+      // Reset session để lần phát tiếp theo dùng đúng media/ngôn ngữ mới
       _release();
-      _selectedIndex = 0;
     }
   }
 
@@ -295,9 +407,9 @@ class _BackendMediaPlayerState extends State<BackendMediaPlayer>
   }
 
   Future<void> _play({bool retry = false}) async {
-    final items = _items;
+    final resolved = _resolveMedia(_items);
 
-    if (!_appActive || !_routeActive || items.isEmpty) return;
+    if (!_appActive || !_routeActive || resolved == null) return;
 
     if (retry || (_session?.failed ?? false)) {
       _release();
@@ -315,8 +427,9 @@ class _BackendMediaPlayerState extends State<BackendMediaPlayer>
 
     if (!session.ready) {
       await session.initialize(
-        items[_selectedIndex],
+        resolved.primary,
         widget.baseUrl ?? ApiConfig.baseUrl,
+        audioTrack: resolved.accompanyingAudio,
       );
     }
 
@@ -346,9 +459,52 @@ class _BackendMediaPlayerState extends State<BackendMediaPlayer>
     super.dispose();
   }
 
+  String _langDisplayName(String? code) {
+    if (code == 'vi') return _text('Tiếng Việt', 'Vietnamese');
+    if (code == 'en') return _text('Tiếng Anh', 'English');
+    if (code != null && code.isNotEmpty) return code.toUpperCase();
+    return _text('Chung', 'Shared');
+  }
+
+  /// Widget label hiển thị loại media và ngôn ngữ đang được tự động chọn.
+  Widget _buildAutoMediaLabel(_ResolvedMedia resolved) {
+    final primary = resolved.primary;
+    final audioTrack = resolved.accompanyingAudio;
+    final isVideo = primary.type == 'video';
+    final effectiveLangCode = audioTrack?.languageCode ?? primary.languageCode;
+    final langLabel = _langDisplayName(effectiveLangCode);
+    final labelText = audioTrack != null
+        ? '${_text('Video + Thuyết minh', 'Video + Audio')} · $langLabel'
+        : '${isVideo ? 'Video' : 'Audio'} · $langLabel';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Icon(
+            isVideo ? Icons.videocam_outlined : Icons.headphones_outlined,
+            size: 16,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              labelText,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final items = _items;
+    final resolved = _resolveMedia(_items);
     final session = _session;
     final duration = session?.duration ?? Duration.zero;
     final position = session?.position ?? Duration.zero;
@@ -357,6 +513,13 @@ class _BackendMediaPlayerState extends State<BackendMediaPlayer>
     final failed = session?.failed ?? false;
     final video = session?.videoController;
     final colors = Theme.of(context).colorScheme;
+
+    final activeCaption =
+        resolved?.accompanyingAudio?.caption?.trim().isNotEmpty == true
+        ? resolved!.accompanyingAudio!.caption!
+        : (resolved?.primary.caption?.trim().isNotEmpty == true
+              ? resolved!.primary.caption!
+              : null);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -373,7 +536,7 @@ class _BackendMediaPlayerState extends State<BackendMediaPlayer>
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
-          if (items.isEmpty)
+          if (resolved == null)
             Text(
               _text(
                 'Chưa có audio hoặc video cho nội dung này.',
@@ -381,30 +544,13 @@ class _BackendMediaPlayerState extends State<BackendMediaPlayer>
               ),
             )
           else ...[
-            if (items.length > 1)
-              DropdownButton<int>(
-                key: const ValueKey('media-selection'),
-                isExpanded: true,
-                value: _selectedIndex,
-                items: [
-                  for (var i = 0; i < items.length; i++)
-                    DropdownMenuItem(
-                      value: i,
-                      child: Text(
-                        '${items[i].type == 'audio' ? 'Audio' : 'Video'} ${i + 1}',
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                ],
-                onChanged: (index) {
-                  if (index == null || index == _selectedIndex) return;
-
-                  _release();
-                  setState(() => _selectedIndex = index);
-                },
+            // Thay dropdown thủ công bằng label tự động theo ngôn ngữ
+            _buildAutoMediaLabel(resolved),
+            if (activeCaption != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(activeCaption),
               ),
-            if (items[_selectedIndex].caption?.trim().isNotEmpty ?? false)
-              Text(items[_selectedIndex].caption!),
             if (video != null && session!.ready && !failed)
               AspectRatio(
                 aspectRatio: video.value.aspectRatio > 0

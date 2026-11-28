@@ -19,6 +19,20 @@ const _video = ArtifactMedia(
   url: 'https://media.test/guide.mp4',
 );
 
+const _audioVi = ArtifactMedia(
+  id: 'audio-vi',
+  type: 'audio',
+  url: 'https://media.test/guide-vi.mp3',
+  languageCode: 'vi',
+);
+
+const _audioEn = ArtifactMedia(
+  id: 'audio-en',
+  type: 'audio',
+  url: 'https://media.test/guide-en.mp3',
+  languageCode: 'en',
+);
+
 class _FakeSession extends BackendMediaSession {
   final loaded = Completer<void>();
 
@@ -28,6 +42,7 @@ class _FakeSession extends BackendMediaSession {
 
   int toggles = 0;
   String? receivedUrl;
+  String? receivedAudioUrl;
   Duration? seekTarget;
 
   @override
@@ -40,8 +55,13 @@ class _FakeSession extends BackendMediaSession {
   Duration get position => const Duration(seconds: 10);
 
   @override
-  Future<void> initialize(ArtifactMedia media, Uri origin) async {
+  Future<void> initialize(
+    ArtifactMedia media,
+    Uri origin, {
+    ArtifactMedia? audioTrack,
+  }) async {
     receivedUrl = media.url;
+    receivedAudioUrl = audioTrack?.url;
     loading = true;
     notifyListeners();
 
@@ -79,12 +99,13 @@ class _FakeSession extends BackendMediaSession {
 Widget _app(
   List<_FakeSession> sessions, {
   List<ArtifactMedia> media = const [_audio, _video],
+  bool isEnglish = false,
 }) {
   return MaterialApp(
     home: Scaffold(
       body: BackendMediaPlayer(
         media: media,
-        isEnglish: false,
+        isEnglish: isEnglish,
         baseUrl: Uri.parse('https://backend.test'),
         createSession: () {
           final session = _FakeSession();
@@ -192,7 +213,7 @@ void main() {
 
       final session = sessions.single;
 
-      expect(session.receivedUrl, _audio.url);
+      expect(session.receivedUrl, _video.url);
       expect(session.toggles, 0);
       expect(find.byKey(const ValueKey('media-loading')), findsOneWidget);
 
@@ -218,22 +239,38 @@ void main() {
     });
   });
 
-  testWidgets('changing resource ignores a late loading completion', (
+  testWidgets('changing language ignores a late loading completion', (
     tester,
   ) async {
-    await _withPlayer(tester, (sessions) async {
+    final sessions = <_FakeSession>[];
+
+    try {
+      await tester.pumpWidget(
+        _app(sessions, media: const [_video, _audioVi, _audioEn]),
+      );
+
+      expect(find.byKey(const ValueKey('media-selection')), findsNothing);
+      expect(find.text('Video + Thuyết minh · Tiếng Việt'), findsOneWidget);
+
       await tester.tap(find.byKey(const ValueKey('media-play-pause')));
       await tester.pump();
 
       final first = sessions.single;
+      expect(first.receivedUrl, _video.url);
+      expect(first.receivedAudioUrl, _audioVi.url);
 
-      await tester.tap(find.byKey(const ValueKey('media-selection')));
-      await tester.pump(const Duration(milliseconds: 300));
-
-      await tester.tap(find.text('Video 2').last);
-      await tester.pumpAndSettle();
+      // Chuyển ngôn ngữ sang tiếng Anh khi đang tải bản tiếng Việt
+      await tester.pumpWidget(
+        _app(
+          sessions,
+          media: const [_video, _audioVi, _audioEn],
+          isEnglish: true,
+        ),
+      );
+      await tester.pump();
 
       expect(first.released, isTrue);
+      expect(find.text('Video + Audio · English'), findsOneWidget);
 
       first.loaded.complete();
       await tester.pump();
@@ -245,12 +282,21 @@ void main() {
 
       expect(sessions, hasLength(2));
       expect(sessions.last.receivedUrl, _video.url);
+      expect(sessions.last.receivedAudioUrl, _audioEn.url);
 
       sessions.last.loaded.complete();
       await tester.pump();
 
       expect(sessions.last.playing, isTrue);
-    });
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      for (final session in sessions) {
+        if (!session.loaded.isCompleted) {
+          session.loaded.complete();
+        }
+      }
+      await tester.pump();
+    }
   });
 
   testWidgets('failed loading shows retry and replaces the failed session', (
