@@ -541,6 +541,7 @@ class _PreviewVisits extends VisitLogService {
     required String artifactId,
     required AuthToken token,
     required String beaconId,
+    String? languageCode,
     int? rssi,
   }) async {
     calls++;

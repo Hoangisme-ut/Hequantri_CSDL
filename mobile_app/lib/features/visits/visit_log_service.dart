@@ -30,7 +30,7 @@ class VisitRecord {
 
   factory VisitRecord.fromJson(Map<String, dynamic> json) {
     final timestamp = json['visited_at'] as String?;
-    // SQL Server can return UTC timestamps without a timezone suffix.
+
     final utcTimestamp =
         timestamp == null ||
             RegExp(
@@ -54,7 +54,7 @@ class VisitRecordResult {
 
   final VisitRecord visit;
 
-  /// HTTP 200: server reused a visit from its 300-second deduplication window.
+  // HTTP 200 means the backend reused an existing visit.
   final bool alreadyRecorded;
 }
 
@@ -77,6 +77,7 @@ class VisitHistoryEntry {
 
   factory VisitHistoryEntry.fromJson(Map<String, dynamic> json) {
     final artifact = json['artifact'] as Map<String, dynamic>;
+
     return VisitHistoryEntry(
       visit: VisitRecord.fromJson(json),
       code: artifact['code'] as String,
@@ -95,7 +96,6 @@ class VisitHistoryResult {
   final int count;
 }
 
-/// Temporary VisitLog contract pending P2 confirmation; identity uses the token.
 class VisitLogService {
   VisitLogService({required Uri baseUrl, http.Client? client})
     : _baseUrl = _validateBaseUrl(baseUrl),
@@ -115,15 +115,20 @@ class VisitLogService {
         (url.path.isNotEmpty && url.path != '/')) {
       throw ArgumentError('baseUrl phải là địa chỉ gốc, không thêm /api/v1.');
     }
+
     return url;
   }
 
+  // Record a visit with the actual displayed content language.
   Future<VisitRecordResult> record({
     required String artifactId,
     required String beaconId,
     required AuthToken token,
+    String? languageCode,
     int? rssi,
   }) async {
+    final language = languageCode?.trim();
+
     final response = await _request(
       'POST',
       '/api/v1/visits/',
@@ -131,9 +136,8 @@ class VisitLogService {
       payload: {
         'artifact_id': artifactId,
         'beacon_id': beaconId,
+        if (language != null && language.isNotEmpty) 'language_code': language,
         'rssi': ?rssi,
-        // language_id omitted: backend resolves user preference/default language.
-        // duration_seconds omitted: no viewing duration has been measured.
       },
     );
 
@@ -165,12 +169,14 @@ class VisitLogService {
       token,
       query: {'lang': languageCode, 'skip': '$skip', 'limit': '$limit'},
     );
+
     if (response.statusCode != 200) {
       throw _responseError(response.statusCode);
     }
 
     return _decode(() {
       final json = _json(response);
+
       return VisitHistoryResult(
         entries: List<VisitHistoryEntry>.unmodifiable(
           (json['data'] as List<dynamic>).map(
@@ -219,6 +225,7 @@ class VisitLogService {
             'Accept': 'application/json',
             'Authorization': 'Bearer ${token.accessToken}',
           });
+
     if (payload != null) {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(payload);
@@ -250,6 +257,8 @@ class VisitLogService {
       }, statusCode: statusCode);
 
   void close() {
-    if (_ownsClient) _client.close();
+    if (_ownsClient) {
+      _client.close();
+    }
   }
 }

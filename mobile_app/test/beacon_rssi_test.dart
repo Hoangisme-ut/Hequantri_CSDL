@@ -98,6 +98,7 @@ class _FakeVisits extends VisitLogService {
     required String artifactId,
     required String beaconId,
     required AuthToken token,
+    String? languageCode,
     int? rssi,
   }) async {
     artifactIds.add(artifactId);

@@ -51,6 +51,7 @@ class _Visits extends VisitLogService {
     required String artifactId,
     required String beaconId,
     required AuthToken token,
+    String? languageCode,
     int? rssi,
   }) async {
     artifacts.add(artifactId);
