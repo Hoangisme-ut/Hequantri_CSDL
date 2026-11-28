@@ -1053,6 +1053,10 @@ export type MediaPublic = {
      */
     language_id?: string | null;
     /**
+     * Language Code
+     */
+    language_code?: string | null;
+    /**
      * Created At
      */
     created_at?: string | null;

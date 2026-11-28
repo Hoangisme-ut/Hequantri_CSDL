@@ -620,6 +620,9 @@ class MediaPublic(MediaBase):
     id: uuid.UUID
     artifact_id: uuid.UUID
     language_id: uuid.UUID | None = None
+    language_code: str | None = (
+        None  # mã ngôn ngữ ('vi', 'en', …); None = media dùng chung
+    )
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
