@@ -267,6 +267,7 @@ class BeaconContentController extends ChangeNotifier {
         artifactId: displayed.artifactId,
         beaconId: displayed.beaconId,
         token: resolvedToken,
+        languageCode: displayed.languageCode,
         rssi: rssi != null && rssi < 0 ? rssi : null,
       );
 
