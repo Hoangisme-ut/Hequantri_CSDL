@@ -148,14 +148,22 @@ void main() {
       'site_id': '10000000-0000-0000-0000-000000000001',
       'code': 'ART-1',
       'media': [
-        {'id': _audio.id, 'media_type': _audio.type, 'url': _audio.url},
+        {
+          'id': _audio.id,
+          'media_type': _audio.type,
+          'url': _audio.url,
+          'language_id': 'lang-vi-id',
+        },
         {'id': _video.id, 'media_type': _video.type, 'url': _video.url},
       ],
     });
 
     expect(content.media.map((item) => item.type), ['audio', 'video']);
     expect(content.media.first.url, _audio.url);
+    expect(content.media.first.languageId, 'lang-vi-id');
+    expect(content.media.first.isForLanguage('vi'), isTrue);
     expect(content.media.last.url, _video.url);
+    expect(content.media.last.isShared, isTrue);
   });
 
   test(

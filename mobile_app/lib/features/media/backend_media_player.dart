@@ -301,17 +301,17 @@ class _BackendMediaPlayerState extends State<BackendMediaPlayer>
 
     // 1. Video đúng ngôn ngữ
     final langVideo = firstWhereOrNull(
-      (m) => m.type == 'video' && m.languageCode == lang,
+      (m) => m.type == 'video' && m.isForLanguage(lang),
     );
     if (langVideo != null) {
       return _ResolvedMedia(primary: langVideo);
     }
 
     final sharedVideo = firstWhereOrNull(
-      (m) => m.type == 'video' && m.languageCode == null,
+      (m) => m.type == 'video' && m.isShared,
     );
     final langAudio = firstWhereOrNull(
-      (m) => m.type == 'audio' && m.languageCode == lang,
+      (m) => m.type == 'audio' && m.isForLanguage(lang),
     );
 
     // 2. Video dùng chung + Audio đúng ngôn ngữ (xem video kèm thuyết minh theo ngôn ngữ)
@@ -334,7 +334,7 @@ class _BackendMediaPlayerState extends State<BackendMediaPlayer>
 
     // 5. Audio dùng chung
     final sharedAudio = firstWhereOrNull(
-      (m) => m.type == 'audio' && m.languageCode == null,
+      (m) => m.type == 'audio' && m.isShared,
     );
     if (sharedAudio != null) {
       return _ResolvedMedia(primary: sharedAudio);
@@ -366,7 +366,7 @@ class _BackendMediaPlayerState extends State<BackendMediaPlayer>
   String _signature(List<ArtifactMedia> items) => items
       .map(
         (item) =>
-            '${item.id}\u0000${item.type}\u0000${item.url}\u0000${item.languageCode ?? ''}',
+            '${item.id}\u0000${item.type}\u0000${item.url}\u0000${item.languageId ?? ''}\u0000${item.languageCode ?? ''}',
       )
       .join('\u0001');
 
@@ -477,7 +477,12 @@ class _BackendMediaPlayerState extends State<BackendMediaPlayer>
     final primary = resolved.primary;
     final audioTrack = resolved.accompanyingAudio;
     final isVideo = primary.type == 'video';
-    final effectiveLangCode = audioTrack?.languageCode ?? primary.languageCode;
+    final effectiveLangCode =
+        audioTrack?.languageCode ??
+        primary.languageCode ??
+        ((audioTrack?.languageId != null || primary.languageId != null)
+            ? widget.currentLangCode
+            : null);
     final langLabel = _langDisplayName(effectiveLangCode);
     final labelText = audioTrack != null
         ? '${_text('Video + Thuyết minh', 'Video + Audio')} · $langLabel'
